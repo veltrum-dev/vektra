@@ -1,0 +1,159 @@
+use gpui::{AssetSource, Result, SharedString};
+use std::{borrow::Cow, collections::BTreeMap, io};
+use vektra_assets::Assets;
+
+#[derive(Default)]
+struct TestAssets {
+    assets: BTreeMap<&'static str, Cow<'static, [u8]>>,
+    fail_load: bool,
+    fail_list: bool,
+}
+
+impl TestAssets {
+    fn with_asset(mut self, path: &'static str, bytes: &'static [u8]) -> Self {
+        self.assets.insert(path, Cow::Borrowed(bytes));
+        self
+    }
+}
+
+impl AssetSource for TestAssets {
+    fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
+        if self.fail_load {
+            return Err(io::Error::other("load failed").into());
+        }
+        Ok(self.assets.get(path).cloned())
+    }
+
+    fn list(&self, path: &str) -> Result<Vec<SharedString>> {
+        if self.fail_list {
+            return Err(io::Error::other("list failed").into());
+        }
+        Ok(self
+            .assets
+            .keys()
+            .filter(|asset_path| asset_path.starts_with(path))
+            .map(|path| (*path).into())
+            .collect())
+    }
+}
+
+#[test]
+fn loads_and_lists_default_theme_resources() {
+    let text = Assets::load_text("themes/default/foundation.json")
+        .unwrap()
+        .unwrap();
+    assert!(text.contains("foundation"));
+    assert!(
+        Assets
+            .list("themes/default")
+            .unwrap()
+            .iter()
+            .any(|path| path.as_ref() == "themes/default/foundation.json")
+    );
+}
+
+#[test]
+fn loading_indicator_is_a_core_resource() {
+    let bytes = Assets
+        .load("components/button/loading.svg")
+        .unwrap()
+        .unwrap();
+    let svg = std::str::from_utf8(bytes.as_ref()).unwrap();
+    assert!(svg.contains("viewBox=\"0 0 16 16\""));
+    assert!(svg.contains("currentColor"));
+    assert!(
+        Assets
+            .list("components/button")
+            .unwrap()
+            .iter()
+            .any(|path| path.as_ref() == "components/button/loading.svg")
+    );
+}
+
+#[test]
+fn overrides_win_and_missing_entries_fall_back() {
+    let assets = Assets::with_overrides(
+        TestAssets::default().with_asset("components/button/loading.svg", b"override"),
+    );
+    assert_eq!(
+        assets
+            .load("components/button/loading.svg")
+            .unwrap()
+            .unwrap()
+            .as_ref(),
+        b"override"
+    );
+
+    let assets = Assets::with_overrides(TestAssets::default());
+    assert!(
+        assets
+            .load("components/button/loading.svg")
+            .unwrap()
+            .is_some()
+    );
+    assert!(assets.load("icons/missing.svg").unwrap().is_none());
+}
+
+#[test]
+fn list_merges_deduplicates_and_sorts() {
+    let assets = Assets::with_overrides(
+        TestAssets::default()
+            .with_asset("themes/default/foundation.json", b"override")
+            .with_asset("themes/default/custom.json", b"custom"),
+    );
+    let paths = assets
+        .list("themes/default")
+        .unwrap()
+        .into_iter()
+        .map(|path| path.to_string())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        paths,
+        vec![
+            "themes/default/button.json",
+            "themes/default/custom.json",
+            "themes/default/dark.json",
+            "themes/default/foundation.json",
+            "themes/default/light.json",
+        ]
+    );
+}
+
+#[test]
+fn override_errors_are_propagated() {
+    let assets = Assets::with_overrides(TestAssets {
+        fail_load: true,
+        ..Default::default()
+    });
+    assert!(assets.load("components/button/loading.svg").is_err());
+
+    let assets = Assets::with_overrides(TestAssets {
+        fail_list: true,
+        ..Default::default()
+    });
+    assert!(assets.list("icons").is_err());
+}
+
+#[cfg(feature = "icons")]
+#[test]
+fn icons_feature_embeds_settings_icon() {
+    let bytes = Assets
+        .load(vektra_icons::IconName::Settings.path())
+        .unwrap()
+        .unwrap();
+    let svg = std::str::from_utf8(bytes.as_ref()).unwrap();
+    assert!(svg.contains("currentColor"));
+}
+
+#[cfg(not(feature = "icons"))]
+#[test]
+fn default_build_only_embeds_the_core_loading_indicator() {
+    assert!(
+        Assets
+            .load("components/button/loading.svg")
+            .unwrap()
+            .is_some()
+    );
+    assert!(Assets.load("icons/settings.svg").unwrap().is_none());
+}

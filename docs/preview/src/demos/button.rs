@@ -8,6 +8,9 @@ use vektra::{Button, ButtonSize, ButtonVariant, IconName, IconSource};
 pub(super) struct ButtonDemo {
     clicks: usize,
     last_clicked: SharedString,
+    selected: bool,
+    loading: bool,
+    progress: f32,
 }
 
 impl ButtonDemo {
@@ -15,6 +18,9 @@ impl ButtonDemo {
         Self {
             clicks: 0,
             last_clicked: language.no_recent_click().into(),
+            selected: false,
+            loading: false,
+            progress: 0.25,
         }
     }
 
@@ -29,6 +35,22 @@ impl ButtonDemo {
     pub(super) fn record_click(&mut self, label: SharedString) {
         self.clicks += 1;
         self.last_clicked = label;
+    }
+
+    fn toggle_selected(&mut self) {
+        self.selected = !self.selected;
+    }
+
+    fn toggle_loading(&mut self) {
+        self.loading = !self.loading;
+    }
+
+    fn advance_progress(&mut self) {
+        self.progress = if self.progress >= 1. {
+            0.
+        } else {
+            (self.progress + 0.25).min(1.)
+        };
     }
 
     pub(super) fn render_basic(
@@ -207,16 +229,98 @@ impl ButtonDemo {
                         self.section(copy.section_states).child(
                             div()
                                 .flex()
-                                .gap(px(8.))
-                                .flex_wrap()
+                                .flex_col()
+                                .gap(px(10.))
                                 // #region button-states
-                                .child(self.click_button("button-state-normal", copy.normal, cx))
                                 .child(
-                                    Button::new("button-state-disabled")
-                                        .label(copy.disabled)
-                                        .disabled(true),
+                                    div()
+                                        .flex()
+                                        .gap(px(8.))
+                                        .flex_wrap()
+                                        .child(self.click_button(
+                                            "button-state-normal",
+                                            copy.normal,
+                                            cx,
+                                        ))
+                                        .child(
+                                            Button::new("button-state-selected")
+                                                .label(if self.selected {
+                                                    copy.selected_on
+                                                } else {
+                                                    copy.selected_off
+                                                })
+                                                .selected(self.selected)
+                                                .on_click_in(cx, |this, _, window, cx| {
+                                                    this.button_demo.toggle_selected();
+                                                    this.record_button_click(
+                                                        "selected".into(),
+                                                        window,
+                                                        cx,
+                                                    );
+                                                }),
+                                        )
+                                        .child(
+                                            Button::new("button-state-loading")
+                                                .label(copy.loading)
+                                                .start_icon(IconName::Settings)
+                                                .loading(self.loading),
+                                        )
+                                        .child(
+                                            Button::new("button-state-progress")
+                                                .label(format!(
+                                                    "{} {:.0}%",
+                                                    copy.progress,
+                                                    self.progress * 100.
+                                                ))
+                                                .start_icon(IconName::Settings)
+                                                .end_icon(IconName::Settings)
+                                                .progress(self.progress)
+                                                .width(px(210.)),
+                                        )
+                                        .child(
+                                            Button::new("button-state-disabled-combined")
+                                                .label(copy.disabled_combined)
+                                                .selected(true)
+                                                .progress(0.65)
+                                                .disabled(true),
+                                        ),
                                 )
-                                .child(self.click_button("button-state-default", copy.default, cx)),
+                                .child(
+                                    div()
+                                        .flex()
+                                        .gap(px(8.))
+                                        .flex_wrap()
+                                        .child(
+                                            Button::new("button-state-toggle-loading")
+                                                .label(if self.loading {
+                                                    copy.stop_loading
+                                                } else {
+                                                    copy.start_loading
+                                                })
+                                                .variant(ButtonVariant::Outline)
+                                                .on_click_in(cx, |this, _, window, cx| {
+                                                    this.button_demo.toggle_loading();
+                                                    this.record_button_click(
+                                                        "loading".into(),
+                                                        window,
+                                                        cx,
+                                                    );
+                                                }),
+                                        )
+                                        .child(
+                                            Button::new("button-state-advance-progress")
+                                                .label(copy.advance_progress)
+                                                .variant(ButtonVariant::Outline)
+                                                .on_click_in(cx, |this, _, window, cx| {
+                                                    this.button_demo.advance_progress();
+                                                    this.record_button_click(
+                                                        "progress".into(),
+                                                        window,
+                                                        cx,
+                                                    );
+                                                }),
+                                        ),
+                                ),
                             // #endregion button-states
                         ),
                     )
@@ -585,6 +689,14 @@ struct ButtonCopy {
     link_icon: &'static str,
     full_width: &'static str,
     normal: &'static str,
+    selected_off: &'static str,
+    selected_on: &'static str,
+    loading: &'static str,
+    progress: &'static str,
+    disabled_combined: &'static str,
+    start_loading: &'static str,
+    stop_loading: &'static str,
+    advance_progress: &'static str,
     auto: &'static str,
     fixed_200: &'static str,
     long_text: &'static str,
@@ -630,6 +742,14 @@ impl ButtonCopy {
                 link_icon: "链接图标",
                 full_width: "填满父容器",
                 normal: "正常",
+                selected_off: "未选中（点击切换）",
+                selected_on: "已选中（点击切换）",
+                loading: "受控 loading",
+                progress: "受控 progress",
+                disabled_combined: "禁用 + selected + progress",
+                start_loading: "开始 loading",
+                stop_loading: "停止 loading",
+                advance_progress: "推进 progress",
                 auto: "自动宽度",
                 fixed_200: "固定宽度 200px",
                 long_text: "较长文本",
@@ -671,6 +791,14 @@ impl ButtonCopy {
                 link_icon: "Link icon",
                 full_width: "Full width",
                 normal: "Normal",
+                selected_off: "Not selected (toggle)",
+                selected_on: "Selected (toggle)",
+                loading: "Controlled loading",
+                progress: "Controlled progress",
+                disabled_combined: "Disabled + selected + progress",
+                start_loading: "Start loading",
+                stop_loading: "Stop loading",
+                advance_progress: "Advance progress",
                 auto: "Auto width",
                 fixed_200: "Fixed 200px",
                 long_text: "Long label",

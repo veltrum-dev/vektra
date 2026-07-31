@@ -151,11 +151,29 @@ impl ResolvedTheme {
         state: &str,
     ) -> Result<ButtonStateTokens, ThemeError> {
         let prefix = format!("button.variant.{variant}.{state}");
-        Ok(ButtonStateTokens {
-            background: color(&self.tokens, &format!("{prefix}.background"))?,
-            foreground: color(&self.tokens, &format!("{prefix}.foreground"))?,
-            border: color(&self.tokens, &format!("{prefix}.border"))?,
-        })
+        button_state(&self.tokens, &prefix)
+    }
+
+    /// 读取 Button 的可选 selected variant/state 样式 token。
+    ///
+    /// 旧主题完全不提供该扩展时返回 `Ok(None)`，调用方可使用既有
+    /// pressed/focus-visible/disabled token 组合回退；若主题开始提供某个 selected
+    /// 状态，则该状态的 background、foreground 和 border 必须完整且类型正确。
+    pub fn button_selected_state(
+        &self,
+        variant: &str,
+        state: &str,
+    ) -> Result<Option<ButtonStateTokens>, ThemeError> {
+        let prefix = format!("button.variant.{variant}.selected.{state}");
+        let fields = ["background", "foreground", "border"];
+        if fields
+            .iter()
+            .all(|field| self.tokens.get(&format!("{prefix}.{field}")).is_none())
+        {
+            return Ok(None);
+        }
+
+        button_state(&self.tokens, &prefix).map(Some)
     }
 
     /// 读取 Button size token。
@@ -174,6 +192,14 @@ impl ResolvedTheme {
 
 fn color(tokens: &ResolvedTokens, path: &str) -> Result<Hsla, ThemeError> {
     Ok(tokens.color(path)?.to_hsla())
+}
+
+fn button_state(tokens: &ResolvedTokens, prefix: &str) -> Result<ButtonStateTokens, ThemeError> {
+    Ok(ButtonStateTokens {
+        background: color(tokens, &format!("{prefix}.background"))?,
+        foreground: color(tokens, &format!("{prefix}.foreground"))?,
+        border: color(tokens, &format!("{prefix}.border"))?,
+    })
 }
 
 fn dimension(tokens: &ResolvedTokens, path: &str) -> Result<Pixels, ThemeError> {

@@ -42,7 +42,16 @@
     },
     "button": {
       "type": "object",
-      "required": ["variant", "size"]
+      "required": ["variant", "size"],
+      "properties": {
+        "variant": {
+          "type": "object",
+          "description": "Each Button variant requires the base state matrix and may add a complete selected state matrix (normal, hover, pressed, focus-visible, disabled). Themes without selected tokens remain compatible through runtime fallback."
+        },
+        "size": {
+          "type": "object"
+        }
+      }
     }
   }
 }

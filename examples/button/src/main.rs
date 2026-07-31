@@ -14,6 +14,9 @@ use vektra::{
 struct ButtonExample {
     clicks: usize,
     last_clicked: SharedString,
+    selected: bool,
+    loading: bool,
+    progress: f32,
 }
 
 impl ButtonExample {
@@ -21,6 +24,9 @@ impl ButtonExample {
         Self {
             clicks: 0,
             last_clicked: "暂无".into(),
+            selected: false,
+            loading: false,
+            progress: 0.25,
         }
     }
 
@@ -38,6 +44,25 @@ impl ButtonExample {
         )
         .into();
         cx.notify();
+    }
+
+    fn toggle_selected(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.selected = !self.selected;
+        self.record_click("切换 selected".into(), window, cx);
+    }
+
+    fn toggle_loading(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.loading = !self.loading;
+        self.record_click("切换 loading".into(), window, cx);
+    }
+
+    fn advance_progress(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.progress = if self.progress >= 1. {
+            0.
+        } else {
+            (self.progress + 0.25).min(1.)
+        };
+        self.record_click("推进 progress".into(), window, cx);
     }
 }
 
@@ -188,11 +213,77 @@ impl Render for ButtonExample {
                         self.section("交互状态").child(
                             div()
                                 .flex()
-                                .gap(px(8.))
-                                .flex_wrap()
-                                .child(self.click_button("state-normal", "正常", cx))
-                                .child(Button::new("state-disabled").label("禁用").disabled(true))
-                                .child(self.click_button("state-default", "默认配置", cx)),
+                                .flex_col()
+                                .gap(px(10.))
+                                .child(
+                                    div()
+                                        .flex()
+                                        .gap(px(8.))
+                                        .flex_wrap()
+                                        .child(self.click_button("state-normal", "正常", cx))
+                                        .child(
+                                            Button::new("state-selected")
+                                                .label(if self.selected {
+                                                    "已选中（点击切换）"
+                                                } else {
+                                                    "未选中（点击切换）"
+                                                })
+                                                .selected(self.selected)
+                                                .on_click_in(cx, |this, _, window, cx| {
+                                                    this.toggle_selected(window, cx);
+                                                }),
+                                        )
+                                        .child(
+                                            Button::new("state-loading")
+                                                .label("受控 loading")
+                                                .start_icon(IconName::Settings)
+                                                .loading(self.loading),
+                                        )
+                                        .child(
+                                            Button::new("state-progress")
+                                                .label(format!(
+                                                    "受控 progress {:.0}%",
+                                                    self.progress * 100.
+                                                ))
+                                                .start_icon(IconName::Settings)
+                                                .end_icon(IconName::Settings)
+                                                .progress(self.progress)
+                                                .width(px(220.)),
+                                        )
+                                        .child(
+                                            Button::new("state-disabled-combined")
+                                                .label("禁用 + selected + progress")
+                                                .selected(true)
+                                                .progress(0.65)
+                                                .disabled(true),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .gap(px(8.))
+                                        .flex_wrap()
+                                        .child(
+                                            Button::new("state-toggle-loading")
+                                                .label(if self.loading {
+                                                    "停止 loading"
+                                                } else {
+                                                    "开始 loading"
+                                                })
+                                                .variant(ButtonVariant::Outline)
+                                                .on_click_in(cx, |this, _, window, cx| {
+                                                    this.toggle_loading(window, cx);
+                                                }),
+                                        )
+                                        .child(
+                                            Button::new("state-advance-progress")
+                                                .label("推进 progress")
+                                                .variant(ButtonVariant::Outline)
+                                                .on_click_in(cx, |this, _, window, cx| {
+                                                    this.advance_progress(window, cx);
+                                                }),
+                                        ),
+                                ),
                         ),
                     )
                     .child(

@@ -1,8 +1,8 @@
 # Button
 
-Button 表达一次性操作，例如保存、确认、切换模式或进入下一步。它是普通 GPUI element，公开导出路径为 `vektra::Button`。
+Button 表达操作，例如保存、确认、切换模式或启动长任务。它是普通 GPUI element，公开导出路径为 `vektra::Button`。
 
-只展示状态的文本、长任务进度、需要方向键选择的复合列表项，不应使用 Button。没有可见文字的图标操作应使用 `IconButton` 并提供可访问名称。
+只展示状态的文本、独立进度面板、需要方向键选择的复合列表项，不应使用 Button。没有可见文字的图标操作应使用 `IconButton` 并提供可访问名称。
 
 ## 实时预览
 
@@ -19,6 +19,18 @@ Button 表达一次性操作，例如保存、确认、切换模式或进入下�
 `Button::on_click_in(cx, ...)` 可以访问宿主 `&mut T`、`ClickEvent`、`Window` 和 `Context<T>`。修改宿主状态后调用 `cx.notify()` 触发渲染。
 
 <<< ../../preview/src/demos/button.rs#button-states{rust}
+
+## Loading、selected 与 progress
+
+`.loading(bool)`、`.progress(f32)` 和 `.selected(bool)` 都是由宿主控制的状态输入。Button 不启动异步任务、不计算进度，也不会在点击后自行翻转 selected；宿主应更新状态并调用 `cx.notify()`。
+
+- loading 与 progress 共用互斥 activity 状态，后调用者生效；`.loading(false)` 恢复空闲。
+- loading 用旋转指示器替换 start icon，但保留原始 label 和 end icon。动画通过 GPUI `AnimationExt` 自动遵守 reduce-motion。
+- progress 保留 label 和两侧图标，在按钮底部绘制不改变外部尺寸的进度条。
+- selected 与 activity 独立；只有显式调用 `.selected(false|true)` 才会暴露 toggle 语义。selected 使用持久内侧描边，不只依赖颜色。
+- disabled 优先级最高：使用 disabled 样式并退出 Tab 顺序；activity 指示仍可见，但不会激活。
+
+loading/progress 期间 Button 保留焦点与 `Role::Button`，但会消费鼠标、Enter 和 Space，防止重复提交和向父元素冒泡。取消操作应使用独立 Button。
 
 ## 变体与尺寸
 
@@ -65,6 +77,9 @@ Button 默认按内容收缩。`.width(...)` 设置固定宽度，`.full_width()
 | `.start_icon(icon)` | 设置前置装饰图标，后一次调用覆盖前一次。 |
 | `.end_icon(icon)` | 设置后置装饰图标，后一次调用覆盖前一次。 |
 | `.disabled(bool)` | 设置禁用状态。 |
+| `.loading(bool)` | 设置不确定 activity；`true` 阻止激活，`false` 恢复空闲。与 `.progress(...)` 后调用者生效。 |
+| `.progress(value)` | 设置确定进度并阻止激活。值域为 `0.0..=1.0`，越界与非有限值会安全归一。 |
+| `.selected(bool)` | 显式设置受控 toggle 状态；组件不会自动翻转。 |
 | `.auto_insert_space(bool)` | 控制两个汉字 label 的视觉自动空格，默认开启。 |
 | `.on_click(handler)` | 注册标准 GPUI 点击回调：`Fn(&ClickEvent, &mut Window, &mut App)`。 |
 | `.on_click_in(cx, handler)` | 注册可访问宿主 Entity 状态的回调。 |
@@ -104,21 +119,31 @@ Button 默认按内容收缩。`.width(...)` 设置固定宽度，`.full_width()
 
 `disabled(true)` 会移除可聚焦 tab index，不注册鼠标点击回调，也不注册 Enter/Space 键盘回调。视觉上使用当前 variant 的 disabled token，并显示不可操作的 cursor。
 
+## Activity 与进度值
+
+`.loading(true)` 表示不确定进度；`.progress(value)` 表示确定进度。有限 progress 值夹取到 `0.0..=1.0`，正无穷归一为 `1.0`，负无穷和 NaN 归一为 `0.0`。多个 activity builder 连用时后调用者生效。
+
+activity 只表达状态与阻止重复激活，不拥有任务生命周期。任务完成、失败、重试和取消协议由宿主应用负责。
+
 ## 中文自动空格
 
 默认情况下，label 恰好由两个 Unicode Han 字符组成时，Button 会在视觉显示文本中插入一个普通空格，例如 `保存` 显示为 `保 存`。该行为不改变原始 label，也不改变无障碍名称。调用 `.auto_insert_space(false)` 可关闭它；一个字、三个及以上字符、已有空白、英文或混合字符不会被改写。
 
 ## 鼠标与键盘
 
-可用状态下，左键点击会阻止默认行为、停止传播并触发回调。聚焦 Button 后，Enter 在 keydown 触发，Space 在 keyup 触发；两者都会构造 `ClickEvent::Keyboard` 并进入同一点击回调。disabled 状态不会触发这些路径。
+可用状态下，左键点击会阻止默认行为、停止传播并触发回调。聚焦 Button 后，Enter 在 keydown 触发，Space 在 keyup 触发；两者都会构造 `ClickEvent::Keyboard` 并进入同一点击回调。selected Button 仍使用相同激活路径。loading/progress 会消费鼠标和 Enter/Space（包括阻止 Space 默认滚动）但不触发业务回调；disabled 不触发这些路径。
 
 ## 焦点与无障碍
 
-Button 渲染为带 `Role::Button` 的 GPUI 交互元素，并用原始 label 设置 `aria_label`。可用状态设置 `tab_index(0)`，`focus_visible` 使用主题中的 focus token 和 focus width。
+Button 根节点始终使用 `Role::Button`，并用原始 label 设置 `aria_label`。可用及 busy 状态设置 `tab_index(0)`，`focus_visible` 使用主题中的 focus token 和 focus width；disabled 退出 Tab 顺序。
+
+显式调用 `.selected(false|true)` 后，根节点通过 `aria_toggled` 报告 False/True；未调用时不报告 toggle 状态。loading/progress 使用从 Button `ElementId` 派生的稳定子 ID 和 `Role::ProgressIndicator`，可访问名称复用原始 label。确定进度报告最小值 0、最大值 100 和当前百分比。
 
 ## 主题
 
-Button 的 normal、hover、pressed、focus-visible 和 disabled 状态都来自 Vektra 主题 token。文档预览跟随 VitePress 当前 Light/Dark 主题；切换主题不会丢失点击状态。独立打开预览时，合法的 `theme=light|dark` 查询参数会强制对应主题；未提供或值非法时使用 `ThemeMode::System`。
+Button 的 normal、hover、pressed、focus-visible、disabled 及 selected 状态都来自 Vektra 主题 token。默认 Light/Dark 主题为每个 variant 提供完整 selected 状态矩阵；旧自定义主题可以省略 selected 扩展，运行时会用 pressed、focus-visible 和 disabled token 组合回退。loading/progress 颜色从当前可见前景色派生，不在渲染期解析 JSON 或读取文件。
+
+loading 动画使用 GPUI `AnimationExt`；系统或宿主启用 reduce-motion 后显示静态帧且不再请求动画帧。文档预览跟随 VitePress 当前 Light/Dark 主题；独立预览的 `theme=light|dark` 查询参数可强制主题，未提供或非法时使用 `ThemeMode::System`。
 
 ## 响应式
 
@@ -126,7 +151,8 @@ Button 是叶子组件，默认不负责布局换行。它会保持内容在自�
 
 ## 当前限制
 
-- Button 没有 loading、selected 或 progress 状态。
+- Button 不拥有异步任务、进度计算、自动 selected 翻转或取消协议。
+- loading/progress 是不可激活的提交状态；需要取消时应提供独立 Button。
 - `Link` 是按钮语义的链接外观，不会变成导航链接。
 - 图标插槽不支持单独指定像素尺寸，尺寸由 ButtonSize token 决定。
 - 预览运行依赖浏览器 WebGPU 和文档预览宿主提供的字体资源。

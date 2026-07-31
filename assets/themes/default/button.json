@@ -9,7 +9,14 @@
         "hover": { "background": { "$value": "{semantic.primary-hover}" }, "foreground": { "$value": "{semantic.on-primary}" }, "border": { "$value": "{semantic.primary-hover}" } },
         "pressed": { "background": { "$value": "{semantic.primary-pressed}" }, "foreground": { "$value": "{semantic.on-primary}" }, "border": { "$value": "{semantic.primary-pressed}" } },
         "focus-visible": { "background": { "$value": "{semantic.primary}" }, "foreground": { "$value": "{semantic.on-primary}" }, "border": { "$value": "{semantic.ring}" } },
-        "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-border}" } }
+        "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-border}" } },
+        "selected": {
+          "normal": { "background": { "$value": "{semantic.primary-pressed}" }, "foreground": { "$value": "{semantic.on-primary}" }, "border": { "$value": "{semantic.ring}" } },
+          "hover": { "background": { "$value": "{semantic.primary-hover}" }, "foreground": { "$value": "{semantic.on-primary}" }, "border": { "$value": "{semantic.ring}" } },
+          "pressed": { "background": { "$value": "{semantic.primary-pressed}" }, "foreground": { "$value": "{semantic.on-primary}" }, "border": { "$value": "{semantic.ring}" } },
+          "focus-visible": { "background": { "$value": "{semantic.primary-pressed}" }, "foreground": { "$value": "{semantic.on-primary}" }, "border": { "$value": "{semantic.ring}" } },
+          "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-foreground}" } }
+        }
       },
       "outline": {
         "$type": "color",
@@ -17,7 +24,14 @@
         "hover": { "background": { "$value": "{semantic.accent}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.border}" } },
         "pressed": { "background": { "$value": "{semantic.accent-pressed}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.border}" } },
         "focus-visible": { "background": { "$value": "{semantic.background}" }, "foreground": { "$value": "{semantic.foreground}" }, "border": { "$value": "{semantic.ring}" } },
-        "disabled": { "background": { "$value": "{semantic.background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-border}" } }
+        "disabled": { "background": { "$value": "{semantic.background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-border}" } },
+        "selected": {
+          "normal": { "background": { "$value": "{semantic.accent-pressed}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
+          "hover": { "background": { "$value": "{semantic.accent-hover}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
+          "pressed": { "background": { "$value": "{semantic.accent-pressed}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
+          "focus-visible": { "background": { "$value": "{semantic.accent-pressed}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
+          "disabled": { "background": { "$value": "{semantic.background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-foreground}" } }
+        }
       },
       "ghost": {
         "$type": "color",
@@ -25,7 +39,14 @@
         "hover": { "background": { "$value": "{semantic.accent}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.accent}" } },
         "pressed": { "background": { "$value": "{semantic.accent-pressed}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.accent-pressed}" } },
         "focus-visible": { "background": { "$value": "{semantic.accent}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
-        "disabled": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } } }
+        "disabled": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } } },
+        "selected": {
+          "normal": { "background": { "$value": "{semantic.accent-pressed}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
+          "hover": { "background": { "$value": "{semantic.accent-hover}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
+          "pressed": { "background": { "$value": "{semantic.accent-pressed}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
+          "focus-visible": { "background": { "$value": "{semantic.accent-pressed}" }, "foreground": { "$value": "{semantic.on-accent}" }, "border": { "$value": "{semantic.ring}" } },
+          "disabled": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-foreground}" } }
+        }
       },
       "destructive": {
         "$type": "color",
@@ -33,7 +54,14 @@
         "hover": { "background": { "$value": "{semantic.destructive-hover}" }, "foreground": { "$value": "{semantic.on-destructive}" }, "border": { "$value": "{semantic.destructive-hover}" } },
         "pressed": { "background": { "$value": "{semantic.destructive-pressed}" }, "foreground": { "$value": "{semantic.on-destructive}" }, "border": { "$value": "{semantic.destructive-pressed}" } },
         "focus-visible": { "background": { "$value": "{semantic.destructive}" }, "foreground": { "$value": "{semantic.on-destructive}" }, "border": { "$value": "{semantic.ring}" } },
-        "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-border}" } }
+        "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-border}" } },
+        "selected": {
+          "normal": { "background": { "$value": "{semantic.destructive-pressed}" }, "foreground": { "$value": "{semantic.on-destructive}" }, "border": { "$value": "{semantic.ring}" } },
+          "hover": { "background": { "$value": "{semantic.destructive-hover}" }, "foreground": { "$value": "{semantic.on-destructive}" }, "border": { "$value": "{semantic.ring}" } },
+          "pressed": { "background": { "$value": "{semantic.destructive-pressed}" }, "foreground": { "$value": "{semantic.on-destructive}" }, "border": { "$value": "{semantic.ring}" } },
+          "focus-visible": { "background": { "$value": "{semantic.destructive-pressed}" }, "foreground": { "$value": "{semantic.on-destructive}" }, "border": { "$value": "{semantic.ring}" } },
+          "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-foreground}" } }
+        }
       },
       "secondary": {
         "$type": "color",
@@ -41,7 +69,14 @@
         "hover": { "background": { "$value": "{semantic.secondary-hover}" }, "foreground": { "$value": "{semantic.on-secondary}" }, "border": { "$value": "{semantic.secondary-hover}" } },
         "pressed": { "background": { "$value": "{semantic.secondary-pressed}" }, "foreground": { "$value": "{semantic.on-secondary}" }, "border": { "$value": "{semantic.secondary-pressed}" } },
         "focus-visible": { "background": { "$value": "{semantic.secondary}" }, "foreground": { "$value": "{semantic.on-secondary}" }, "border": { "$value": "{semantic.ring}" } },
-        "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-border}" } }
+        "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-border}" } },
+        "selected": {
+          "normal": { "background": { "$value": "{semantic.secondary-pressed}" }, "foreground": { "$value": "{semantic.on-secondary}" }, "border": { "$value": "{semantic.ring}" } },
+          "hover": { "background": { "$value": "{semantic.secondary-hover}" }, "foreground": { "$value": "{semantic.on-secondary}" }, "border": { "$value": "{semantic.ring}" } },
+          "pressed": { "background": { "$value": "{semantic.secondary-pressed}" }, "foreground": { "$value": "{semantic.on-secondary}" }, "border": { "$value": "{semantic.ring}" } },
+          "focus-visible": { "background": { "$value": "{semantic.secondary-pressed}" }, "foreground": { "$value": "{semantic.on-secondary}" }, "border": { "$value": "{semantic.ring}" } },
+          "disabled": { "background": { "$value": "{semantic.disabled-background}" }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-foreground}" } }
+        }
       },
       "link": {
         "$type": "color",
@@ -49,7 +84,14 @@
         "hover": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.link}" }, "border": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } } },
         "pressed": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.link}" }, "border": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } } },
         "focus-visible": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.link}" }, "border": { "$value": "{semantic.ring}" } },
-        "disabled": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } } }
+        "disabled": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } } },
+        "selected": {
+          "normal": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.link}" }, "border": { "$value": "{semantic.ring}" } },
+          "hover": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.link}" }, "border": { "$value": "{semantic.ring}" } },
+          "pressed": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.link}" }, "border": { "$value": "{semantic.ring}" } },
+          "focus-visible": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.link}" }, "border": { "$value": "{semantic.ring}" } },
+          "disabled": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "foreground": { "$value": "{semantic.disabled-foreground}" }, "border": { "$value": "{semantic.disabled-foreground}" } }
+        }
       }
     },
     "size": {

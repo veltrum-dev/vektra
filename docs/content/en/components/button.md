@@ -1,8 +1,8 @@
 # Button
 
-Button represents a one-shot action such as saving, confirming, changing a mode, or moving to the next step. It is a plain GPUI element and is exported as `vektra::Button`.
+Button represents an action such as saving, confirming, changing a mode, or starting a long-running task. It is a plain GPUI element and is exported as `vektra::Button`.
 
-Do not use Button for status-only text, long-running progress containers, or composite list items that need arrow-key selection. Icon-only actions should use `IconButton` with an accessible name.
+Do not use Button for status-only text, standalone progress panels, or composite list items that need arrow-key selection. Icon-only actions should use `IconButton` with an accessible name.
 
 ## Live Preview
 
@@ -19,6 +19,18 @@ Set the label with `.label(...)`. Handle activation with `.on_click(...)` or `.o
 `Button::on_click_in(cx, ...)` gives the handler access to the host `&mut T`, `ClickEvent`, `Window`, and `Context<T>`. Call `cx.notify()` after updating host state.
 
 <<< ../../../preview/src/demos/button.rs#button-states{rust}
+
+## Loading, Selected, and Progress
+
+`.loading(bool)`, `.progress(f32)`, and `.selected(bool)` are controlled inputs. Button does not start asynchronous work, calculate progress, or toggle selected after a click; the host updates state and calls `cx.notify()`.
+
+- Loading and progress share one mutually exclusive activity state. The later builder wins, and `.loading(false)` returns to idle.
+- Loading replaces the start icon with a rotating indicator while preserving the original label and end icon. GPUI `AnimationExt` automatically respects reduced motion.
+- Progress preserves both icon slots and the label, and draws a bottom bar without changing external dimensions.
+- Selected is independent from activity. Toggle semantics are only exposed after `.selected(false|true)` is called. A persistent inner outline means selection is not conveyed by color alone.
+- Disabled has the highest priority: it uses disabled styling and leaves the Tab order. An activity indicator remains visible, but activation stays blocked.
+
+During loading/progress, Button keeps focus and `Role::Button`, but consumes mouse, Enter, and Space events to prevent duplicate submission and parent activation. Use a separate Button for cancellation.
 
 ## Variants and Sizes
 
@@ -65,6 +77,9 @@ Button sizes itself to its content by default. `.width(...)` sets a fixed width.
 | `.start_icon(icon)` | Sets the leading decorative icon. A later call replaces the earlier icon. |
 | `.end_icon(icon)` | Sets the trailing decorative icon. A later call replaces the earlier icon. |
 | `.disabled(bool)` | Sets disabled state. |
+| `.loading(bool)` | Sets indeterminate activity. `true` blocks activation; `false` returns to idle. The later loading/progress builder wins. |
+| `.progress(value)` | Sets determinate progress and blocks activation. The range is `0.0..=1.0`; out-of-range and non-finite values are normalized safely. |
+| `.selected(bool)` | Explicitly sets controlled toggle state. The component does not toggle itself. |
 | `.auto_insert_space(bool)` | Controls visual spacing for two-Han-character labels. Enabled by default. |
 | `.on_click(handler)` | Registers a standard GPUI click callback: `Fn(&ClickEvent, &mut Window, &mut App)`. |
 | `.on_click_in(cx, handler)` | Registers a callback that can access host Entity state. |
@@ -104,21 +119,31 @@ When text is too narrow, it truncates visually. The original label remains avail
 
 `disabled(true)` removes the focusable tab index, does not register the mouse click handler, and does not register Enter/Space keyboard activation. The visual state uses the disabled token for the current variant and shows a non-interactive cursor.
 
+## Activity and Progress Values
+
+`.loading(true)` represents indeterminate progress; `.progress(value)` represents determinate progress. Finite values are clamped to `0.0..=1.0`, positive infinity becomes `1.0`, and negative infinity and NaN become `0.0`. When activity builders are chained, the later call wins.
+
+Activity only communicates state and prevents duplicate activation. Task completion, failure, retry, and cancellation remain host-application responsibilities.
+
 ## Chinese Auto Spacing
 
 By default, when the label contains exactly two Unicode Han characters, Button inserts a regular space in the visual label. For example, `保存` is displayed as `保 存`. This does not change the original label or accessible name. Call `.auto_insert_space(false)` to disable the behavior. One-character labels, labels with three or more characters, labels with whitespace, English labels, and mixed labels are not rewritten.
 
 ## Mouse and Keyboard
 
-When enabled, a left-click prevents the default event, stops propagation, and triggers the callback. When the Button is focused, Enter activates on keydown and Space activates on keyup. Both create `ClickEvent::Keyboard` and enter the same click callback. Disabled buttons do not trigger these paths.
+When enabled, a left-click prevents the default event, stops propagation, and triggers the callback. When the Button is focused, Enter activates on keydown and Space activates on keyup. Both create `ClickEvent::Keyboard` and enter the same click callback. Selected buttons use the same activation path. Loading/progress consumes mouse and Enter/Space events (including Space's default scrolling behavior) without calling the business handler. Disabled buttons do not activate.
 
 ## Focus and Accessibility
 
-Button renders a GPUI interactive element with `Role::Button` and sets `aria_label` from the original label. Enabled buttons set `tab_index(0)`. `focus_visible` uses the theme focus token and focus width.
+The Button root always uses `Role::Button` and sets `aria_label` from the original label. Enabled and busy buttons set `tab_index(0)`; `focus_visible` uses the theme focus token and focus width. Disabled buttons leave the Tab order.
+
+After `.selected(false|true)`, the root reports False/True through `aria_toggled`; an ordinary Button does not report toggle state. Loading/progress uses a stable child ID derived from the Button `ElementId`, `Role::ProgressIndicator`, and the original label as its accessible name. Determinate progress reports a minimum of 0, maximum of 100, and the current percentage.
 
 ## Theme
 
-Button normal, hover, pressed, focus-visible, and disabled states come from Vektra theme tokens. The documentation preview follows the current VitePress Light/Dark theme. Theme changes preserve click state. Standalone previews accept `theme=light|dark`; missing or invalid values use `ThemeMode::System`.
+Button normal, hover, pressed, focus-visible, disabled, and selected states come from Vektra theme tokens. The default Light/Dark themes define a complete selected matrix for every variant. Existing custom themes may omit the optional selected extension; runtime styling falls back to their pressed, focus-visible, and disabled tokens. Loading/progress colors derive from the currently visible foreground, with no render-time JSON parsing or file I/O.
+
+Loading uses GPUI `AnimationExt`. When the system or host enables reduced motion, it renders a static frame and stops requesting animation frames. The documentation preview follows the current VitePress Light/Dark theme. Standalone previews accept `theme=light|dark`; missing or invalid values use `ThemeMode::System`.
 
 ## Responsive Behavior
 
@@ -126,7 +151,8 @@ Button is a leaf component and does not manage layout wrapping for its parent. I
 
 ## Current Limits
 
-- Button does not provide loading, selected, or progress states.
+- Button does not own asynchronous work, progress calculation, automatic selected toggling, or cancellation protocols.
+- Loading/progress is a non-activating submission state. Provide a separate Button for cancellation.
 - `Link` is link appearance with Button semantics; it does not become a navigation link.
 - Icon slots do not accept per-slot pixel sizes. The icon size comes from `ButtonSize`.
 - The preview requires browser WebGPU and the font asset provided by the docs preview host.

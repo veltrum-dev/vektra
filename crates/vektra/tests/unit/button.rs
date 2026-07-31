@@ -148,6 +148,93 @@ fn disabled_state_is_stored_directly() {
 }
 
 #[test]
+fn activity_builders_are_mutually_exclusive_and_last_call_wins() {
+    assert_eq!(Button::new("idle").activity(), ButtonActivity::Idle);
+    assert_eq!(
+        Button::new("loading").loading(true).activity(),
+        ButtonActivity::Loading
+    );
+    assert_eq!(
+        Button::new("loading-off")
+            .loading(true)
+            .loading(false)
+            .activity(),
+        ButtonActivity::Idle
+    );
+    assert_eq!(
+        Button::new("progress-last")
+            .loading(true)
+            .progress(0.4)
+            .activity(),
+        ButtonActivity::Progress(0.4)
+    );
+    assert_eq!(
+        Button::new("loading-last")
+            .progress(0.4)
+            .loading(true)
+            .activity(),
+        ButtonActivity::Loading
+    );
+}
+
+#[test]
+fn progress_values_are_normalized_before_layout() {
+    for (input, expected) in [
+        (0., 0.),
+        (0.5, 0.5),
+        (1., 1.),
+        (-0.5, 0.),
+        (1.5, 1.),
+        (f32::NEG_INFINITY, 0.),
+        (f32::INFINITY, 1.),
+        (f32::NAN, 0.),
+    ] {
+        let ButtonActivity::Progress(actual) = Button::new("progress").progress(input).activity()
+        else {
+            panic!("progress builder 应进入确定进度状态");
+        };
+        assert_eq!(actual, expected, "输入 {input:?} 的归一化结果不正确");
+        assert!(actual.is_finite());
+    }
+}
+
+#[test]
+fn selected_preserves_unconfigured_false_and_true_states() {
+    assert_eq!(Button::new("plain").selected_state(), None);
+    assert_eq!(
+        Button::new("off").selected(false).selected_state(),
+        Some(false)
+    );
+    assert_eq!(
+        Button::new("on").selected(true).selected_state(),
+        Some(true)
+    );
+}
+
+#[test]
+fn accessibility_toggle_state_is_only_present_when_selected_is_configured() {
+    assert_eq!(toggled_state(None), None);
+    assert_eq!(toggled_state(Some(false)), Some(Toggled::False));
+    assert_eq!(toggled_state(Some(true)), Some(Toggled::True));
+}
+
+#[test]
+fn determinate_progress_accessibility_value_uses_percentage_range() {
+    assert_eq!(progress_percent(0.), 0.);
+    assert_eq!(progress_percent(0.42), 42.);
+    assert_eq!(progress_percent(1.), 100.);
+}
+
+#[test]
+fn activity_id_is_stably_derived_from_button_id() {
+    let button = Button::new("save").loading(true);
+    assert_eq!(
+        button.activity_id(),
+        ElementId::from((ElementId::from("save"), "activity"))
+    );
+}
+
+#[test]
 fn callback_can_be_reused_for_keyboard_event_shape() {
     let count = Rc::new(Cell::new(0));
     let seen_keyboard = Rc::new(Cell::new(false));
@@ -174,6 +261,24 @@ struct TestView {
 }
 
 struct LinkUnderlineView;
+
+#[derive(Debug, Clone, Copy)]
+enum TestActivity {
+    Idle,
+    Loading,
+    Progress,
+}
+
+struct ActivityTestView {
+    activity: TestActivity,
+    disabled: bool,
+    selected: Option<bool>,
+    business_count: usize,
+    parent_click_count: usize,
+    parent_key_count: usize,
+}
+
+struct StateMatrixView;
 
 impl Render for TestView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -228,6 +333,115 @@ impl Render for LinkUnderlineView {
                     .label("主要按钮")
                     .variant(ButtonVariant::Primary),
             )
+    }
+}
+
+impl Render for ActivityTestView {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let button = Button::new("activity-target")
+            .label("提交")
+            .width(px(120.))
+            .disabled(self.disabled)
+            .on_click_in(cx, |this, _, _, cx| {
+                this.business_count += 1;
+                cx.notify();
+            });
+        let button = match self.activity {
+            TestActivity::Idle => button,
+            TestActivity::Loading => button.loading(true),
+            TestActivity::Progress => button.progress(0.42),
+        };
+        let button = match self.selected {
+            Some(selected) => button.selected(selected),
+            None => button,
+        };
+
+        div()
+            .id("activity-root")
+            .size(px(180.))
+            .on_click(cx.listener(|this, _, _, _| {
+                this.parent_click_count += 1;
+            }))
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, _| {
+                if is_plain_key(event, "enter") || is_plain_key(event, "space") {
+                    this.parent_key_count += 1;
+                }
+            }))
+            .on_key_up(cx.listener(|this, event: &KeyUpEvent, _, _| {
+                if is_plain_key_up(event, "enter") || is_plain_key_up(event, "space") {
+                    this.parent_key_count += 1;
+                }
+            }))
+            .child(button)
+    }
+}
+
+impl Render for StateMatrixView {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        let mut buttons = Vec::new();
+        for variant in [
+            ButtonVariant::Primary,
+            ButtonVariant::Outline,
+            ButtonVariant::Ghost,
+            ButtonVariant::Destructive,
+            ButtonVariant::Secondary,
+            ButtonVariant::Link,
+        ] {
+            for size in [
+                ButtonSize::Xs,
+                ButtonSize::Sm,
+                ButtonSize::Md,
+                ButtonSize::Lg,
+            ] {
+                let id = format!("{variant:?}-{size:?}");
+                buttons.push(
+                    Button::new(format!("{id}-selected"))
+                        .label("较长 selected 文本")
+                        .variant(variant)
+                        .size(size)
+                        .start_icon(IconSource::asset("icons/settings.svg"))
+                        .end_icon(IconSource::asset("icons/settings.svg"))
+                        .selected(true)
+                        .width(px(180.)),
+                );
+                buttons.push(
+                    Button::new(format!("{id}-loading"))
+                        .label("Loading")
+                        .variant(variant)
+                        .size(size)
+                        .start_icon(IconSource::asset("icons/settings.svg"))
+                        .end_icon(IconSource::asset("icons/settings.svg"))
+                        .loading(true),
+                );
+                buttons.push(
+                    Button::new(format!("{id}-progress"))
+                        .label("Progress")
+                        .variant(variant)
+                        .size(size)
+                        .start_icon(IconSource::asset("icons/settings.svg"))
+                        .end_icon(IconSource::asset("icons/settings.svg"))
+                        .progress(0.58),
+                );
+                buttons.push(
+                    Button::new(format!("{id}-combined"))
+                        .label("Combined")
+                        .variant(variant)
+                        .size(size)
+                        .selected(true)
+                        .progress(0.82)
+                        .disabled(true)
+                        .full_width(),
+                );
+            }
+        }
+
+        div()
+            .id("state-matrix")
+            .size_full()
+            .flex()
+            .flex_wrap()
+            .gap(px(4.))
+            .children(buttons)
     }
 }
 
@@ -358,6 +572,22 @@ fn test_view(
     cx.add_window_view(|_, _| TestView { count: 0, disabled })
 }
 
+fn activity_view(
+    cx: &mut TestAppContext,
+    activity: TestActivity,
+    disabled: bool,
+    selected: Option<bool>,
+) -> (gpui::Entity<ActivityTestView>, &mut VisualTestContext) {
+    cx.add_window_view(|_, _| ActivityTestView {
+        activity,
+        disabled,
+        selected,
+        business_count: 0,
+        parent_click_count: 0,
+        parent_key_count: 0,
+    })
+}
+
 fn draw(cx: &mut VisualTestContext) {
     cx.update(|window, cx| window.draw(cx).clear(cx));
 }
@@ -451,6 +681,62 @@ fn enter_and_space_activate_focused_button_once(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn selected_button_still_activates_with_mouse_enter_and_space(cx: &mut TestAppContext) {
+    let (view, cx) = activity_view(cx, TestActivity::Idle, false, Some(true));
+    draw(cx);
+    cx.simulate_click(point(px(24.), px(18.)), Modifiers::none());
+    cx.update(|window, cx| window.focus_next(cx));
+    cx.simulate_keystrokes("enter");
+    cx.simulate_event(KeyUpEvent {
+        keystroke: Keystroke::parse("space").unwrap(),
+    });
+
+    assert_eq!(view.read_with(cx, |view, _| view.business_count), 3);
+    assert_eq!(view.read_with(cx, |view, _| view.parent_click_count), 0);
+    assert_eq!(view.read_with(cx, |view, _| view.parent_key_count), 0);
+}
+
+#[gpui::test]
+fn loading_and_progress_consume_mouse_enter_and_space_without_activation(cx: &mut TestAppContext) {
+    for activity in [TestActivity::Loading, TestActivity::Progress] {
+        let (view, cx) = activity_view(cx, activity, false, None);
+        draw(cx);
+        cx.simulate_click(point(px(24.), px(18.)), Modifiers::none());
+        cx.update(|window, cx| window.focus_next(cx));
+        cx.simulate_keystrokes("enter space");
+        cx.simulate_event(KeyUpEvent {
+            keystroke: Keystroke::parse("space").unwrap(),
+        });
+
+        assert_eq!(view.read_with(cx, |view, _| view.business_count), 0);
+        assert_eq!(view.read_with(cx, |view, _| view.parent_click_count), 0);
+        assert_eq!(view.read_with(cx, |view, _| view.parent_key_count), 0);
+    }
+}
+
+#[gpui::test]
+fn disabled_busy_selected_button_remains_inactive(cx: &mut TestAppContext) {
+    let (view, cx) = activity_view(cx, TestActivity::Progress, true, Some(true));
+    draw(cx);
+    cx.simulate_click(point(px(24.), px(18.)), Modifiers::none());
+    cx.simulate_keystrokes("enter space");
+    cx.simulate_event(KeyUpEvent {
+        keystroke: Keystroke::parse("space").unwrap(),
+    });
+
+    assert_eq!(view.read_with(cx, |view, _| view.business_count), 0);
+    assert_eq!(view.read_with(cx, |view, _| view.parent_click_count), 0);
+    assert_eq!(view.read_with(cx, |view, _| view.parent_key_count), 0);
+}
+
+#[gpui::test]
+fn loading_renders_with_reduce_motion_enabled(cx: &mut TestAppContext) {
+    cx.update(|cx| cx.set_reduce_motion(true));
+    let (_view, cx) = activity_view(cx, TestActivity::Loading, false, None);
+    draw(cx);
+}
+
+#[gpui::test]
 fn theme_mode_switch_resolves_new_theme(cx: &mut TestAppContext) {
     let (_view, cx) = test_view(cx, false);
     cx.update(|window, cx| {
@@ -468,6 +754,15 @@ fn renders_in_light_and_dark(cx: &mut TestAppContext) {
     draw(cx);
     cx.update(|_, cx| set_theme_mode(ThemeMode::Dark, cx));
     draw(cx);
+}
+
+#[gpui::test]
+fn all_variants_sizes_and_new_states_render_in_light_dark_and_system(cx: &mut TestAppContext) {
+    let (_view, cx) = cx.add_window_view(|_, _| StateMatrixView);
+    for mode in [ThemeMode::Light, ThemeMode::Dark, ThemeMode::System] {
+        cx.update(|_, cx| set_theme_mode(mode, cx));
+        draw(cx);
+    }
 }
 
 #[gpui::test]

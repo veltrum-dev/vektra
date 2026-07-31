@@ -6,12 +6,13 @@ use crate::{
     traits::{Clickable, Disableable},
 };
 use gpui::{
-    App, ClickEvent, Context, CursorStyle, DefiniteLength, ElementId, IntoElement, KeyDownEvent,
-    KeyUpEvent, KeyboardButton, KeyboardClickEvent, Modifiers, MouseButton, ParentElement,
-    RenderOnce, Role, SharedString, StatefulInteractiveElement, Styled, Window, div, relative,
+    Animation, AnimationExt, App, ClickEvent, Context, CursorStyle, DefiniteLength, ElementId,
+    IntoElement, KeyDownEvent, KeyUpEvent, KeyboardButton, KeyboardClickEvent, Modifiers,
+    MouseButton, ParentElement, RenderOnce, Role, SharedString, StatefulInteractiveElement, Styled,
+    Toggled, Transformation, Window, div, percentage, relative, svg,
 };
 use gpui::{InteractiveElement, prelude::FluentBuilder};
-use std::rc::Rc;
+use std::{rc::Rc, time::Duration};
 use unicode_script::{Script, UnicodeScript};
 use vektra_theme::{ButtonStateTokens, ResolvedTheme};
 
@@ -81,6 +82,26 @@ enum ButtonWidth {
     Full,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum ButtonActivity {
+    Idle,
+    Loading,
+    Progress(f32),
+}
+
+impl ButtonActivity {
+    const fn is_busy(self) -> bool {
+        !matches!(self, Self::Idle)
+    }
+
+    const fn progress(self) -> Option<f32> {
+        match self {
+            Self::Progress(value) => Some(value),
+            Self::Idle | Self::Loading => None,
+        }
+    }
+}
+
 /// Vektra Button。
 ///
 /// Button 是普通 GPUI component/element，不需要 Vektra `init` 或 Vektra 根容器。
@@ -96,6 +117,8 @@ pub struct Button {
     start_icon: Option<IconSource>,
     end_icon: Option<IconSource>,
     disabled: bool,
+    activity: ButtonActivity,
+    selected: Option<bool>,
     auto_insert_space: Option<bool>,
     on_click: Option<ClickHandler>,
 }
@@ -116,6 +139,8 @@ impl Button {
             start_icon: None,
             end_icon: None,
             disabled: false,
+            activity: ButtonActivity::Idle,
+            selected: None,
             auto_insert_space: None,
             on_click: None,
         }
@@ -188,6 +213,39 @@ impl Button {
         self
     }
 
+    /// 设置不确定 loading 状态。
+    ///
+    /// `true` 会用旋转指示器替代前置图标，并阻止鼠标、Enter 和 Space 激活；`false`
+    /// 恢复空闲状态。loading 与 `progress(...)` 互斥，连续调用时后调用者生效。
+    /// 异步任务的启动、取消和完成仍由宿主应用负责。
+    pub fn loading(mut self, loading: bool) -> Self {
+        self.activity = if loading {
+            ButtonActivity::Loading
+        } else {
+            ButtonActivity::Idle
+        };
+        self
+    }
+
+    /// 设置 0.0～1.0 的确定进度状态。
+    ///
+    /// 有限值会夹取到该范围，正负无穷分别归一为 1 和 0，NaN 归一为 0。进度状态
+    /// 保留 label 和两侧图标，并阻止鼠标、Enter 和 Space 激活。与 `loading(...)`
+    /// 连续调用时后调用者生效。
+    pub fn progress(mut self, progress: f32) -> Self {
+        self.activity = ButtonActivity::Progress(normalize_progress(progress));
+        self
+    }
+
+    /// 设置受控 selected/toggle 状态。
+    ///
+    /// 调用该方法后 Button 会通过 `aria-toggled` 暴露显式 toggle 语义；未调用时仍是
+    /// 普通 Button。selected 不会在点击后自行翻转，宿主应用应在回调中更新状态。
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.selected = Some(selected);
+        self
+    }
+
     /// 控制两个汉字 label 的视觉自动空格。
     ///
     /// 默认开启；只在 label 恰好由两个 Unicode Han 字符组成时插入普通空格，
@@ -252,6 +310,21 @@ impl Button {
     }
 
     #[cfg(test)]
+    const fn activity(&self) -> ButtonActivity {
+        self.activity
+    }
+
+    #[cfg(test)]
+    const fn selected_state(&self) -> Option<bool> {
+        self.selected
+    }
+
+    #[cfg(test)]
+    fn activity_id(&self) -> ElementId {
+        (self.id.clone(), "activity").into()
+    }
+
+    #[cfg(test)]
     pub(crate) fn start_icon_source(&self) -> Option<&IconSource> {
         self.start_icon.as_ref()
     }
@@ -291,14 +364,24 @@ impl RenderOnce for Button {
         let size = theme
             .button_size(self.resolved_size().token_key())
             .expect("Vektra 默认 Button size token 必须通过测试保持有效");
-        let states = ResolvedButtonStates::new(&theme, variant);
+        let selected = self.selected;
+        let states = if selected == Some(true) {
+            ResolvedButtonStates::selected(&theme, variant)
+        } else {
+            ResolvedButtonStates::new(&theme, variant)
+        };
         let visible = if self.disabled {
             states.disabled
         } else {
             states.normal
         };
+        let busy = self.activity.is_busy();
+        let loading = matches!(self.activity, ButtonActivity::Loading);
+        let progress = self.activity.progress();
+        let activity_id: ElementId = (self.id.clone(), "activity").into();
+        let animation_id: ElementId = (self.id.clone(), "activity-animation").into();
 
-        let on_click = self.on_click.clone().filter(|_| !self.disabled);
+        let on_click = self.on_click.clone().filter(|_| !self.disabled && !busy);
 
         let content = div()
             .flex()
@@ -306,8 +389,35 @@ impl RenderOnce for Button {
             .justify_center()
             .gap(size.content_gap)
             .min_w_0()
-            .when_some(self.start_icon, |this, icon| {
-                this.child(Icon::new(icon).size(size.icon_size))
+            .when(loading, |this| {
+                this.child(
+                    div()
+                        .id(activity_id.clone())
+                        .role(Role::ProgressIndicator)
+                        .aria_label(self.label.clone())
+                        .size(size.icon_size)
+                        .flex_none()
+                        .child(
+                            svg()
+                                .path("components/button/loading.svg")
+                                .size(size.icon_size)
+                                .text_color(visible.foreground)
+                                .with_animation(
+                                    animation_id,
+                                    Animation::new(Duration::from_millis(900)).repeat(),
+                                    |icon, delta| {
+                                        icon.with_transformation(Transformation::rotate(
+                                            percentage(delta),
+                                        ))
+                                    },
+                                ),
+                        ),
+                )
+            })
+            .when(!loading, |this| {
+                this.when_some(self.start_icon, |this, icon| {
+                    this.child(Icon::new(icon).size(size.icon_size))
+                })
             })
             .child(
                 div()
@@ -321,29 +431,67 @@ impl RenderOnce for Button {
                 this.child(Icon::new(icon).size(size.icon_size))
             });
 
-        apply_interaction(
-            div()
-                .id(self.id.clone())
-                .role(Role::Button)
-                .aria_label(self.label.clone())
-                .flex()
-                .items_center()
-                .justify_center()
-                .flex_none()
-                .h(size.height)
-                .px(size.padding_x)
-                .rounded(size.radius)
-                .border(theme.button.border_width)
-                .border_color(visible.border)
-                .bg(visible.background)
-                .text_color(visible.foreground)
-                .text_size(size.font_size)
-                .line_height(size.height)
-                .whitespace_nowrap()
-                .overflow_hidden()
-                .when_some(self.width, apply_width)
-                .child(content),
+        let element = div()
+            .id(self.id.clone())
+            .role(Role::Button)
+            .aria_label(self.label.clone())
+            .when_some(toggled_state(selected), |this, toggled| {
+                this.aria_toggled(toggled)
+            })
+            .flex()
+            .items_center()
+            .justify_center()
+            .flex_none()
+            .h(size.height)
+            .px(size.padding_x)
+            .rounded(size.radius)
+            .border(theme.button.border_width)
+            .border_color(visible.border)
+            .bg(visible.background)
+            .text_color(visible.foreground)
+            .text_size(size.font_size)
+            .line_height(size.height)
+            .whitespace_nowrap()
+            .overflow_hidden()
+            .relative()
+            .when_some(self.width, apply_width)
+            .child(content)
+            .when(selected == Some(true), |this| {
+                this.child(
+                    div()
+                        .absolute()
+                        .top(theme.button.border_width)
+                        .right(theme.button.border_width)
+                        .bottom(theme.button.border_width)
+                        .left(theme.button.border_width)
+                        .rounded(size.radius)
+                        .border(theme.button.border_width)
+                        .border_color(visible.border),
+                )
+            })
+            .when_some(progress, |this, progress| {
+                this.child(
+                    div()
+                        .id(activity_id)
+                        .role(Role::ProgressIndicator)
+                        .aria_label(self.label.clone())
+                        .aria_min_numeric_value(0.)
+                        .aria_max_numeric_value(100.)
+                        .aria_numeric_value(progress_percent(progress))
+                        .absolute()
+                        .left_0()
+                        .right_0()
+                        .bottom_0()
+                        .h(theme.button.focus_width)
+                        .bg(visible.foreground.opacity(0.28))
+                        .child(div().h_full().w(relative(progress)).bg(visible.foreground)),
+                )
+            });
+
+        apply_interaction_with_activity(
+            element,
             self.disabled,
+            busy,
             on_click,
             states,
             theme.button.focus_width,
@@ -381,11 +529,48 @@ impl ResolvedButtonStates {
                 .expect("Vektra 默认 Button disabled token 必须通过测试保持有效"),
         }
     }
+
+    fn selected(theme: &ResolvedTheme, variant: &str) -> Self {
+        let base = Self::new(theme, variant);
+        Self {
+            normal: selected_state(theme, variant, "normal").unwrap_or(base.pressed),
+            hover: selected_state(theme, variant, "hover").unwrap_or(base.hover),
+            pressed: selected_state(theme, variant, "pressed").unwrap_or(base.pressed),
+            focused: selected_state(theme, variant, "focus-visible").unwrap_or(base.focused),
+            disabled: selected_state(theme, variant, "disabled").unwrap_or(base.disabled),
+        }
+    }
+}
+
+fn selected_state(theme: &ResolvedTheme, variant: &str, state: &str) -> Option<ButtonStateTokens> {
+    theme
+        .button_selected_state(variant, state)
+        .expect("Vektra Button selected token 必须完整且类型正确")
 }
 
 pub(crate) fn apply_interaction(
     element: gpui::Stateful<gpui::Div>,
     disabled: bool,
+    on_click: Option<ClickHandler>,
+    states: ResolvedButtonStates,
+    focus_width: gpui::Pixels,
+    underline_on_hover: bool,
+) -> gpui::Stateful<gpui::Div> {
+    apply_interaction_with_activity(
+        element,
+        disabled,
+        false,
+        on_click,
+        states,
+        focus_width,
+        underline_on_hover,
+    )
+}
+
+fn apply_interaction_with_activity(
+    element: gpui::Stateful<gpui::Div>,
+    disabled: bool,
+    busy: bool,
     on_click: Option<ClickHandler>,
     states: ResolvedButtonStates,
     focus_width: gpui::Pixels,
@@ -399,32 +584,60 @@ pub(crate) fn apply_interaction(
             this.cursor(CursorStyle::OperationNotAllowed)
         })
         .when(!disabled, |this| {
-            this.cursor(CursorStyle::PointingHand)
-                .tab_index(0)
-                .hover(move |style| {
-                    let style = style
-                        .bg(states.hover.background)
-                        .border_color(states.hover.border)
-                        .text_color(states.hover.foreground);
+            this.cursor(if busy {
+                CursorStyle::Arrow
+            } else {
+                CursorStyle::PointingHand
+            })
+            .tab_index(0)
+            .hover(move |style| {
+                let style = style
+                    .bg(states.hover.background)
+                    .border_color(states.hover.border)
+                    .text_color(states.hover.foreground);
 
-                    if underline_on_hover {
-                        style.underline()
-                    } else {
-                        style
-                    }
-                })
-                .active(move |style| {
+                if underline_on_hover {
+                    style.underline()
+                } else {
                     style
-                        .bg(states.pressed.background)
-                        .border_color(states.pressed.border)
-                        .text_color(states.pressed.foreground)
-                })
-                .focus_visible(move |style| {
-                    style
-                        .border(focus_width)
-                        .border_color(states.focused.border)
-                        .text_color(states.focused.foreground)
-                })
+                }
+            })
+            .focus_visible(move |style| {
+                style
+                    .border(focus_width)
+                    .border_color(states.focused.border)
+                    .text_color(states.focused.foreground)
+            })
+        })
+        .when(!disabled && !busy, |this| {
+            this.active(move |style| {
+                style
+                    .bg(states.pressed.background)
+                    .border_color(states.pressed.border)
+                    .text_color(states.pressed.foreground)
+            })
+        })
+        .when(busy, |this| {
+            this.on_mouse_down(MouseButton::Left, |_, window, cx| {
+                window.prevent_default();
+                cx.stop_propagation();
+            })
+            .on_click(|_, window, cx| {
+                window.prevent_default();
+                cx.stop_propagation();
+            })
+            .on_key_down(|event, window, cx| {
+                if is_plain_key(event, "enter") || is_plain_key(event, "space") {
+                    window.prevent_default();
+                    cx.stop_propagation();
+                }
+            })
+            .on_key_up(|event, window, cx| {
+                if is_plain_key_up(event, "enter") || is_plain_key_up(event, "space") {
+                    window.prevent_default();
+                    cx.stop_propagation();
+                }
+            })
         })
         .when_some(on_click, |this, handler| {
             this.on_mouse_down(MouseButton::Left, |_, window, _| {
@@ -502,6 +715,28 @@ fn auto_spaced_label(label: &SharedString) -> SharedString {
     } else {
         label.clone()
     }
+}
+
+fn normalize_progress(progress: f32) -> f32 {
+    if progress.is_nan() {
+        0.
+    } else {
+        progress.clamp(0., 1.)
+    }
+}
+
+fn toggled_state(selected: Option<bool>) -> Option<Toggled> {
+    selected.map(|selected| {
+        if selected {
+            Toggled::True
+        } else {
+            Toggled::False
+        }
+    })
+}
+
+fn progress_percent(progress: f32) -> f64 {
+    f64::from(progress * 100.)
 }
 
 #[cfg(test)]

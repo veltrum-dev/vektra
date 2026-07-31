@@ -51,6 +51,22 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
                 tokens.required(&format!("button.variant.{variant}.{state}.{field}"))?;
             }
         }
+
+        let selected_prefix = format!("button.variant.{variant}.selected");
+        let has_selected_extension = BUTTON_STATES.iter().any(|state| {
+            ["background", "foreground", "border"].iter().any(|field| {
+                tokens
+                    .get(&format!("{selected_prefix}.{state}.{field}"))
+                    .is_some()
+            })
+        });
+        if has_selected_extension {
+            for state in BUTTON_STATES {
+                for field in ["background", "foreground", "border"] {
+                    tokens.required(&format!("{selected_prefix}.{state}.{field}"))?;
+                }
+            }
+        }
     }
 
     for size in BUTTON_SIZES {

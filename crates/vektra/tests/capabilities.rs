@@ -10,6 +10,16 @@ fn button_accepts_original_on_click_callback() {
 }
 
 #[test]
+fn button_activity_and_selected_builders_are_publicly_chainable() {
+    let _button = Button::new("button-state-builders")
+        .loading(true)
+        .progress(0.5)
+        .loading(false)
+        .selected(false)
+        .selected(true);
+}
+
+#[test]
 fn icon_button_accepts_original_on_click_callback() {
     let _button = IconButton::new("icon-original", IconSource::asset("icons/settings.svg"))
         .on_click(|_, _, _| {});

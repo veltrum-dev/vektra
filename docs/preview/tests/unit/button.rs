@@ -22,3 +22,22 @@ fn initial_recent_label_uses_preview_language() {
         "None"
     );
 }
+
+#[test]
+fn controlled_activity_and_selected_state_changes_are_host_owned() {
+    let mut demo = ButtonDemo::new(PreviewLang::ZhCn);
+    assert!(!demo.selected);
+    assert!(!demo.loading);
+    assert_eq!(demo.progress, 0.25);
+
+    demo.toggle_selected();
+    demo.toggle_loading();
+    demo.advance_progress();
+    assert!(demo.selected);
+    assert!(demo.loading);
+    assert_eq!(demo.progress, 0.5);
+
+    demo.progress = 1.;
+    demo.advance_progress();
+    assert_eq!(demo.progress, 0.);
+}
