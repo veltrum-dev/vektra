@@ -1,0 +1,21 @@
+[package]
+name = "vektra-assets"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "vektra_assets"
+path = "src/lib.rs"
+
+[dependencies]
+gpui = { workspace = true }
+rust-embed = { workspace = true, features = ["debug-embed"] }
+
+[dev-dependencies]
+vektra-icons = { workspace = true }
+
+[features]
+default = []
+icons = []

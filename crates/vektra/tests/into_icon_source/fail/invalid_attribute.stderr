@@ -1,0 +1,5 @@
+error: 只支持 #[icon(path = "...")]
+ --> tests/into_icon_source/fail/invalid_attribute.rs:3:12
+  |
+3 |     #[icon(name = "logo")]
+  |            ^^^^

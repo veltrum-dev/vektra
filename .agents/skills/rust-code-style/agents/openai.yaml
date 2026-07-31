@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vektra Rust 代码规范"
+  short_description: "规范 Vektra 的 Rust、Cargo、测试与质量检查"
+  default_prompt: "使用 $rust-code-style 编写或审查当前 Vektra 仓库的 Rust 代码。"

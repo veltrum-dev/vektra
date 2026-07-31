@@ -1,0 +1,5 @@
+error: IntoIconSource 只支持无字段 enum 变体
+ --> tests/into_icon_source/fail/tuple_variant.rs:3:9
+  |
+3 |     Logo(String),
+  |         ^^^^^^^^

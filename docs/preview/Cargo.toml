@@ -1,0 +1,25 @@
+[package]
+name = "vektra-docs-preview"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+gpui = { workspace = true }
+vektra = { workspace = true, features = ["icons"] }
+
+[target.'cfg(target_family = "wasm")'.dependencies]
+console_error_panic_hook = "0.1"
+gpui_web = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91", default-features = false }
+js-sys = "0.3"
+log = "0.4.33"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["console", "Document", "Element", "EventTarget", "HtmlElement", "Location", "MessageEvent", "Response", "Window"] }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+gpui_platform = { workspace = true, features = ["font-kit", "wayland", "x11"] }
+
+[dev-dependencies]
+ttf-parser = "0.25.1"

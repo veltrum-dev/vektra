@@ -1,0 +1,5 @@
+error: IntoIconSource 只能派生在 enum 上
+ --> tests/into_icon_source/fail/struct_input.rs:2:1
+  |
+2 | struct AppIconName;
+  | ^^^^^^^^^^^^^^^^^^^

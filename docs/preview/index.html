@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=0" />
+        <title>Vektra GPUI 组件预览</title>
+        <link rel="icon" href="data:," />
+        <link data-trunk rel="copy-dir" href="assets" />
+        <link data-trunk rel="rust" data-bin="vektra-docs-preview" data-bindgen-target="web" />
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                overflow: hidden;
+                background: #f8fafc;
+            }
+
+            body {
+                position: relative;
+            }
+
+            #loading,
+            #error {
+                position: fixed;
+                inset: 0;
+                display: grid;
+                place-items: center;
+                padding: 24px;
+                color: #334155;
+                font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                pointer-events: none;
+            }
+
+            #error {
+                display: none;
+                color: #991b1b;
+                background: #fef2f2;
+                white-space: pre-wrap;
+            }
+
+            body:has(canvas) #loading {
+                display: none;
+            }
+
+            canvas {
+                display: block;
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+                outline: none;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+        </style>
+        <script>
+            (() => {
+                const params = new URLSearchParams(window.location.search);
+                const previewLang = params.get("lang") === "en-US" ? "en-US" : "zh-CN";
+                const copy =
+                    previewLang === "en-US"
+                        ? {
+                              loading: "Loading Vektra GPUI component preview...",
+                              errorPrefix: "Preview failed to load"
+                          }
+                        : {
+                              loading: "正在加载 Vektra GPUI 组件预览...",
+                              errorPrefix: "预览加载失败"
+                          };
+
+                document.documentElement.lang = previewLang;
+
+                const readPreviewState = () => ({
+                    demoId: document.body.dataset.vektraPreviewDemoId,
+                    status: document.body.dataset.vektraPreviewStatus,
+                    clicks: document.body.dataset.vektraPreviewClicks,
+                    lastClicked: document.body.dataset.vektraPreviewLastClicked,
+                    theme: document.body.dataset.vektraPreviewTheme,
+                    fontStatus: document.body.dataset.vektraPreviewFontStatus,
+                    fontFamily: document.body.dataset.vektraPreviewFontFamily
+                });
+
+                window.__vektraPublishPreviewState = () => {
+                    try {
+                        Object.defineProperty(window, "__vektraPreviewState", {
+                            value: readPreviewState(),
+                            configurable: true,
+                            enumerable: false,
+                            writable: true
+                        });
+                    } catch (_) {
+                        try {
+                            window.__vektraPreviewState = readPreviewState();
+                        } catch (_) {
+                            try {
+                                Object.defineProperty(Object.getPrototypeOf(window), "__vektraPreviewState", {
+                                    value: readPreviewState(),
+                                    configurable: true,
+                                    enumerable: false,
+                                    writable: true
+                                });
+                            } catch (_) {
+                                // The body data attributes remain the fallback observable state.
+                            }
+                        }
+                    }
+                };
+
+                window.addEventListener("DOMContentLoaded", () => {
+                    const loading = document.getElementById("loading");
+                    if (loading) loading.textContent = copy.loading;
+
+                    const observer = new MutationObserver(() => {
+                        window.__vektraPublishPreviewState();
+                    });
+                    observer.observe(document.body, {
+                        attributes: true,
+                        attributeFilter: [
+                            "data-vektra-preview-demo-id",
+                            "data-vektra-preview-status",
+                            "data-vektra-preview-clicks",
+                            "data-vektra-preview-last-clicked",
+                            "data-vektra-preview-theme",
+                            "data-vektra-preview-font-status",
+                            "data-vektra-preview-font-family"
+                        ]
+                    });
+                    window.__vektraPublishPreviewState();
+                });
+            })();
+
+            window.addEventListener("error", (event) => {
+                const error = document.getElementById("error");
+                if (!error) return;
+                const prefix =
+                    document.documentElement.lang === "en-US"
+                        ? "Preview failed to load"
+                        : "预览加载失败";
+                error.textContent = `${prefix}: ${event.message}`;
+                error.style.display = "grid";
+                document.body.dataset.vektraPreviewFontStatus ||= "error";
+            });
+
+            const hideLoadingWhenCanvasAppears = () => {
+                const loading = document.getElementById("loading");
+                if (!loading) return;
+                const timer = window.setInterval(() => {
+                    if (document.querySelector("canvas")) {
+                        loading.style.display = "none";
+                        window.clearInterval(timer);
+                    }
+                }, 100);
+            };
+
+            window.addEventListener("DOMContentLoaded", hideLoadingWhenCanvasAppears);
+        </script>
+    </head>
+    <body>
+        <div id="loading">正在加载 Vektra GPUI 组件预览...</div>
+        <div id="error" role="alert"></div>
+    </body>
+</html>

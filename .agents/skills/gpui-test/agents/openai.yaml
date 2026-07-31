@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vektra GPUI 测试"
+  short_description: "编写和调试确定性的 Vektra GPUI 测试"
+  default_prompt: "使用 $gpui-test 编写、复现或调试当前 Vektra 项目的 GPUI 测试。"

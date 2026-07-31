@@ -1,0 +1,18 @@
+[package]
+name = "vektra-macros"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "vektra_macros"
+path = "src/lib.rs"
+proc-macro = true
+
+[dependencies]
+heck = { workspace = true }
+proc-macro-crate = { workspace = true }
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true }

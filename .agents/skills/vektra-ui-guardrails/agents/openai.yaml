@@ -1,0 +1,6 @@
+interface:
+  display_name: "Vektra UI 设计约束"
+  short_description: "统一 Vektra 组件视觉、交互、无障碍、响应式与性能质量"
+  default_prompt: "Use $vektra-ui-guardrails to design, implement, or review a Vektra UI component with clear guardrails and evidence."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,10 @@
+[package]
+name = "vektra-icons"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+name = "vektra_icons"
+path = "src/icons.rs"

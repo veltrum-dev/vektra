@@ -1,0 +1,23 @@
+[package]
+name = "vektra"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+gpui = { workspace = true }
+unicode-script = { workspace = true }
+vektra-assets = { workspace = true }
+vektra-icons = { workspace = true, optional = true }
+vektra-macros = { workspace = true }
+vektra-theme = { workspace = true }
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+image = "0.25.9"
+trybuild = { workspace = true }
+
+[features]
+default = []
+icons = ["dep:vektra-icons", "vektra-assets/icons"]

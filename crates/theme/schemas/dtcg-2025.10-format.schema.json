@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "title": "DTCG 2025.10 Format Schema",
+  "$comment": "Local schema entry for the DTCG 2025.10 format schema. Source: https://www.designtokens.org/schemas/2025.10/format.json. Vektra tests use this local entry and do not fetch schema data at runtime.",
+  "type": "object"
+}

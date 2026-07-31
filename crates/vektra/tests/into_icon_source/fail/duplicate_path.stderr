@@ -1,0 +1,5 @@
+error: path 属性不能重复
+ --> tests/into_icon_source/fail/duplicate_path.rs:3:37
+  |
+3 |     #[icon(path = "icons/logo.svg", path = "icons/other.svg")]
+  |                                     ^^^^

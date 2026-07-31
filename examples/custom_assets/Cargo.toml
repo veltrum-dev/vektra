@@ -1,0 +1,12 @@
+[package]
+name = "vektra-custom-assets-example"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+gpui = { workspace = true }
+gpui_platform = { workspace = true, features = ["font-kit", "wayland", "x11"] }
+rust-embed = { workspace = true }
+vektra = { workspace = true, features = ["icons"] }

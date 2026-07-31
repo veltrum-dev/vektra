@@ -1,0 +1,53 @@
+[workspace]
+members = [
+    "crates/assets",
+    "crates/icons",
+    "crates/theme",
+    "crates/vektra-macros",
+    "crates/vektra",
+    "docs/preview",
+    "examples/button",
+    "examples/custom_assets",
+    "examples/icon_button",
+]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.95"
+
+[workspace.dependencies]
+gpui = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91", package = "gpui_platform" }
+heck = "0.5"
+proc-macro-crate = "3"
+proc-macro2 = "1"
+quote = "1"
+rust-embed = { version = "=8.11.0", features = ["include-exclude"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+syn = { version = "2", features = ["derive", "parsing", "printing", "proc-macro"] }
+thiserror = "2"
+trybuild = "1"
+unicode-script = "0.5"
+vektra-assets = { path = "crates/assets" }
+vektra-icons = { path = "crates/icons" }
+vektra-macros = { path = "crates/vektra-macros" }
+vektra-theme = { path = "crates/theme" }
+vektra = { path = "crates/vektra" }
+
+[profile.dev]
+codegen-units = 16
+debug = "limited"
+split-debuginfo = "unpacked"
+
+[profile.dev.package]
+resvg = { opt-level = 3 }
+rustybuzz = { opt-level = 3 }
+taffy = { opt-level = 3 }
+ttf-parser = { opt-level = 3 }
+smol = { opt-level = 3 }
+gpui = { opt-level = 3 }
+gpui_platform = { opt-level = 3 }
+gpui_macros = { opt-level = 3 }
+sum_tree = { opt-level = 3 }

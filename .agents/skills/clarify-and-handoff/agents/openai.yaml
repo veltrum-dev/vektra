@@ -1,0 +1,4 @@
+interface:
+  display_name: "需求确认与执行交接"
+  short_description: "先确认需求、风险与设计，再生成可交给其他智能体的执行指令"
+  default_prompt: "使用 $clarify-and-handoff 与我确认需求、风险和设计，并在我明确确认后生成独立执行指令。"

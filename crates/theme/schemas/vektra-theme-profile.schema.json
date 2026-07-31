@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veltrum.dev/schemas/vektra-theme-profile.phase1.json",
+  "title": "Vektra Theme Profile Phase 1",
+  "description": "Documents the semantic, Icon, and Button token surface required by Vektra phase 1 after DTCG token resolution.",
+  "type": "object",
+  "required": ["semantic", "icon", "button"],
+  "properties": {
+    "semantic": {
+      "type": "object",
+      "required": [
+        "background",
+        "surface",
+        "foreground",
+        "primary",
+        "on-primary",
+        "secondary",
+        "on-secondary",
+        "accent",
+        "on-accent",
+        "destructive",
+        "on-destructive",
+        "muted",
+        "on-muted",
+        "border",
+        "input-border",
+        "ring",
+        "disabled-background",
+        "disabled-foreground",
+        "disabled-border"
+      ]
+    },
+    "icon": {
+      "type": "object",
+      "required": ["size"],
+      "properties": {
+        "size": {
+          "type": "object",
+          "required": ["default"]
+        }
+      }
+    },
+    "button": {
+      "type": "object",
+      "required": ["variant", "size"]
+    }
+  }
+}

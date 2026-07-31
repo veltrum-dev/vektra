@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vektra Component Development"
+  short_description: "Vektra component development rules"
+  default_prompt: "Use $vektra-component-development to design or review a Vektra component API, docs, tests, and preview plan."

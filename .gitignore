@@ -1,0 +1,35 @@
+# Rust build output
+/target/
+
+# Bun and VitePress
+/docs/node_modules/
+/docs/.vitepress/dist/
+/docs/.vitepress/cache/
+/docs/bun.lockb
+/docs/package-lock.json
+/docs/pnpm-lock.yaml
+/docs/yarn.lock
+
+# GPUI WASM preview build output
+/docs/preview/dist/
+/docs/preview/.trunk/
+/docs/public/previews/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/
