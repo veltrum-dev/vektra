@@ -29,13 +29,13 @@ Tooltip provides short, supplementary plain-text help for Button and IconButton.
 
 - Without `open(...)`, hover or keyboard focus created by Tab/Shift+Tab shows after 500ms.
 - `open(true)` displays immediately after the trigger mounts, without hover/focus. `open(false)` forces the Tooltip closed and ignores automatic eligibility. Runtime changes use the matching transition.
-- Leaving during the delay, blur, or owner removal cancels the task. Leaving after display starts the exit transition.
+- Leaving during the initial 500ms delay, blur, or owner removal cancels the task. After display, leaving both the trigger and bubble starts a 500ms close grace period. Entering either region before it expires cancels closing; otherwise the exit transition starts afterward.
 - Mouse-created focus does not start the keyboard path.
 - Escape dismisses a visible or pending Tooltip without moving trigger focus. Automatic mode requires leaving and re-entering the hover/focus cycle. For `open(true)`, the caller must send `false` and then `true`; unrelated rerenders do not reopen it.
 - Hover and focus share one trigger state, so one trigger never draws duplicate Tooltips. A window draws at most one Tooltip per frame. If a keyboard-focused trigger and a different hovered trigger are both eligible, pointer input ends the old keyboard eligibility and the hovered trigger takes over.
 - A disabled trigger cannot focus or activate, but its hover Tooltip can explain the disabled reason.
 
-Tooltip itself is not focusable, tabbable, clickable, or hoverable. Enter and Space continue to activate the trigger's business callback.
+The pointer can enter the Tooltip bubble to keep its lifecycle active, but the bubble remains unfocusable, untabbable, unclickable, and free of interactive content. Enter and Space continue to activate the trigger's business callback.
 
 ## Placement, Theme, and Performance
 
@@ -52,12 +52,12 @@ Tooltip anchors to the full union of the trigger's prepaint child bounds; it doe
 
 The bubble, arrow, surface background, foreground, border, `radius.md` corners, and light shadow default to Tooltip, semantic, and foundation tokens. Light, Dark, and System use the active theme. Instance `color`/`bg_color` overrides take priority, but fixed colors do not adapt to theme changes; the caller owns contrast. Long Chinese or English text wraps within the maximum width. In an extremely small viewport that cannot fit the trigger, gap, complete bubble, and shadow safety area together, the algorithm prioritizes visible content and uses best-effort placement, so normal spacing may be impossible.
 
-The default enter animation is about 120ms, fading in with roughly 2px of travel along the final placement direction; exit fades out over about 80ms. Animation does not affect measurement, final placement, or trigger hit testing. `.animated(false)` renders static end states immediately. GPUI `App::reduce_motion` also suppresses decorative frame scheduling. Only configured triggers create a small keyed state; generation guards and owner lifetime cancel stale delay/transition tasks, and invisible content is not laid out. Large lists should be virtualized so state exists only for mounted rows.
+The default enter animation is about 120ms, fading in with roughly 2px of travel along the final placement direction; exit fades out over about 80ms. Animation does not affect measurement, final placement, or trigger hit testing. `.animated(false)` renders static end states immediately. GPUI `App::reduce_motion` also suppresses decorative frame scheduling. Only configured triggers create a small keyed state; generation guards and owner lifetime cancel stale show-delay, close-grace, and transition tasks, and invisible content is not laid out. Large lists should be virtualized so state exists only for mounted rows.
 
-## v1 Limits
+## Limits
 
 - Plain text only: no rich text, links, buttons, or arbitrary children.
-- The Tooltip itself is not hoverable. There are no custom animation-duration/easing/transition, border, shadow, radius, padding, offset, or child builders.
+- Bubble hover only maintains the visibility lifecycle; it does not add clicks, focus, or interactive children. There are no custom animation-duration/easing/transition, border, shadow, radius, padding, offset, or child builders.
 - No Root, Provider, global initialization, general Overlay, or public `Tooltipable` trait.
 - Due to a GPUI constraint, a window draws at most one Tooltip per frame; Vektra adds no global arbitration layer.
 - The host still maps real Tab/Shift+Tab keys to GPUI focus traversal.

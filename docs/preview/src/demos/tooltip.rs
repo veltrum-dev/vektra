@@ -14,7 +14,7 @@ pub(super) fn render(
     let (title, intro, save, settings, disabled, long) = match language {
         PreviewLang::ZhCn => (
             "Tooltip 预览",
-            "悬停或使用 Tab 聚焦 500ms 后显示；Escape 关闭并保留焦点。",
+            "悬停或使用 Tab 聚焦 500ms 后显示；指针可移入气泡保持显示，Escape 关闭并保留焦点。",
             "保存",
             "设置",
             "当前操作不可用",
@@ -22,7 +22,7 @@ pub(super) fn render(
         ),
         PreviewLang::EnUs => (
             "Tooltip preview",
-            "Hover or focus with Tab for 500ms. Escape dismisses without moving focus.",
+            "Hover or focus with Tab for 500ms. Moving into the bubble keeps it visible; Escape dismisses without moving focus.",
             "Save",
             "Settings",
             "This action is unavailable",

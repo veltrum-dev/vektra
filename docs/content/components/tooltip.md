@@ -29,13 +29,13 @@ Tooltip 为 Button/IconButton 提供简短、补充性的纯文本说明。完�
 
 - 未调用 `open(...)` 时，hover 或 Tab/Shift+Tab 产生的键盘焦点保持 500ms 后显示。
 - `open(true)` 在 trigger 挂载后立即显示，不要求 hover/focus；`open(false)` 强制关闭并忽略自动资格。运行时切换会执行对应显隐过渡。
-- 500ms 内离开、焦点移出或 owner 卸载会取消任务；显示后离开开始退出过渡。
+- 首次显示的 500ms 内离开、焦点移出或 owner 卸载会取消任务。显示后，指针离开 trigger 与气泡会进入 500ms 关闭宽限期，期限内移入任一区域会取消关闭；期限结束后才开始退出过渡。
 - 鼠标点击产生的 focus 不启动键盘路径。
 - Escape 关闭可见/等待中的 Tooltip，保留 trigger 焦点。自动模式必须离开并重新进入当前 hover/focus 周期；`open(true)` 则必须由调用方先传入 `false`、再传回 `true`，普通重渲染不会重新打开。
 - hover 与 focus 共用一份 trigger 状态，同一 trigger 不绘制两个 Tooltip；窗口每帧只绘制一个 Tooltip。键盘聚焦 trigger 与另一个 hovered trigger 同时具备资格时，指针输入会结束旧的键盘资格，由 hovered trigger 接管。
 - disabled trigger 不进入 Tab 顺序且不能激活，但 hover Tooltip 仍可解释禁用原因。
 
-Tooltip 自身不获取焦点、不进入 Tab 顺序、不接受鼠标点击，也不可 hover。Enter/Space 继续由 trigger 的业务回调处理。
+指针可以移入 Tooltip 气泡并维持其生命周期，但气泡仍不获取焦点、不进入 Tab 顺序、不接受鼠标点击，也不包含交互内容。Enter/Space 继续由 trigger 的业务回调处理。
 
 ## 定位、主题与性能
 
@@ -52,12 +52,12 @@ Tooltip 使用 trigger 实际 prepaint 子边界作为完整矩形锚点，不�
 
 气泡、箭头、surface 背景、foreground、边框、`radius.md` 圆角和轻量阴影默认由 Tooltip/语义/foundation token 管理。Light、Dark、System 使用当前主题；实例 `color`/`bg_color` 的优先级高于主题，但固定颜色不会自动适配主题，对比度由调用方负责。长中文/英文会在最大宽度内换行。极小视口无法同时容纳 trigger、间距、完整气泡和阴影安全区时，算法优先让内容保持可见，并采用 best-effort 定位，此时可能无法维持正常间距。
 
-默认进入动画约 120ms：淡入并沿最终 placement 方向移动约 2px；退出约 80ms 淡出。动画不改变测量、最终定位或 trigger 命中区域。`.animated(false)` 直接呈现终态；GPUI `App::reduce_motion` 开启时同样不请求装饰动画帧。只有配置 Tooltip 的 trigger 才创建小型 keyed state，延迟与过渡任务均有代次防护并随 owner 卸载取消；不可见时不布局 Tooltip。大量列表应配合虚拟化，只为实际挂载项创建状态。
+默认进入动画约 120ms：淡入并沿最终 placement 方向移动约 2px；退出约 80ms 淡出。动画不改变测量、最终定位或 trigger 命中区域。`.animated(false)` 直接呈现终态；GPUI `App::reduce_motion` 开启时同样不请求装饰动画帧。只有配置 Tooltip 的 trigger 才创建小型 keyed state，显示延迟、关闭宽限期与过渡任务均有代次防护并随 owner 卸载取消；不可见时不布局 Tooltip。大量列表应配合虚拟化，只为实际挂载项创建状态。
 
-## v1 限制
+## 限制
 
 - 只支持纯文本，无富文本、链接、按钮或任意 child。
-- Tooltip 自身不可 hover；不提供自定义动画时长/easing/transition，也不提供任意边框、阴影、圆角、padding、offset 或 child builder。
+- 气泡 hover 仅维持显隐生命周期，不提供点击、焦点或交互子项；不提供自定义动画时长/easing/transition，也不提供任意边框、阴影、圆角、padding、offset 或 child builder。
 - 不提供 Root、Provider、全局初始化、通用 Overlay 或公开 `Tooltipable` trait。
 - 受 GPUI 限制，每个窗口同一帧最多绘制一个 Tooltip；Vektra 不提供额外全局仲裁。
 - 宿主仍负责把真实 Tab/Shift+Tab 映射到 GPUI 焦点遍历。

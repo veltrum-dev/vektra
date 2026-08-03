@@ -1,5 +1,11 @@
 use super::*;
-use gpui::{Hsla, TestAppContext, rgb};
+use gpui::{Entity, Hsla, TestAppContext, VisualTestContext, rgb};
+
+fn set_trigger_hovered(state: &Entity<TooltipTrigger>, hovered: bool, cx: &mut VisualTestContext) {
+    cx.update(|window, cx| {
+        state.update(cx, |state, cx| state.set_hovered(hovered, window, cx));
+    });
+}
 
 #[test]
 fn builder_defaults_and_overrides_are_preserved() {
@@ -84,6 +90,176 @@ fn leaving_during_delay_cancels_and_a_new_cycle_can_show(cx: &mut TestAppContext
         state.hovered = true;
         state.schedule_show(cx);
     });
+    cx.executor().advance_clock(SHOW_DELAY);
+    cx.run_until_parked();
+    assert_eq!(
+        state.read_with(cx, |state, _| state.phase),
+        TransitionPhase::Visible
+    );
+}
+
+#[gpui::test]
+fn visible_tooltip_waits_for_close_grace_after_trigger_leave(cx: &mut TestAppContext) {
+    let (state, cx) = cx.add_window_view(TooltipTrigger::new);
+
+    state.update(cx, |state, cx| {
+        state.tooltip = Tooltip::new("自动").animated(false);
+        state.hovered = true;
+        state.show_now(cx);
+        state.hovered = false;
+        state.schedule_close_grace(cx);
+
+        assert_eq!(state.phase, TransitionPhase::Visible);
+        assert!(state.close_task.is_some());
+    });
+
+    cx.executor()
+        .advance_clock(CLOSE_GRACE_DURATION - Duration::from_millis(1));
+    cx.run_until_parked();
+    assert_eq!(
+        state.read_with(cx, |state, _| state.phase),
+        TransitionPhase::Visible
+    );
+}
+
+#[gpui::test]
+fn entering_bubble_during_close_grace_cancels_close(cx: &mut TestAppContext) {
+    let (state, cx) = cx.add_window_view(TooltipTrigger::new);
+
+    state.update(cx, |state, cx| {
+        state.tooltip = Tooltip::new("自动").animated(false);
+        state.hovered = true;
+        state.show_now(cx);
+    });
+    set_trigger_hovered(&state, false, cx);
+    assert!(state.read_with(cx, |state, _| state.close_task.is_some()));
+    state.update(cx, |state, cx| state.set_bubble_hovered(true, cx));
+    assert!(state.read_with(cx, |state, _| state.close_task.is_none()));
+
+    cx.executor().advance_clock(CLOSE_GRACE_DURATION);
+    cx.run_until_parked();
+    assert_eq!(
+        state.read_with(cx, |state, _| state.phase),
+        TransitionPhase::Visible
+    );
+}
+
+#[gpui::test]
+fn leaving_trigger_and_bubble_closes_after_grace(cx: &mut TestAppContext) {
+    let (state, cx) = cx.add_window_view(TooltipTrigger::new);
+
+    state.update(cx, |state, cx| {
+        state.tooltip = Tooltip::new("自动").animated(false);
+        state.hovered = true;
+        state.show_now(cx);
+        state.set_bubble_hovered(true, cx);
+    });
+    set_trigger_hovered(&state, false, cx);
+    state.update(cx, |state, cx| {
+        state.set_bubble_hovered(false, cx);
+        assert!(state.close_task.is_some());
+    });
+
+    cx.executor().advance_clock(CLOSE_GRACE_DURATION);
+    cx.run_until_parked();
+    assert_eq!(
+        state.read_with(cx, |state, _| state.phase),
+        TransitionPhase::Hidden
+    );
+}
+
+#[gpui::test]
+fn stale_close_task_cannot_close_a_new_hover_cycle(cx: &mut TestAppContext) {
+    let (state, cx) = cx.add_window_view(TooltipTrigger::new);
+
+    state.update(cx, |state, cx| {
+        state.tooltip = Tooltip::new("自动").animated(false);
+        state.hovered = true;
+        state.show_now(cx);
+    });
+    set_trigger_hovered(&state, false, cx);
+    cx.executor().advance_clock(CLOSE_GRACE_DURATION / 2);
+    cx.run_until_parked();
+
+    set_trigger_hovered(&state, true, cx);
+    set_trigger_hovered(&state, false, cx);
+    set_trigger_hovered(&state, true, cx);
+    cx.executor().advance_clock(CLOSE_GRACE_DURATION);
+    cx.run_until_parked();
+
+    assert_eq!(
+        state.read_with(cx, |state, _| state.phase),
+        TransitionPhase::Visible
+    );
+}
+
+#[gpui::test]
+fn reentering_during_exit_restores_visible_without_restarting_enter_animation(
+    cx: &mut TestAppContext,
+) {
+    let (state, cx) = cx.add_window_view(TooltipTrigger::new);
+
+    state.update(cx, |state, cx| {
+        state.tooltip = Tooltip::new("自动");
+        state.hovered = true;
+        state.show_now(cx);
+    });
+    cx.executor().advance_clock(ENTER_DURATION);
+    cx.run_until_parked();
+
+    let view_id = state.read_with(cx, |state, _| state.view.as_ref().unwrap().entity_id());
+    set_trigger_hovered(&state, false, cx);
+    cx.executor().advance_clock(CLOSE_GRACE_DURATION);
+    cx.run_until_parked();
+    assert_eq!(
+        state.read_with(cx, |state, _| state.phase),
+        TransitionPhase::Exiting
+    );
+
+    state.update(cx, |state, cx| state.set_bubble_hovered(true, cx));
+    state.read_with(cx, |state, _| {
+        assert_eq!(state.phase, TransitionPhase::Visible);
+        assert!(state.transition_task.is_none());
+        assert_eq!(state.view.as_ref().unwrap().entity_id(), view_id);
+    });
+
+    cx.executor().advance_clock(EXIT_DURATION + ENTER_DURATION);
+    cx.run_until_parked();
+    assert_eq!(
+        state.read_with(cx, |state, _| state.phase),
+        TransitionPhase::Visible
+    );
+}
+
+#[gpui::test]
+fn escape_dismissal_requires_a_complete_pointer_leave(cx: &mut TestAppContext) {
+    let (state, cx) = cx.add_window_view(TooltipTrigger::new);
+
+    state.update(cx, |state, cx| {
+        state.tooltip = Tooltip::new("自动").animated(false);
+        state.hovered = true;
+        state.show_now(cx);
+        assert!(state.dismiss(cx));
+        assert!(state.hover_dismissed);
+
+        state.reconcile(cx);
+        assert_eq!(state.phase, TransitionPhase::Hidden);
+        assert!(state.delay_task.is_none());
+    });
+    set_trigger_hovered(&state, false, cx);
+    set_trigger_hovered(&state, true, cx);
+    state.update(cx, |state, _| {
+        assert!(state.hover_dismissed);
+        assert!(state.delay_task.is_none());
+    });
+    set_trigger_hovered(&state, false, cx);
+    assert!(state.read_with(cx, |state, _| state.close_task.is_some()));
+    cx.executor().advance_clock(CLOSE_GRACE_DURATION);
+    cx.run_until_parked();
+
+    assert!(!state.read_with(cx, |state, _| state.hover_dismissed));
+    set_trigger_hovered(&state, true, cx);
+    assert!(state.read_with(cx, |state, _| state.delay_task.is_some()));
     cx.executor().advance_clock(SHOW_DELAY);
     cx.run_until_parked();
     assert_eq!(
@@ -207,6 +383,27 @@ fn removing_the_owner_releases_state_and_pending_delay(cx: &mut TestAppContext) 
     drop(state);
     cx.update(|window, _| window.remove_window());
     cx.executor().advance_clock(SHOW_DELAY);
+    cx.run_until_parked();
+
+    assert!(weak_state.upgrade().is_none());
+}
+
+#[gpui::test]
+fn removing_the_owner_cancels_pending_close_grace(cx: &mut TestAppContext) {
+    let (state, cx) = cx.add_window_view(TooltipTrigger::new);
+    let weak_state = state.downgrade();
+
+    state.update(cx, |state, cx| {
+        state.tooltip = Tooltip::new("自动").animated(false);
+        state.hovered = true;
+        state.show_now(cx);
+    });
+    set_trigger_hovered(&state, false, cx);
+    assert!(state.read_with(cx, |state, _| state.close_task.is_some()));
+
+    drop(state);
+    cx.update(|window, _| window.remove_window());
+    cx.executor().advance_clock(CLOSE_GRACE_DURATION);
     cx.run_until_parked();
 
     assert!(weak_state.upgrade().is_none());

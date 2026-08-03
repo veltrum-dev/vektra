@@ -9,9 +9,10 @@ use gpui::{
     Stateful, StatefulInteractiveElement, Style, Styled, Subscription, Task, WeakEntity, Window,
     div, ease_out_quint, point, px,
 };
-use std::{rc::Rc, time::Duration};
+use std::{cell::Cell, rc::Rc, time::Duration};
 
 const SHOW_DELAY: Duration = Duration::from_millis(500);
+const CLOSE_GRACE_DURATION: Duration = Duration::from_millis(500);
 const ENTER_DURATION: Duration = Duration::from_millis(120);
 const EXIT_DURATION: Duration = Duration::from_millis(80);
 const ENTER_OFFSET: Pixels = px(2.);
@@ -311,16 +312,18 @@ impl TransitionPhase {
 struct TooltipOverlayView {
     tooltip: Tooltip,
     trigger_bounds: Bounds<Pixels>,
+    bubble_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     placement: TooltipPlacement,
     phase: TransitionPhase,
     animation_generation: u64,
 }
 
 impl TooltipOverlayView {
-    fn new(tooltip: Tooltip) -> Self {
+    fn new(tooltip: Tooltip, bubble_bounds: Rc<Cell<Option<Bounds<Pixels>>>>) -> Self {
         Self {
             tooltip,
             trigger_bounds: Bounds::default(),
+            bubble_bounds,
             placement: TooltipPlacement::default(),
             phase: TransitionPhase::Hidden,
             animation_generation: 0,
@@ -340,6 +343,7 @@ impl Render for TooltipOverlayView {
                     .child(render_content(&self.tooltip, window, cx))
                     .into_any_element(),
             ),
+            bubble_bounds: self.bubble_bounds.clone(),
             trigger_bounds: self.trigger_bounds,
             preferred: self.placement,
             viewport_bounds: Bounds::new(Point::default(), window.viewport_size()),
@@ -398,6 +402,7 @@ fn shadow_margin(tokens: vektra_theme::TooltipTokens) -> Pixels {
 
 struct TooltipOverlay {
     body: Option<AnyElement>,
+    bubble_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     trigger_bounds: Bounds<Pixels>,
     preferred: TooltipPlacement,
     viewport_bounds: Bounds<Pixels>,
@@ -492,14 +497,15 @@ impl Element for TooltipOverlay {
             .take()
             .expect("TooltipOverlay 的气泡必须在 prepaint 前完成布局");
         let visual_offset = transition_offset(placement.placement.side(), self.enter_offset);
-        body.prepaint_at(
+        let visible_bubble_bounds = Bounds::new(
             point(
                 placement.bubble_bounds.origin.x + visual_offset.x,
                 placement.bubble_bounds.origin.y + visual_offset.y,
             ),
-            window,
-            cx,
+            placement.bubble_bounds.size,
         );
+        self.bubble_bounds.set(Some(visible_bubble_bounds));
+        body.prepaint_at(visible_bubble_bounds.origin, window, cx);
         let arrow_points = placement
             .arrow_points
             .map(|point| gpui::point(point.x + visual_offset.x, point.y + visual_offset.y));
@@ -808,6 +814,8 @@ pub(crate) struct TooltipTrigger {
     focus_handle: FocusHandle,
     tooltip: Tooltip,
     hovered: bool,
+    bubble_hovered: bool,
+    bubble_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     keyboard_focused: bool,
     hover_dismissed: bool,
     focus_dismissed: bool,
@@ -816,7 +824,9 @@ pub(crate) struct TooltipTrigger {
     placement: TooltipPlacement,
     view: Option<Entity<TooltipOverlayView>>,
     generation: u64,
+    close_generation: u64,
     delay_task: Option<Task<()>>,
+    close_task: Option<Task<()>>,
     transition_task: Option<Task<()>>,
     escape_subscription: Option<Subscription>,
     _focus_subscription: Subscription,
@@ -837,6 +847,9 @@ impl TooltipTrigger {
         let blur_subscription = cx.on_blur(&focus_handle, window, |this, _window, cx| {
             this.keyboard_focused = false;
             this.focus_dismissed = false;
+            if this.hover_dismissed {
+                this.schedule_close_grace(cx);
+            }
             this.reconcile(cx);
         });
 
@@ -844,6 +857,8 @@ impl TooltipTrigger {
             focus_handle,
             tooltip: Tooltip::new(SharedString::default()),
             hovered: false,
+            bubble_hovered: false,
+            bubble_bounds: Rc::new(Cell::new(None)),
             keyboard_focused: false,
             hover_dismissed: false,
             focus_dismissed: false,
@@ -852,7 +867,9 @@ impl TooltipTrigger {
             placement: TooltipPlacement::default(),
             view: None,
             generation: 0,
+            close_generation: 0,
             delay_task: None,
+            close_task: None,
             transition_task: None,
             escape_subscription: None,
             _focus_subscription: focus_subscription,
@@ -895,15 +912,33 @@ impl TooltipTrigger {
         }
 
         self.hovered = hovered;
-        if self.tooltip.open.is_none() {
-            self.hover_dismissed = false;
-        }
         if hovered {
+            self.cancel_close_grace();
             // A pointer interaction ends eligibility for the old keyboard-focus source.
             self.keyboard_focused = false;
             self.ensure_escape_listener(window, cx);
+        } else {
+            self.schedule_close_grace(cx);
         }
         self.reconcile(cx);
+    }
+
+    fn set_bubble_hovered(&mut self, hovered: bool, cx: &mut Context<Self>) {
+        if self.bubble_hovered == hovered {
+            return;
+        }
+
+        self.bubble_hovered = hovered;
+        if hovered {
+            self.cancel_close_grace();
+        } else {
+            self.schedule_close_grace(cx);
+        }
+        self.reconcile(cx);
+    }
+
+    fn pointer_hovered(&self) -> bool {
+        self.hovered || self.bubble_hovered
     }
 
     fn eligible(&self) -> bool {
@@ -911,10 +946,44 @@ impl TooltipTrigger {
             Some(true) => !self.explicit_dismissed,
             Some(false) => false,
             None => {
-                (self.hovered && !self.hover_dismissed)
+                (self.pointer_hovered() && !self.hover_dismissed)
                     || (self.keyboard_focused && !self.focus_dismissed)
             }
         }
+    }
+
+    fn cancel_close_grace(&mut self) {
+        if self.close_task.take().is_some() {
+            self.close_generation = self.close_generation.wrapping_add(1);
+        }
+    }
+
+    fn schedule_close_grace(&mut self, cx: &mut Context<Self>) {
+        if self.tooltip.open.is_some()
+            || self.pointer_hovered()
+            || self.keyboard_focused
+            || self.close_task.is_some()
+            || (!self.phase.is_present() && !self.hover_dismissed)
+        {
+            return;
+        }
+
+        self.close_generation = self.close_generation.wrapping_add(1);
+        let close_generation = self.close_generation;
+        self.close_task = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(CLOSE_GRACE_DURATION).await;
+            let _ = this.update(cx, |this, cx| {
+                if this.close_generation != close_generation {
+                    return;
+                }
+                this.close_task = None;
+                if this.tooltip.open.is_some() || this.pointer_hovered() || this.keyboard_focused {
+                    return;
+                }
+                this.hover_dismissed = false;
+                this.reconcile(cx);
+            });
+        }));
     }
 
     fn schedule_show(&mut self, cx: &mut Context<Self>) {
@@ -946,6 +1015,7 @@ impl TooltipTrigger {
 
     fn reconcile(&mut self, cx: &mut Context<Self>) {
         if self.eligible() {
+            self.cancel_close_grace();
             if self.tooltip.open == Some(true) {
                 if !matches!(
                     self.phase,
@@ -953,17 +1023,22 @@ impl TooltipTrigger {
                 ) {
                     self.show_now(cx);
                 }
-            } else if !matches!(
-                self.phase,
-                TransitionPhase::Entering | TransitionPhase::Visible
-            ) {
-                self.schedule_show(cx);
+            } else {
+                match self.phase {
+                    TransitionPhase::Exiting => self.restore_visible(cx),
+                    TransitionPhase::Hidden => self.schedule_show(cx),
+                    TransitionPhase::Entering | TransitionPhase::Visible => {}
+                }
             }
             return;
         }
 
+        if self.tooltip.open.is_none() && self.close_task.is_some() {
+            return;
+        }
+
         self.hide(cx);
-        if self.tooltip.open != Some(true) && !self.hovered && !self.keyboard_focused {
+        if self.tooltip.open != Some(true) && !self.pointer_hovered() && !self.keyboard_focused {
             self.escape_subscription = None;
         }
     }
@@ -972,6 +1047,7 @@ impl TooltipTrigger {
         self.generation = self.generation.wrapping_add(1);
         let generation = self.generation;
         self.delay_task = None;
+        self.cancel_close_grace();
         self.transition_task = None;
         self.phase = if self.tooltip.animated && !cx.reduce_motion() {
             TransitionPhase::Entering
@@ -979,7 +1055,9 @@ impl TooltipTrigger {
             TransitionPhase::Visible
         };
         if self.view.is_none() {
-            self.view = Some(cx.new(|_| TooltipOverlayView::new(self.tooltip.clone())));
+            let bubble_bounds = self.bubble_bounds.clone();
+            self.view =
+                Some(cx.new(|_| TooltipOverlayView::new(self.tooltip.clone(), bubble_bounds)));
         }
         self.sync_view(cx);
         cx.notify();
@@ -999,7 +1077,18 @@ impl TooltipTrigger {
         }
     }
 
+    fn restore_visible(&mut self, cx: &mut Context<Self>) {
+        self.generation = self.generation.wrapping_add(1);
+        self.delay_task = None;
+        self.cancel_close_grace();
+        self.transition_task = None;
+        self.phase = TransitionPhase::Visible;
+        self.sync_view(cx);
+        cx.notify();
+    }
+
     fn hide(&mut self, cx: &mut Context<Self>) {
+        self.cancel_close_grace();
         if self.phase == TransitionPhase::Exiting {
             return;
         }
@@ -1019,6 +1108,8 @@ impl TooltipTrigger {
         if !self.tooltip.animated || cx.reduce_motion() {
             self.phase = TransitionPhase::Hidden;
             self.view = None;
+            self.clear_bubble_state();
+            self.schedule_close_grace(cx);
             cx.notify();
             return;
         }
@@ -1033,6 +1124,8 @@ impl TooltipTrigger {
                     this.transition_task = None;
                     this.phase = TransitionPhase::Hidden;
                     this.view = None;
+                    this.clear_bubble_state();
+                    this.schedule_close_grace(cx);
                     cx.notify();
                 }
             });
@@ -1055,6 +1148,8 @@ impl TooltipTrigger {
                 self.transition_task = None;
                 self.phase = TransitionPhase::Hidden;
                 self.view = None;
+                self.clear_bubble_state();
+                self.schedule_close_grace(cx);
             }
             TransitionPhase::Hidden | TransitionPhase::Visible => {}
         }
@@ -1083,6 +1178,11 @@ impl TooltipTrigger {
         });
     }
 
+    fn clear_bubble_state(&mut self) {
+        self.bubble_bounds.set(None);
+        self.bubble_hovered = false;
+    }
+
     fn sync_input_modality(&mut self, window: &Window, cx: &mut Context<Self>) {
         if self.keyboard_focused && !self.hovered && !window.last_input_was_keyboard() {
             self.keyboard_focused = false;
@@ -1098,7 +1198,7 @@ impl TooltipTrigger {
         if self.tooltip.open == Some(true) {
             self.explicit_dismissed = true;
         } else {
-            if self.hovered {
+            if self.pointer_hovered() || self.close_task.is_some() {
                 self.hover_dismissed = true;
             }
             if self.keyboard_focused {
@@ -1211,10 +1311,18 @@ pub(crate) fn prepaint_listener(
             // GPUI 当前公开 Tooltip 请求仍要求一个鼠标点；Vektra 使用固定占位值，
             // 实际 side/alignment/flip/shift 全部由 TooltipOverlay 基于 trigger bounds 决定。
             mouse_position: Point::default(),
-            check_visible_and_update: Rc::new(move |_, _, cx| {
+            check_visible_and_update: Rc::new(move |_, window, cx| {
+                let mouse_position = window.mouse_position();
                 owner
-                    .upgrade()
-                    .is_some_and(|owner| owner.read(cx).phase.is_present())
+                    .update(cx, |owner, cx| {
+                        let bubble_hovered = owner
+                            .bubble_bounds
+                            .get()
+                            .is_some_and(|bounds| bounds.contains(&mouse_position));
+                        owner.set_bubble_hovered(bubble_hovered, cx);
+                        owner.phase.is_present()
+                    })
+                    .unwrap_or(false)
             }),
         });
     }

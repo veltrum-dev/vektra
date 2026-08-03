@@ -266,6 +266,54 @@ fn visible_tooltip_uses_trigger_bounds_and_does_not_cover_the_button(cx: &mut Te
 }
 
 #[gpui::test]
+fn pointer_can_cross_the_gap_and_keep_the_actual_bubble_visible(cx: &mut TestAppContext) {
+    let (_, cx) = cx.add_window_view(|_, _| SingleTooltip {
+        placement: vektra::TooltipPlacement::BottomStart,
+    });
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    let trigger = cx.debug_bounds("vektra-button").unwrap();
+    cx.simulate_mouse_move(trigger.center(), None, Modifiers::none());
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(500));
+    cx.run_until_parked();
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+
+    let bubble = cx.debug_bounds("vektra-tooltip-bubble").unwrap();
+    assert!(bubble.top() > trigger.bottom());
+
+    let gap = gpui::point(trigger.center().x, (trigger.bottom() + bubble.top()) / 2.);
+    cx.simulate_mouse_move(gap, None, Modifiers::none());
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(250));
+    cx.run_until_parked();
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    assert!(cx.debug_bounds("vektra-tooltip-bubble").is_some());
+
+    cx.simulate_mouse_move(bubble.center(), None, Modifiers::none());
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(500));
+    cx.run_until_parked();
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    assert!(cx.debug_bounds("vektra-tooltip-bubble").is_some());
+
+    cx.simulate_mouse_move(gpui::point(px(1.), px(1.)), None, Modifiers::none());
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(500));
+    cx.run_until_parked();
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    assert!(cx.debug_bounds("vektra-tooltip-bubble").is_some());
+
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(80));
+    cx.run_until_parked();
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    assert!(cx.debug_bounds("vektra-tooltip-bubble").is_none());
+}
+
+#[gpui::test]
 fn end_placement_aligns_the_tooltip_and_trigger_right_edges(cx: &mut TestAppContext) {
     let (_, cx) = cx.add_window_view(|_, _| SingleTooltip {
         placement: vektra::TooltipPlacement::BottomEnd,
