@@ -17,6 +17,7 @@ const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const DARK: &str = "themes/default/dark.json";
 const BUTTON: &str = "themes/default/button.json";
+const TOOLTIP: &str = "themes/default/tooltip.json";
 
 static LIGHT_THEME: OnceLock<Arc<ResolvedTheme>> = OnceLock::new();
 static DARK_THEME: OnceLock<Arc<ResolvedTheme>> = OnceLock::new();
@@ -29,8 +30,9 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
         ResolvedThemeMode::Dark => DARK,
     })?;
     let button = load_builtin_text(BUTTON)?;
+    let tooltip = load_builtin_text(TOOLTIP)?;
 
-    let tokens = parse_token_sets(&[&foundation, &mode_source, &button])?;
+    let tokens = parse_token_sets(&[&foundation, &mode_source, &button, &tooltip])?;
     profile::validate(&tokens)?;
     Ok(tokens)
 }
@@ -182,7 +184,7 @@ mod tests {
 
     #[test]
     fn default_theme_resources_are_loaded_from_assets_crate() {
-        for path in [FOUNDATION, LIGHT, DARK, BUTTON] {
+        for path in [FOUNDATION, LIGHT, DARK, BUTTON, TOOLTIP] {
             let text = load_builtin_text(path).unwrap();
             assert!(!text.is_empty(), "`{path}` 应从 vektra-assets 读取");
         }

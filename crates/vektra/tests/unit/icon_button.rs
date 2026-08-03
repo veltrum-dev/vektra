@@ -2,10 +2,58 @@ use super::*;
 use crate::{ThemeMode, set_theme_mode};
 use gpui::{
     ClickEvent, Context, Hsla, KeyUpEvent, KeyboardButton, Keystroke, Modifiers, Render,
-    TestAppContext, point, px,
+    TestAppContext, point, px, rgb,
 };
 use std::{cell::Cell, rc::Rc};
 use vektra_theme::ResolvedThemeMode;
+
+#[test]
+fn tooltip_does_not_replace_icon_button_accessible_name() {
+    let button = IconButton::new("settings", IconSource::asset("icons/settings.svg"))
+        .aria_label("设置")
+        .tooltip("旧提示")
+        .tooltip("设置")
+        .aria_description("打开应用设置");
+
+    assert_eq!(button.aria_label_text().unwrap().as_ref(), "设置");
+    assert_eq!(button.tooltip_text().unwrap().as_ref(), "设置");
+    assert_eq!(
+        button.aria_description_text().unwrap().as_ref(),
+        "打开应用设置"
+    );
+}
+
+#[test]
+fn tooltip_configuration_is_preserved_by_icon_button() {
+    let button = IconButton::new("settings", IconSource::asset("icons/settings.svg")).tooltip(
+        Tooltip::new("设置")
+            .open(true)
+            .arrow(false)
+            .color(rgb(0xffffff))
+            .bg_color(rgb(0x222222))
+            .animated(false),
+    );
+    let tooltip = button.tooltip_value().unwrap();
+
+    assert_eq!(tooltip.text_value().as_ref(), "设置");
+    assert_eq!(tooltip.open_value(), Some(true));
+    assert!(!tooltip.arrow_value());
+    assert!(tooltip.color_value().is_some());
+    assert!(tooltip.bg_color_value().is_some());
+    assert!(!tooltip.animated_value());
+}
+
+#[test]
+fn tooltip_placement_defaults_to_bottom_and_can_be_overridden() {
+    let default = IconButton::new("default", IconSource::asset("icons/settings.svg"));
+    assert_eq!(default.tooltip_placement_value(), TooltipPlacement::Bottom);
+    let placed = IconButton::new("placed", IconSource::asset("icons/settings.svg"))
+        .tooltip_placement(TooltipPlacement::RightStart);
+    assert_eq!(
+        placed.tooltip_placement_value(),
+        TooltipPlacement::RightStart
+    );
+}
 
 #[test]
 fn defaults_are_unresolved_until_render() {

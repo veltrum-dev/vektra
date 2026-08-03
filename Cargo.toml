@@ -6,9 +6,7 @@ members = [
     "crates/vektra-macros",
     "crates/vektra",
     "docs/preview",
-    "examples/button",
-    "examples/custom_assets",
-    "examples/icon_button",
+    "examples",
 ]
 resolver = "3"
 
@@ -35,6 +33,10 @@ vektra-icons = { path = "crates/icons" }
 vektra-macros = { path = "crates/vektra-macros" }
 vektra-theme = { path = "crates/theme" }
 vektra = { path = "crates/vektra" }
+
+[patch.crates-io]
+block = { path = "third_party/block" }
+proc-macro-error2 = { path = "third_party/proc-macro-error2" }
 
 [profile.dev]
 codegen-units = 16

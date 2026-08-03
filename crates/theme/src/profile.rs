@@ -45,6 +45,29 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
     tokens.required("button.border-width")?;
     tokens.required("button.focus-width")?;
 
+    // 旧版完整 Tooltip 扩展只包含这些内容 token。新增定位和阴影 token 均有
+    // foundation/semantic fallback，不能把旧主题变成不合法主题。
+    let tooltip_fields = [
+        "background",
+        "foreground",
+        "border",
+        "border-width",
+        "padding-x",
+        "padding-y",
+        "radius",
+        "font-size",
+        "line-height",
+        "max-width",
+    ];
+    let has_tooltip_extension = tooltip_fields
+        .iter()
+        .any(|field| tokens.get(&format!("tooltip.{field}")).is_some());
+    if has_tooltip_extension {
+        for field in tooltip_fields {
+            tokens.required(&format!("tooltip.{field}"))?;
+        }
+    }
+
     for variant in BUTTON_VARIANTS {
         for state in BUTTON_STATES {
             for field in ["background", "foreground", "border"] {

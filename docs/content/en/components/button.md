@@ -81,6 +81,9 @@ Button sizes itself to its content by default. `.width(...)` sets a fixed width.
 | `.progress(value)` | Sets determinate progress and blocks activation. The range is `0.0..=1.0`; out-of-range and non-finite values are normalized safely. |
 | `.selected(bool)` | Explicitly sets controlled toggle state. The component does not toggle itself. |
 | `.auto_insert_space(bool)` | Controls visual spacing for two-Han-character labels. Enabled by default. |
+| `.tooltip(text_or_tooltip)` | Accepts a string or `Tooltip` configuration. Strings keep the 500ms automatic behavior; configuration can set `open`, arrow, colors, and animation. |
+| `.tooltip_placement(TooltipPlacement)` | Sets the preferred Tooltip placement; defaults to `Bottom` and still flips/shifts when needed. |
+| `.aria_description(text)` | Sets a supplementary accessible description independently from the visual Tooltip. |
 | `.on_click(handler)` | Registers a standard GPUI click callback: `Fn(&ClickEvent, &mut Window, &mut App)`. |
 | `.on_click_in(cx, handler)` | Registers a callback that can access host Entity state. |
 | `.id()` | Returns the stable `ElementId`. |
@@ -133,6 +136,8 @@ By default, when the label contains exactly two Unicode Han characters, Button i
 
 When enabled, a left-click prevents the default event, stops propagation, and triggers the callback. When the Button is focused, Enter activates on keydown and Space activates on keyup. Both create `ClickEvent::Keyboard` and enter the same click callback. Selected buttons use the same activation path. Loading/progress consumes mouse and Enter/Space events (including Space's default scrolling behavior) without calling the business handler. Disabled buttons do not activate.
 
+Button registers a GPUI Tab stop. With the pinned GPUI revision, the host window still maps real Tab/Shift+Tab keys to `window.focus_next(cx)`/`focus_prev(cx)`; the quick start and desktop example show the minimal wiring. A string Tooltip appears after 500ms of keyboard focus. `Tooltip::new(...).open(true)` displays without focus, while `open(false)` forces it closed. Escape dismisses without moving Button focus; a dismissed controlled `open(true)` requires a `false -> true` change to reopen.
+
 ## Focus and Accessibility
 
 The Button root always uses `Role::Button` and sets `aria_label` from the original label. Enabled and busy buttons set `tab_index(0)`; `focus_visible` uses the theme focus token and focus width. Disabled buttons leave the Tab order.
@@ -143,7 +148,7 @@ After `.selected(false|true)`, the root reports False/True through `aria_toggled
 
 Button normal, hover, pressed, focus-visible, disabled, and selected states come from Vektra theme tokens. The default Light/Dark themes define a complete selected matrix for every variant. Existing custom themes may omit the optional selected extension; runtime styling falls back to their pressed, focus-visible, and disabled tokens. Loading/progress colors derive from the currently visible foreground, with no render-time JSON parsing or file I/O.
 
-Loading uses GPUI `AnimationExt`. When the system or host enables reduced motion, it renders a static frame and stops requesting animation frames. The documentation preview follows the current VitePress Light/Dark theme. Standalone previews accept `theme=light|dark`; missing or invalid values use `ThemeMode::System`.
+Loading and Tooltip motion use GPUI `AnimationExt`. When the system or host enables reduced motion, they render static end states and stop requesting decorative animation frames. Fixed per-instance Tooltip colors do not adapt to Light/Dark/System; the caller owns contrast. The documentation preview follows the current VitePress Light/Dark theme. Standalone previews accept `theme=light|dark`; missing or invalid values use `ThemeMode::System`.
 
 ## Responsive Behavior
 

@@ -4,7 +4,7 @@ use gpui::{
     AnyWindowHandle, AppContext, AtlasKey, AtlasTextureId, AtlasTextureKind, AtlasTile, ClickEvent,
     Context, DevicePixels, HeadlessAppContext, InputEvent, KeyUpEvent, Keystroke, Modifiers,
     MouseMoveEvent, NoopTextSystem, PlatformAtlas, PlatformHeadlessRenderer, Render, Scene, Size,
-    TestAppContext, TileId, VisualTestContext, point, px, size,
+    TestAppContext, TileId, VisualTestContext, point, px, rgb, size,
 };
 use std::{
     borrow::Cow,
@@ -21,6 +21,51 @@ fn defaults_resolve_to_primary_md_and_enabled() {
     assert_eq!(button.resolved_variant(), ButtonVariant::Primary);
     assert_eq!(button.resolved_size(), ButtonSize::Md);
     assert!(!button.is_disabled());
+}
+
+#[test]
+fn tooltip_and_aria_description_are_independent_and_last_tooltip_wins() {
+    let button = Button::new("save")
+        .label("保存")
+        .tooltip("旧提示")
+        .tooltip("保存当前修改")
+        .aria_description("补充说明");
+
+    assert_eq!(button.tooltip_text().unwrap().as_ref(), "保存当前修改");
+    assert_eq!(button.aria_description_text().unwrap().as_ref(), "补充说明");
+    assert_eq!(button.label_text().as_ref(), "保存");
+}
+
+#[test]
+fn tooltip_configuration_is_preserved_by_button() {
+    let button = Button::new("save").tooltip(
+        Tooltip::new("保存")
+            .open(true)
+            .arrow(false)
+            .color(rgb(0xffffff))
+            .bg_color(rgb(0x222222))
+            .animated(false),
+    );
+    let tooltip = button.tooltip_value().unwrap();
+
+    assert_eq!(tooltip.text_value().as_ref(), "保存");
+    assert_eq!(tooltip.open_value(), Some(true));
+    assert!(!tooltip.arrow_value());
+    assert!(tooltip.color_value().is_some());
+    assert!(tooltip.bg_color_value().is_some());
+    assert!(!tooltip.animated_value());
+}
+
+#[test]
+fn tooltip_placement_defaults_to_bottom_and_last_call_wins() {
+    assert_eq!(
+        Button::new("default").tooltip_placement_value(),
+        TooltipPlacement::Bottom
+    );
+    let button = Button::new("placed")
+        .tooltip_placement(TooltipPlacement::TopStart)
+        .tooltip_placement(TooltipPlacement::LeftEnd);
+    assert_eq!(button.tooltip_placement_value(), TooltipPlacement::LeftEnd);
 }
 
 #[test]

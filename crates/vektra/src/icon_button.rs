@@ -5,6 +5,7 @@ use crate::{
     button::{self, ClickHandler},
     icon::{Icon, IconSource, IntoIconSource},
     theme,
+    tooltip::{self, Tooltip, TooltipPlacement},
     traits::{Clickable, Disableable},
 };
 use gpui::{
@@ -58,6 +59,9 @@ pub struct IconButton {
     icon_color: Option<Hsla>,
     disabled: bool,
     on_click: Option<ClickHandler>,
+    tooltip: Option<Tooltip>,
+    tooltip_placement: TooltipPlacement,
+    aria_description: Option<SharedString>,
 }
 
 impl IconButton {
@@ -74,6 +78,9 @@ impl IconButton {
             icon_color: None,
             disabled: false,
             on_click: None,
+            tooltip: None,
+            tooltip_placement: TooltipPlacement::default(),
+            aria_description: None,
         }
     }
 
@@ -82,6 +89,29 @@ impl IconButton {
     /// 该文本不会显示在界面上。
     pub fn aria_label(mut self, label: impl Into<SharedString>) -> Self {
         self.aria_label = Some(label.into());
+        self
+    }
+
+    /// 设置纯文本 Tooltip。
+    ///
+    /// Tooltip 不能替代纯图标按钮必需的可访问名称，也不会自动成为可访问描述。
+    /// 既可传入字符串沿用自动触发，也可传入 [`Tooltip`] 配置完整显示行为。
+    pub fn tooltip(mut self, tooltip: impl Into<Tooltip>) -> Self {
+        self.tooltip = Some(tooltip.into());
+        self
+    }
+
+    /// 设置 Tooltip 相对 IconButton 的优先位置。
+    ///
+    /// 默认是 [`TooltipPlacement::Bottom`]；视口空间不足时仍会自动翻转或平移。
+    pub fn tooltip_placement(mut self, placement: TooltipPlacement) -> Self {
+        self.tooltip_placement = placement;
+        self
+    }
+
+    /// 设置辅助技术朗读的补充描述。
+    pub fn aria_description(mut self, description: impl Into<SharedString>) -> Self {
+        self.aria_description = Some(description.into());
         self
     }
 
@@ -179,6 +209,26 @@ impl IconButton {
     pub(crate) fn icon_color_value(&self) -> Option<Hsla> {
         self.icon_color
     }
+
+    #[cfg(test)]
+    pub(crate) fn tooltip_text(&self) -> Option<&SharedString> {
+        self.tooltip.as_ref().map(Tooltip::text_value)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn tooltip_value(&self) -> Option<&Tooltip> {
+        self.tooltip.as_ref()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn tooltip_placement_value(&self) -> TooltipPlacement {
+        self.tooltip_placement
+    }
+
+    #[cfg(test)]
+    pub(crate) fn aria_description_text(&self) -> Option<&SharedString> {
+        self.aria_description.as_ref()
+    }
 }
 
 impl Clickable for IconButton {
@@ -195,6 +245,17 @@ impl Disableable for IconButton {
 
 impl RenderOnce for IconButton {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let tooltip_focusable = !self.disabled;
+        let tooltip_state = self.tooltip.clone().map(|tooltip| {
+            tooltip::state_for(
+                &self.id,
+                tooltip,
+                self.tooltip_placement,
+                !self.disabled,
+                window,
+                cx,
+            )
+        });
         let theme = theme::current_theme(window, cx);
         let variant = self.resolved_variant().token_key();
         let size = theme
@@ -210,7 +271,7 @@ impl RenderOnce for IconButton {
         let on_click = self.on_click.clone().filter(|_| !self.disabled);
         let icon_color = self.resolved_icon_color(visible);
 
-        button::apply_interaction(
+        let element = button::apply_interaction(
             div()
                 .id(self.id.clone())
                 .role(Role::Button)
@@ -226,13 +287,23 @@ impl RenderOnce for IconButton {
                 .bg(visible.background)
                 .text_color(visible.foreground)
                 .when_some(self.aria_label, |this, label| this.aria_label(label))
+                .when_some(self.aria_description, |this, description| {
+                    this.aria_description(description)
+                })
                 .child(Icon::new(self.icon).size(size.icon_size).color(icon_color)),
             self.disabled,
             on_click,
             states,
             theme.button.focus_width,
             false,
-        )
+        );
+
+        if let Some(state) = tooltip_state {
+            let element = tooltip::attach_interaction(element, &state, tooltip_focusable, cx);
+            tooltip::attach_prepaint_listener(element, state)
+        } else {
+            tooltip::into_any(element)
+        }
     }
 }
 

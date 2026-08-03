@@ -44,6 +44,12 @@ fn loads_and_lists_default_theme_resources() {
         .unwrap();
     assert!(text.contains("foundation"));
     assert!(
+        Assets::load_text("themes/default/tooltip.json")
+            .unwrap()
+            .unwrap()
+            .contains("tooltip")
+    );
+    assert!(
         Assets
             .list("themes/default")
             .unwrap()
@@ -116,6 +122,7 @@ fn list_merges_deduplicates_and_sorts() {
             "themes/default/dark.json",
             "themes/default/foundation.json",
             "themes/default/light.json",
+            "themes/default/tooltip.json",
         ]
     );
 }

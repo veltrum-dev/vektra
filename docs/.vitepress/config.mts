@@ -75,7 +75,11 @@ function zhThemeConfig(): DefaultTheme.Config {
       },
       {
         text: "组件",
-        items: [{ text: "Button", link: "/components/button" }]
+        items: [
+          { text: "Button", link: "/components/button" },
+          { text: "IconButton", link: "/components/icon-button" },
+          { text: "Tooltip", link: "/components/tooltip" }
+        ]
       }
     ],
     outline: {
@@ -112,7 +116,11 @@ function enThemeConfig(): DefaultTheme.Config {
       },
       {
         text: "Components",
-        items: [{ text: "Button", link: "/en/components/button" }]
+        items: [
+          { text: "Button", link: "/en/components/button" },
+          { text: "IconButton", link: "/en/components/icon-button" },
+          { text: "Tooltip", link: "/en/components/tooltip" }
+        ]
       }
     ],
     outline: {

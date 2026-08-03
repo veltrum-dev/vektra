@@ -36,6 +36,18 @@ fn button_showcase_is_selected_by_stable_id() {
 }
 
 #[test]
+fn icon_button_and_tooltip_are_selected_by_stable_ids() {
+    assert_eq!(
+        parse_demo_query("?demo=icon-button/basic"),
+        DemoSelection::IconButtonBasic
+    );
+    assert_eq!(
+        parse_demo_query("?demo=tooltip/basic"),
+        DemoSelection::TooltipBasic
+    );
+}
+
+#[test]
 fn unknown_demo_is_preserved_for_error_state() {
     assert_eq!(
         parse_demo_query("?demo=unknown"),

@@ -3,6 +3,7 @@
 use crate::{
     icon::{Icon, IconSource, IntoIconSource},
     theme,
+    tooltip::{self, Tooltip, TooltipPlacement},
     traits::{Clickable, Disableable},
 };
 use gpui::{
@@ -121,6 +122,9 @@ pub struct Button {
     selected: Option<bool>,
     auto_insert_space: Option<bool>,
     on_click: Option<ClickHandler>,
+    tooltip: Option<Tooltip>,
+    tooltip_placement: TooltipPlacement,
+    aria_description: Option<SharedString>,
 }
 
 impl Button {
@@ -143,6 +147,9 @@ impl Button {
             selected: None,
             auto_insert_space: None,
             on_click: None,
+            tooltip: None,
+            tooltip_placement: TooltipPlacement::default(),
+            aria_description: None,
         }
     }
 
@@ -256,6 +263,30 @@ impl Button {
         self
     }
 
+    /// 设置纯文本 Tooltip。
+    ///
+    /// Tooltip 不会自动成为无障碍名称或描述；需要补充朗读信息时请显式调用
+    /// [`Self::aria_description`]。既可传入字符串沿用自动 hover/键盘焦点触发，也可
+    /// 传入 [`Tooltip`] 配置打开状态、箭头、颜色和动画。后一次调用覆盖前一次调用。
+    pub fn tooltip(mut self, tooltip: impl Into<Tooltip>) -> Self {
+        self.tooltip = Some(tooltip.into());
+        self
+    }
+
+    /// 设置 Tooltip 相对 Button 的优先位置。
+    ///
+    /// 默认是 [`TooltipPlacement::Bottom`]；视口空间不足时仍会自动翻转或平移。
+    pub fn tooltip_placement(mut self, placement: TooltipPlacement) -> Self {
+        self.tooltip_placement = placement;
+        self
+    }
+
+    /// 设置辅助技术朗读的补充描述。
+    pub fn aria_description(mut self, description: impl Into<SharedString>) -> Self {
+        self.aria_description = Some(description.into());
+        self
+    }
+
     /// 注册激活回调。
     ///
     /// 鼠标点击、聚焦后的 Enter 和 Space 都会通过同一个三参数回调触发。
@@ -334,6 +365,26 @@ impl Button {
         self.end_icon.as_ref()
     }
 
+    #[cfg(test)]
+    pub(crate) fn tooltip_text(&self) -> Option<&SharedString> {
+        self.tooltip.as_ref().map(Tooltip::text_value)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn tooltip_value(&self) -> Option<&Tooltip> {
+        self.tooltip.as_ref()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn tooltip_placement_value(&self) -> TooltipPlacement {
+        self.tooltip_placement
+    }
+
+    #[cfg(test)]
+    pub(crate) fn aria_description_text(&self) -> Option<&SharedString> {
+        self.aria_description.as_ref()
+    }
+
     fn recompute_display_label(&mut self) {
         if self.auto_insert_space.unwrap_or(true) {
             self.display_label = auto_spaced_label(&self.label);
@@ -357,6 +408,17 @@ impl Disableable for Button {
 
 impl RenderOnce for Button {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        let tooltip_focusable = !self.disabled;
+        let tooltip_state = self.tooltip.clone().map(|tooltip| {
+            tooltip::state_for(
+                &self.id,
+                tooltip,
+                self.tooltip_placement,
+                !self.disabled,
+                window,
+                cx,
+            )
+        });
         let theme = theme::current_theme(window, cx);
         let variant = self.resolved_variant();
         let underlines_on_hover = variant.underlines_on_hover();
@@ -433,8 +495,12 @@ impl RenderOnce for Button {
 
         let element = div()
             .id(self.id.clone())
+            .debug_selector(|| "vektra-button".into())
             .role(Role::Button)
             .aria_label(self.label.clone())
+            .when_some(self.aria_description, |this, description| {
+                this.aria_description(description)
+            })
             .when_some(toggled_state(selected), |this, toggled| {
                 this.aria_toggled(toggled)
             })
@@ -488,7 +554,7 @@ impl RenderOnce for Button {
                 )
             });
 
-        apply_interaction_with_activity(
+        let element = apply_interaction_with_activity(
             element,
             self.disabled,
             busy,
@@ -496,7 +562,14 @@ impl RenderOnce for Button {
             states,
             theme.button.focus_width,
             underlines_on_hover,
-        )
+        );
+
+        if let Some(state) = tooltip_state {
+            let element = tooltip::attach_interaction(element, &state, tooltip_focusable, cx);
+            tooltip::attach_prepaint_listener(element, state)
+        } else {
+            tooltip::into_any(element)
+        }
     }
 }
 

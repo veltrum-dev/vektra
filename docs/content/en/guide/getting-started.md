@@ -69,3 +69,9 @@ An application still needs to create a view through GPUI's window model. Use `Bu
 ## Relationship to GPUI
 
 Vektra does not replace GPUI's application lifecycle, windows, actions, or focus system. It reuses GPUI elements, `Context<T>`, `Window`, and the asset pipeline. Button owns its visual states, mouse activation, Enter/Space activation, and disabled behavior.
+
+## Tab / Shift+Tab Focus Traversal
+
+Button and IconButton register GPUI Tab stops. The pinned GPUI revision does not automatically map real Tab keys to host focus traversal. A window root View holds a stable `FocusHandle`, receives initial focus, and handles local Actions by calling `window.focus_next(cx)`/`focus_prev(cx)`, with bindings for both `tab` and `shift-tab`. Keep this wiring in the host rather than a Vektra global initializer; the complete compiled pattern is in the Button/IconButton desktop examples and docs preview runtime.
+
+After `.tooltip(...)` is configured, keyboard focus held for 500ms shows the Tooltip. Escape dismisses only the Tooltip and leaves Button focus unchanged.

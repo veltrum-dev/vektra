@@ -9,7 +9,9 @@ pub mod error;
 pub mod mode;
 pub mod profile;
 
-pub use adapter::{ButtonSizeTokens, ButtonStateTokens, IconTokens, ResolvedTheme, SemanticColors};
+pub use adapter::{
+    ButtonSizeTokens, ButtonStateTokens, IconTokens, ResolvedTheme, SemanticColors, TooltipTokens,
+};
 pub use default_theme::{default_theme, default_tokens};
 pub use error::ThemeError;
 pub use mode::{ResolvedThemeMode, ThemeMode};

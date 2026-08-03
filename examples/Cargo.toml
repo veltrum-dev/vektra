@@ -1,12 +1,29 @@
 [package]
-name = "vektra-custom-assets-example"
+name = "vektra-examples"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
 publish = false
+autoexamples = false
 
 [dependencies]
 gpui = { workspace = true }
 gpui_platform = { workspace = true, features = ["font-kit", "wayland", "x11"] }
 rust-embed = { workspace = true }
 vektra = { workspace = true, features = ["icons"] }
+
+[[example]]
+name = "button"
+path = "button/src/main.rs"
+
+[[example]]
+name = "custom_assets"
+path = "custom_assets/src/main.rs"
+
+[[example]]
+name = "icon_button"
+path = "icon_button/src/main.rs"
+
+[[example]]
+name = "tooltip"
+path = "tooltip/src/main.rs"

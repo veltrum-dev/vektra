@@ -40,6 +40,11 @@
         }
       }
     },
+    "tooltip": {
+      "type": "object",
+      "description": "The original content token set remains all-or-none. Placement, arrow, viewport, and shadow tokens are optional extensions with runtime foundation/semantic fallbacks.",
+      "required": ["background", "foreground", "border", "border-width", "padding-x", "padding-y", "radius", "font-size", "line-height", "max-width"]
+    },
     "button": {
       "type": "object",
       "required": ["variant", "size"],

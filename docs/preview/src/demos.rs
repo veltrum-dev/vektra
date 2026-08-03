@@ -1,4 +1,6 @@
 mod button;
+mod icon_button;
+mod tooltip;
 
 use gpui::{
     AnyElement, App, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
@@ -12,18 +14,24 @@ actions!(vektra_docs_preview, [Tab, TabPrev]);
 pub(crate) enum DemoSelection {
     ButtonBasic,
     ButtonShowcase,
+    IconButtonBasic,
+    TooltipBasic,
     Unknown(String),
 }
 
 impl DemoSelection {
     pub(crate) const DEFAULT_ID: &'static str = "button/basic";
     pub(crate) const SHOWCASE_ID: &'static str = "button/showcase";
+    pub(crate) const ICON_BUTTON_ID: &'static str = "icon-button/basic";
+    pub(crate) const TOOLTIP_ID: &'static str = "tooltip/basic";
 
     fn from_demo_id(demo_id: Option<&str>) -> Self {
         match demo_id {
             None => Self::ButtonBasic,
             Some(Self::DEFAULT_ID) => Self::ButtonBasic,
             Some(Self::SHOWCASE_ID) => Self::ButtonShowcase,
+            Some(Self::ICON_BUTTON_ID) => Self::IconButtonBasic,
+            Some(Self::TOOLTIP_ID) => Self::TooltipBasic,
             Some(value) => Self::Unknown(value.to_owned()),
         }
     }
@@ -32,13 +40,18 @@ impl DemoSelection {
         match self {
             Self::ButtonBasic => Self::DEFAULT_ID,
             Self::ButtonShowcase => Self::SHOWCASE_ID,
+            Self::IconButtonBasic => Self::ICON_BUTTON_ID,
+            Self::TooltipBasic => Self::TOOLTIP_ID,
             Self::Unknown(value) => value,
         }
     }
 
     fn status(&self) -> &'static str {
         match self {
-            Self::ButtonBasic | Self::ButtonShowcase => "ready",
+            Self::ButtonBasic
+            | Self::ButtonShowcase
+            | Self::IconButtonBasic
+            | Self::TooltipBasic => "ready",
             Self::Unknown(_) => "unknown-demo",
         }
     }
@@ -75,14 +88,18 @@ impl PreviewLang {
     fn unknown_body(self, demo_id: &str) -> String {
         match self {
             Self::ZhCn => format!(
-                "不支持 demo_id `{demo_id}`。当前支持的预览：`{}`、`{}`。",
+                "不支持 demo_id `{demo_id}`。当前支持的预览：`{}`、`{}`、`{}`、`{}`。",
                 DemoSelection::DEFAULT_ID,
-                DemoSelection::SHOWCASE_ID
+                DemoSelection::SHOWCASE_ID,
+                DemoSelection::ICON_BUTTON_ID,
+                DemoSelection::TOOLTIP_ID
             ),
             Self::EnUs => format!(
-                "Unsupported demo_id `{demo_id}`. Supported previews: `{}` and `{}`.",
+                "Unsupported demo_id `{demo_id}`. Supported previews: `{}`, `{}`, `{}`, and `{}`.",
                 DemoSelection::DEFAULT_ID,
-                DemoSelection::SHOWCASE_ID
+                DemoSelection::SHOWCASE_ID,
+                DemoSelection::ICON_BUTTON_ID,
+                DemoSelection::TOOLTIP_ID
             ),
         }
     }
@@ -160,6 +177,12 @@ impl Render for PreviewApp {
                 .button_demo
                 .render_showcase(self.language, window, cx)
                 .into_any_element(),
+            DemoSelection::IconButtonBasic => {
+                icon_button::render(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::TooltipBasic => {
+                tooltip::render(self.language, window, cx).into_any_element()
+            }
             DemoSelection::Unknown(demo_id) => {
                 render_unknown_demo(demo_id, self.language, window, cx).into_any_element()
             }
@@ -384,6 +407,8 @@ fn current_demo_id() -> Option<String> {
     match parse_demo_query(&query) {
         DemoSelection::ButtonBasic => Some(DemoSelection::DEFAULT_ID.to_owned()),
         DemoSelection::ButtonShowcase => Some(DemoSelection::SHOWCASE_ID.to_owned()),
+        DemoSelection::IconButtonBasic => Some(DemoSelection::ICON_BUTTON_ID.to_owned()),
+        DemoSelection::TooltipBasic => Some(DemoSelection::TOOLTIP_ID.to_owned()),
         DemoSelection::Unknown(value) => Some(value),
     }
 }

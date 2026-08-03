@@ -1,16 +1,19 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
 use gpui::{
-    App, AppContext, AssetSource, Bounds, Context, InteractiveElement, IntoElement, ParentElement,
-    Render, SharedString, Styled, Window, WindowBounds, WindowOptions, div, px, size,
+    App, AppContext, AssetSource, Bounds, Context, FocusHandle, InteractiveElement, IntoElement,
+    KeyBinding, ParentElement, Render, SharedString, Styled, Window, WindowBounds, WindowOptions,
+    actions, div, px, size,
 };
 use gpui_platform::application;
 use rust_embed::RustEmbed;
 use std::borrow::Cow;
 use vektra::{Button, Icon, IconButton, IconName, ThemeMode, current_theme, set_theme_mode};
 
+actions!(vektra_custom_assets_example, [Tab, TabPrev]);
+
 #[derive(RustEmbed)]
-#[folder = "assets"]
+#[folder = "custom_assets/assets"]
 #[include = "icons/**/*.svg"]
 struct AppAssets;
 
@@ -42,6 +45,26 @@ enum AppIconName {
 
 struct CustomAssetsExample {
     clicks: usize,
+    focus_handle: FocusHandle,
+}
+
+impl CustomAssetsExample {
+    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        window.focus(&focus_handle, cx);
+        Self {
+            clicks: 0,
+            focus_handle,
+        }
+    }
+
+    fn on_tab(&mut self, _: &Tab, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus_next(cx);
+    }
+
+    fn on_tab_prev(&mut self, _: &TabPrev, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus_prev(cx);
+    }
 }
 
 impl Render for CustomAssetsExample {
@@ -49,6 +72,9 @@ impl Render for CustomAssetsExample {
         let theme = current_theme(window, cx);
         div()
             .id("vektra-custom-assets-example")
+            .track_focus(&self.focus_handle)
+            .on_action(cx.listener(Self::on_tab))
+            .on_action(cx.listener(Self::on_tab_prev))
             .size_full()
             .bg(theme.semantic.background)
             .text_color(theme.semantic.foreground)
@@ -113,13 +139,17 @@ impl Render for CustomAssetsExample {
 fn run_example() {
     let assets = vektra::assets::Assets::with_overrides(AppAssets);
     application().with_assets(assets).run(|cx: &mut App| {
+        cx.bind_keys([
+            KeyBinding::new("tab", Tab, None),
+            KeyBinding::new("shift-tab", TabPrev, None),
+        ]);
         let bounds = Bounds::centered(None, size(px(560.), px(360.)), cx);
         cx.open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 ..Default::default()
             },
-            |_, cx| cx.new(|_| CustomAssetsExample { clicks: 0 }),
+            |window, cx| cx.new(|cx| CustomAssetsExample::new(window, cx)),
         )
         .expect("Custom Assets 示例窗口应能成功打开");
         cx.activate(true);

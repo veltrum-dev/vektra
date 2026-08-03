@@ -1,10 +1,12 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
 use gpui::{
-    App, AppContext, Bounds, Context, InteractiveElement, IntoElement, ParentElement, Render,
-    SharedString, StatefulInteractiveElement, Styled, Window, WindowBounds, WindowOptions, div, px,
-    size,
+    App, AppContext, Bounds, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
+    ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, WindowBounds,
+    WindowOptions, actions, div, px, size,
 };
+
+actions!(vektra_icon_button_example, [Tab, TabPrev]);
 use gpui_platform::application;
 use vektra::{
     ButtonSize, Icon, IconButton, IconButtonVariant, IconName, IconSource, ThemeMode,
@@ -14,14 +16,26 @@ use vektra::{
 struct IconButtonExample {
     clicks: usize,
     last_clicked: SharedString,
+    focus_handle: FocusHandle,
 }
 
 impl IconButtonExample {
-    fn new() -> Self {
+    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        window.focus(&focus_handle, cx);
         Self {
             clicks: 0,
             last_clicked: "暂无".into(),
+            focus_handle,
         }
+    }
+
+    fn on_tab(&mut self, _: &Tab, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus_next(cx);
+    }
+
+    fn on_tab_prev(&mut self, _: &TabPrev, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus_prev(cx);
     }
 
     fn record_click(&mut self, label: SharedString, _: &mut Window, cx: &mut Context<Self>) {
@@ -46,6 +60,9 @@ impl Render for IconButtonExample {
         let theme = current_theme(window, cx);
         div()
             .id("vektra-icon-button-example")
+            .track_focus(&self.focus_handle)
+            .on_action(cx.listener(Self::on_tab))
+            .on_action(cx.listener(Self::on_tab_prev))
             .size_full()
             .overflow_y_scroll()
             .bg(theme.semantic.background)
@@ -250,6 +267,8 @@ impl IconButtonExample {
         let clicked = SharedString::new_static(label);
         IconButton::new(id, IconName::Settings)
             .aria_label(label)
+            .aria_description(label)
+            .tooltip(label)
             .on_click_in(cx, move |this, _, window, cx| {
                 this.record_click(clicked.clone(), window, cx);
             })
@@ -264,6 +283,7 @@ impl IconButtonExample {
     ) -> IconButton {
         IconButton::new(id, IconSource::asset("icons/settings.svg"))
             .aria_label(label)
+            .tooltip(label)
             .variant(IconButtonVariant::Outline)
             .on_click_in(cx, move |this, _, window, cx| {
                 this.switch_theme(mode, window, cx);
@@ -275,13 +295,17 @@ fn run_example() {
     application()
         .with_assets(vektra::assets::Assets)
         .run(|cx: &mut App| {
+            cx.bind_keys([
+                KeyBinding::new("tab", Tab, None),
+                KeyBinding::new("shift-tab", TabPrev, None),
+            ]);
             let bounds = Bounds::centered(None, size(px(760.), px(620.)), cx);
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     ..Default::default()
                 },
-                |_, cx| cx.new(|_| IconButtonExample::new()),
+                |window, cx| cx.new(|cx| IconButtonExample::new(window, cx)),
             )
             .expect("IconButton 示例窗口应能成功打开");
             cx.activate(true);

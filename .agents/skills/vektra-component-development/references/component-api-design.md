@@ -5,6 +5,10 @@
 - 将必需信息放入构造函数。示例：稳定交互组件应让 `ElementId` 成为构造必填项，类似当前 `Button::new(id)` 与 `IconButton::new(id, icon)`。
 - 将可选配置设计为 consuming builder，返回 `Self`，保持 GPUI/Rust fluent 风格。
 - 使用语义 enum 表达 `variant`、`size`、`tone`、`state` 等稳定产品语义；避免大量布尔参数。
+- Tooltip、Popover、Menu、Dialog 等具有明确打开/关闭语义的浮层，表示当前受控状态时统一使用
+  `open(bool)`，不要为同一语义分别引入 `show`、`visible`、`is_open` 等 builder。只设置初始状态时
+  使用 `default_open(bool)`，不得用 `open` 伪装成受控 API。普通可见性以及 `expanded`、
+  `selected`、`active` 等不同产品语义不机械改名为 `open`。
 - 避免任意样式透传，除非能证明不会破坏主题、焦点、禁用、无障碍和组件结构。
 - 优先组合、slot 和显式状态输入。slot 图标、label、leading/trailing 内容等必须有明确尺寸、无障碍和主题语义。
 - 稳定交互组件应支持 `ElementId`，便于 GPUI 交互状态、焦点和测试定位。

@@ -1,7 +1,7 @@
 //! Vektra 自带资源的 GPUI `AssetSource` 实现与组合工具。
 //!
 //! 该 crate 负责把 Vektra 框架资源嵌入二进制，并通过 GPUI 原生资源接口提供给
-//! `Application::with_assets`。默认包含主题和 Button loading 指示器；启用 `icons`
+//! `Application::with_assets`。默认包含主题（含 Tooltip token）和 Button loading 指示器；启用 `icons`
 //! feature 后才包含其余 Vektra 内置 SVG 图标。
 
 use gpui::{AssetSource, Result, SharedString};
@@ -10,7 +10,7 @@ use std::{borrow::Cow, collections::BTreeSet};
 
 /// Vektra 默认资源集合。
 ///
-/// 该资源源默认提供 `themes/default/**/*` 和 Button 使用的
+/// 该资源源默认提供 `themes/default/**/*`（含 Tooltip token）和 Button 使用的
 /// `components/button/loading.svg`。
 /// 启用 `icons` feature 时，额外提供其他 `icons/**/*.svg` 内置图标。应用没有自定义
 /// 资源时，可以把该类型直接传给 GPUI：

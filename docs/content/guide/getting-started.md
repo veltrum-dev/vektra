@@ -69,3 +69,9 @@ fn main() {
 ## 与 GPUI 的关系
 
 Vektra 不替代 GPUI 的应用生命周期、窗口、Action 或焦点系统。它复用 GPUI element、`Context<T>`、`Window` 和主题资源机制。Button 负责自己的视觉状态、鼠标激活、Enter/Space 键盘激活与 disabled 行为。
+
+## Tab / Shift+Tab 焦点遍历
+
+Button 与 IconButton 会注册 GPUI Tab stop；当前锁定 GPUI revision 不会替宿主自动把真实 Tab 键映射为焦点遍历。窗口根 View 应持有稳定 `FocusHandle`、获得初始焦点，并在局部 Action handler 中调用 `window.focus_next(cx)`/`focus_prev(cx)`，同时绑定 `tab` 和 `shift-tab`。不要把这段接线放进 Vektra 全局初始化；完整、可编译模式见 Button、IconButton 桌面 example 和文档 preview runtime。
+
+配置 `.tooltip(...)` 后，Tab 聚焦停留 500ms 会显示 Tooltip；Escape 只关闭 Tooltip，不移动按钮焦点。

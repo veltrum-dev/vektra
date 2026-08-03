@@ -11,6 +11,7 @@ mod button;
 pub mod icon;
 mod icon_button;
 mod theme;
+mod tooltip;
 pub mod traits;
 
 pub use button::{Button, ButtonSize, ButtonVariant};
@@ -19,9 +20,12 @@ pub use icon::IconName;
 pub use icon::{Icon, IconSource, IntoIconSource};
 pub use icon_button::{IconButton, IconButtonVariant};
 pub use theme::{current_theme, resolved_theme_mode, semantic_colors, set_theme_mode, theme_mode};
+pub use tooltip::{Tooltip, TooltipPlacement};
 pub use traits::{Clickable, Disableable};
 pub use vektra_macros::IntoIconSource;
-pub use vektra_theme::{ResolvedTheme, ResolvedThemeMode, SemanticColors, ThemeMode};
+pub use vektra_theme::{
+    ResolvedTheme, ResolvedThemeMode, SemanticColors, ThemeMode, TooltipTokens,
+};
 
 /// Vektra 自带资源。
 ///

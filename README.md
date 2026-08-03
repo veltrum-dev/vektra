@@ -13,6 +13,8 @@ crates.io 上的 `vektra` 0.0.1 只用于保留项目名称，不包含当前组
 - 本地文档开发：[docs/README.md](docs/README.md)
 - 资源与图标：[docs/content/guide/assets-and-icons.md](docs/content/guide/assets-and-icons.md)
 - Button API：[docs/content/components/button.md](docs/content/components/button.md)
+- IconButton API：[docs/content/components/icon-button.md](docs/content/components/icon-button.md)
+- Tooltip API：[docs/content/components/tooltip.md](docs/content/components/tooltip.md)
 
 ## 许可证
 
@@ -21,10 +23,13 @@ Vektra 使用 [MIT License](LICENSE)。
 ## 最小示例
 
 ```rust
-use vektra::{Button, IconButton, IconSource};
+use vektra::{Button, IconButton, IconSource, TooltipPlacement};
 
 Button::new("save")
     .label("保存")
+    .tooltip("保存当前修改")
+    .tooltip_placement(TooltipPlacement::TopStart)
+    .aria_description("保存当前修改")
     .on_click(|_, _, _| {
         // 鼠标、Enter 和 Space 激活共享这个回调契约。
     });
@@ -34,7 +39,8 @@ Button::new("settings")
     .start_icon(IconSource::asset("icons/settings.svg"));
 
 IconButton::new("settings", IconSource::asset("icons/settings.svg"))
-    .aria_label("设置");
+    .aria_label("设置")
+    .tooltip("设置");
 ```
 
 启用内置图标：
@@ -46,9 +52,10 @@ vektra = { path = "crates/vektra", features = ["icons"] }
 ## 示例
 
 ```bash
-cargo run -p vektra-button-example
-cargo run -p vektra-icon-button-example
-cargo run -p vektra-custom-assets-example
+cargo run --example button
+cargo run --example icon_button
+cargo run --example custom_assets
+cargo run --example tooltip
 ```
 
 ## 常用开发命令

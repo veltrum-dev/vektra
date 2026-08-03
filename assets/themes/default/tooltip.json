@@ -1,0 +1,23 @@
+{
+  "tooltip": {
+    "background": { "$type": "color", "$value": "{semantic.surface}" },
+    "foreground": { "$type": "color", "$value": "{semantic.foreground}" },
+    "border": { "$type": "color", "$value": "{semantic.border}" },
+    "border-width": { "$type": "dimension", "$value": "{foundation.border.width}" },
+    "padding-x": { "$type": "dimension", "$value": "{foundation.space.2}" },
+    "padding-y": { "$type": "dimension", "$value": "{foundation.space.1_5}" },
+    "radius": { "$type": "dimension", "$value": "{foundation.radius.md}" },
+    "font-size": { "$type": "dimension", "$value": "{foundation.font.size.sm}" },
+    "line-height": { "$type": "dimension", "$value": "{foundation.space.4}" },
+    "max-width": { "$type": "dimension", "$value": { "value": 280, "unit": "px" } },
+    "anchor-gap": { "$type": "dimension", "$value": "{foundation.space.1}" },
+    "viewport-padding": { "$type": "dimension", "$value": "{foundation.space.2}" },
+    "arrow-width": { "$type": "dimension", "$value": "{foundation.space.3}" },
+    "arrow-height": { "$type": "dimension", "$value": "{foundation.space.1_5}" },
+    "shadow-color": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0.16 } },
+    "shadow-offset-x": { "$type": "dimension", "$value": "{foundation.space.0}" },
+    "shadow-offset-y": { "$type": "dimension", "$value": "{foundation.space.1}" },
+    "shadow-blur": { "$type": "dimension", "$value": "{foundation.space.2}" },
+    "shadow-spread": { "$type": "dimension", "$value": "{foundation.space.0}" }
+  }
+}

@@ -81,6 +81,9 @@ Button 默认按内容收缩。`.width(...)` 设置固定宽度，`.full_width()
 | `.progress(value)` | 设置确定进度并阻止激活。值域为 `0.0..=1.0`，越界与非有限值会安全归一。 |
 | `.selected(bool)` | 显式设置受控 toggle 状态；组件不会自动翻转。 |
 | `.auto_insert_space(bool)` | 控制两个汉字 label 的视觉自动空格，默认开启。 |
+| `.tooltip(text_or_tooltip)` | 接受字符串或 `Tooltip` 配置对象；字符串保持 500ms 自动触发，配置对象可设置 `open`、箭头、颜色和动画。 |
+| `.tooltip_placement(TooltipPlacement)` | 设置 Tooltip 优先位置，默认 `Bottom`；空间不足时仍会自动 flip/shift。 |
+| `.aria_description(text)` | 设置与视觉 Tooltip 相互独立的可访问补充描述。 |
 | `.on_click(handler)` | 注册标准 GPUI 点击回调：`Fn(&ClickEvent, &mut Window, &mut App)`。 |
 | `.on_click_in(cx, handler)` | 注册可访问宿主 Entity 状态的回调。 |
 | `.id()` | 返回稳定 `ElementId`。 |
@@ -133,6 +136,8 @@ activity 只表达状态与阻止重复激活，不拥有任务生命周期。�
 
 可用状态下，左键点击会阻止默认行为、停止传播并触发回调。聚焦 Button 后，Enter 在 keydown 触发，Space 在 keyup 触发；两者都会构造 `ClickEvent::Keyboard` 并进入同一点击回调。selected Button 仍使用相同激活路径。loading/progress 会消费鼠标和 Enter/Space（包括阻止 Space 默认滚动）但不触发业务回调；disabled 不触发这些路径。
 
+Button 注册 GPUI Tab stop，但在当前锁定 GPUI revision 中，宿主窗口仍需把真实 Tab/Shift+Tab 绑定到 `window.focus_next(cx)`/`focus_prev(cx)`；快速开始和桌面 example 展示了最小接线。字符串 Tooltip 在键盘焦点停留 500ms 后显示；`Tooltip::new(...).open(true)` 无需焦点即可显示，`open(false)` 强制关闭。Escape 关闭提示但保留按钮焦点；受控 `open(true)` 被关闭后需经历 `false -> true` 才会恢复。
+
 ## 焦点与无障碍
 
 Button 根节点始终使用 `Role::Button`，并用原始 label 设置 `aria_label`。可用及 busy 状态设置 `tab_index(0)`，`focus_visible` 使用主题中的 focus token 和 focus width；disabled 退出 Tab 顺序。
@@ -143,7 +148,7 @@ Button 根节点始终使用 `Role::Button`，并用原始 label 设置 `aria_la
 
 Button 的 normal、hover、pressed、focus-visible、disabled 及 selected 状态都来自 Vektra 主题 token。默认 Light/Dark 主题为每个 variant 提供完整 selected 状态矩阵；旧自定义主题可以省略 selected 扩展，运行时会用 pressed、focus-visible 和 disabled token 组合回退。loading/progress 颜色从当前可见前景色派生，不在渲染期解析 JSON 或读取文件。
 
-loading 动画使用 GPUI `AnimationExt`；系统或宿主启用 reduce-motion 后显示静态帧且不再请求动画帧。文档预览跟随 VitePress 当前 Light/Dark 主题；独立预览的 `theme=light|dark` 查询参数可强制主题，未提供或非法时使用 `ThemeMode::System`。
+loading 与 Tooltip 动画使用 GPUI `AnimationExt`；系统或宿主启用 reduce-motion 后显示静态帧且不再请求装饰动画帧。Tooltip 固定实例颜色不会自动适配 Light/Dark/System，对比度由调用方负责。文档预览跟随 VitePress 当前 Light/Dark 主题；独立预览的 `theme=light|dark` 查询参数可强制主题，未提供或非法时使用 `ThemeMode::System`。
 
 ## 响应式
 

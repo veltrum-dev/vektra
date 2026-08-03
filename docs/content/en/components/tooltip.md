@@ -1,0 +1,63 @@
+# Tooltip
+
+Tooltip provides short, supplementary plain-text help for Button and IconButton. Information required to finish a task must remain available elsewhere. Do not use Tooltip for errors, complex help, validation, or interactive content.
+
+## Live Preview
+
+<VektraPreview demo="tooltip/basic" title="Tooltip preview" :height="780" />
+
+<<< ../../../preview/src/demos/tooltip.rs{rust}
+
+## API and Semantics
+
+`Tooltip::new("Settings")` creates a configuration object, while `Tooltip::text("Settings", cx)` creates a GPUI `AnyView` with defaults. Button/IconButton `.tooltip(...)` accepts `&str`, `String`, `SharedString`, and `Tooltip`, so existing `.tooltip("Settings")` calls need no migration. `.tooltip_placement(TooltipPlacement::TopStart)` sets the preferred placement. The default is centered `Bottom`; collision handling may still flip or shift it.
+
+| API | Default and semantics |
+| --- | --- |
+| `Tooltip::new(text)` | Creates plain-text configuration with automatic triggering, an arrow, and animation enabled. |
+| `.open(bool)` | Sets explicit controlled state. Omitting it uses hover/keyboard-focus triggering. |
+| `.arrow(bool)` | Defaults to `true`. `false` removes both arrow drawing and arrow-height reservation while keeping the anchor gap. |
+| `.color(impl Into<Hsla>)` | Overrides the text color for this instance. |
+| `.bg_color(impl Into<Hsla>)` | Overrides the bubble and arrow background for this instance. |
+| `.animated(bool)` | Defaults to `true`. `false` moves immediately to each visibility end state. |
+
+`color` and `bg_color` accept `gpui::rgb(...)` directly, without `.into()`. Border, shadow, radius, padding, font size, and placement tokens still come from the active theme.
+
+`aria_label` is the name, `aria_description` is supplementary assistive information, and Tooltip is visual help. Vektra does not copy among them. An icon-only button still requires `aria_label`.
+
+## Lifecycle and Interaction
+
+- Without `open(...)`, hover or keyboard focus created by Tab/Shift+Tab shows after 500ms.
+- `open(true)` displays immediately after the trigger mounts, without hover/focus. `open(false)` forces the Tooltip closed and ignores automatic eligibility. Runtime changes use the matching transition.
+- Leaving during the delay, blur, or owner removal cancels the task. Leaving after display starts the exit transition.
+- Mouse-created focus does not start the keyboard path.
+- Escape dismisses a visible or pending Tooltip without moving trigger focus. Automatic mode requires leaving and re-entering the hover/focus cycle. For `open(true)`, the caller must send `false` and then `true`; unrelated rerenders do not reopen it.
+- Hover and focus share one trigger state, so one trigger never draws duplicate Tooltips. A window draws at most one Tooltip per frame. If a keyboard-focused trigger and a different hovered trigger are both eligible, pointer input ends the old keyboard eligibility and the hovered trigger takes over.
+- A disabled trigger cannot focus or activate, but its hover Tooltip can explain the disabled reason.
+
+Tooltip itself is not focusable, tabbable, clickable, or hoverable. Enter and Space continue to activate the trigger's business callback.
+
+## Placement, Theme, and Performance
+
+Tooltip anchors to the full union of the trigger's prepaint child bounds; it does not compress that rectangle into a mouse coordinate. Vektra measures and places the bubble in the same frame. It tries the preferred placement first, flips to the opposite main-axis side while preserving Start/Center/End when needed, chooses the roomier side when neither fits, and shifts along the cross axis. When enabled, the arrow follows the final side, is recomputed after shifting, and stays outside the rounded-corner safety area. Disabling it removes only arrow space; the themed anchor gap still separates the bubble from the trigger.
+
+| Placement | Alignment semantics |
+| --- | --- |
+| `TopStart` / `BottomStart` | Bubble left edge aligns to the trigger left edge. |
+| `Top` / `Bottom` | Bubble is horizontally centered on the trigger. |
+| `TopEnd` / `BottomEnd` | Bubble right edge aligns to the trigger right edge. |
+| `LeftStart` / `RightStart` | Bubble top edge aligns to the trigger top edge. |
+| `Left` / `Right` | Bubble is vertically centered on the trigger. |
+| `LeftEnd` / `RightEnd` | Bubble bottom edge aligns to the trigger bottom edge. |
+
+The bubble, arrow, surface background, foreground, border, `radius.md` corners, and light shadow default to Tooltip, semantic, and foundation tokens. Light, Dark, and System use the active theme. Instance `color`/`bg_color` overrides take priority, but fixed colors do not adapt to theme changes; the caller owns contrast. Long Chinese or English text wraps within the maximum width. In an extremely small viewport that cannot fit the trigger, gap, complete bubble, and shadow safety area together, the algorithm prioritizes visible content and uses best-effort placement, so normal spacing may be impossible.
+
+The default enter animation is about 120ms, fading in with roughly 2px of travel along the final placement direction; exit fades out over about 80ms. Animation does not affect measurement, final placement, or trigger hit testing. `.animated(false)` renders static end states immediately. GPUI `App::reduce_motion` also suppresses decorative frame scheduling. Only configured triggers create a small keyed state; generation guards and owner lifetime cancel stale delay/transition tasks, and invisible content is not laid out. Large lists should be virtualized so state exists only for mounted rows.
+
+## v1 Limits
+
+- Plain text only: no rich text, links, buttons, or arbitrary children.
+- The Tooltip itself is not hoverable. There are no custom animation-duration/easing/transition, border, shadow, radius, padding, offset, or child builders.
+- No Root, Provider, global initialization, general Overlay, or public `Tooltipable` trait.
+- Due to a GPUI constraint, a window draws at most one Tooltip per frame; Vektra adds no global arbitration layer.
+- The host still maps real Tab/Shift+Tab keys to GPUI focus traversal.
