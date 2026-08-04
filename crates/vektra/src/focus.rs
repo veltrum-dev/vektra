@@ -83,6 +83,10 @@ pub(crate) fn set_observers(
     });
 }
 
+pub(crate) fn handle(state: &Entity<FocusState>, cx: &App) -> FocusHandle {
+    state.read(cx).focus_handle.clone()
+}
+
 pub(crate) fn attach_interaction(
     element: Stateful<Div>,
     state: &Entity<FocusState>,

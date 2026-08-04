@@ -569,7 +569,7 @@ impl Render for CheckboxIndependenceView {
                     .checked(self.checked)
                     .on_focus_in(cx, |this, _, _| this.focus_count += 1)
                     .on_blur_in(cx, |this, _, _| this.blur_count += 1)
-                    .on_change_in(cx, |this, next, _, _, cx| {
+                    .on_change_in(cx, |this, next, _, cx| {
                         this.checked = next;
                         this.change_count += 1;
                         cx.notify();

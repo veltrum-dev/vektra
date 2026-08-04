@@ -38,6 +38,9 @@ const BUTTON_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
 const CHECKBOX_VISUAL_STATES: &[&str] = &["unchecked", "checked", "indeterminate"];
 const CHECKBOX_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
 const CHECKBOX_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
+const RADIO_SELECTION_STATES: &[&str] = &["unselected", "selected"];
+const RADIO_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
+const RADIO_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
 const SWITCH_VISUAL_STATES: &[&str] = &["unchecked", "checked"];
 const SWITCH_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
 const SWITCH_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
@@ -155,6 +158,62 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
         for size in CHECKBOX_SIZES {
             for field in checkbox_size_fields {
                 tokens.required(&format!("checkbox.size.{size}.{field}"))?;
+            }
+        }
+    }
+
+    let radio_state_fields = [
+        "background",
+        "indicator-background",
+        "border",
+        "dot",
+        "label",
+        "description",
+    ];
+    let has_radio_state_extension = RADIO_SELECTION_STATES.iter().any(|selection| {
+        RADIO_STATES.iter().any(|state| {
+            radio_state_fields.iter().any(|field| {
+                tokens
+                    .get(&format!("radio.state.{selection}.{state}.{field}"))
+                    .is_some()
+            })
+        })
+    });
+    if has_radio_state_extension {
+        tokens.required("radio.border-width")?;
+        tokens.required("radio.focus-width")?;
+        for selection in RADIO_SELECTION_STATES {
+            for state in RADIO_STATES {
+                for field in radio_state_fields {
+                    tokens.required(&format!("radio.state.{selection}.{state}.{field}"))?;
+                }
+            }
+        }
+    }
+
+    let radio_size_fields = [
+        "indicator-size",
+        "dot-size",
+        "label-gap",
+        "description-gap",
+        "font-size",
+        "line-height",
+        "description-font-size",
+        "description-line-height",
+        "hit-size",
+        "hit-padding-x",
+        "hit-padding-y",
+        "group-gap",
+    ];
+    let has_radio_size_extension = RADIO_SIZES.iter().any(|size| {
+        radio_size_fields
+            .iter()
+            .any(|field| tokens.get(&format!("radio.size.{size}.{field}")).is_some())
+    });
+    if has_radio_size_extension {
+        for size in RADIO_SIZES {
+            for field in radio_size_fields {
+                tokens.required(&format!("radio.size.{size}.{field}"))?;
             }
         }
     }

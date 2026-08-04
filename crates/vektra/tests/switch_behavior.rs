@@ -5,8 +5,8 @@ use gpui::{
 };
 use std::{cell::RefCell, rc::Rc, time::Duration};
 use vektra::{
-    Clickable, ComponentSize, Disableable, Focusable, IconSource, Sizable, Switch, SwitchContent,
-    ThemeMode, set_theme_mode,
+    Changeable, Clickable, ComponentSize, Disableable, Focusable, IconSource, Sizable, Switch,
+    SwitchContent, ThemeMode, set_theme_mode,
 };
 
 actions!(switch_behavior_test, [Tab]);
@@ -27,8 +27,11 @@ fn switch_is_a_root_export_with_inherent_forwarding_builders() {
             .cursor_style(gpui::CursorStyle::PointingHand)
             .on_click(|_, _, _| {})
     }
+    fn changeable<C: Changeable<bool>>(component: C) -> C {
+        component.on_change(|_, _, _| {})
+    }
 
-    let _ = clickable(focusable(sizable(disable(
+    let _ = changeable(clickable(focusable(sizable(disable(
         Switch::new("public")
             .checked(true)
             .label("通知")
@@ -43,10 +46,10 @@ fn switch_is_a_root_export_with_inherent_forwarding_builders() {
             .loading(true)
             .loading(false)
             .transition_duration(Duration::from_millis(240))
-            .on_change(|_, _, _, _| {})
+            .on_change(|_, _, _| {})
             .on_focus(|_, _| {})
             .on_blur(|_, _| {}),
-    ))));
+    )))));
 }
 
 struct SwitchView {
@@ -55,7 +58,7 @@ struct SwitchView {
     loading: bool,
     transition_duration: Duration,
     content_mode: bool,
-    changes: Vec<(bool, bool)>,
+    changes: Vec<bool>,
     parent_clicks: usize,
     parent_keys: usize,
 }
@@ -96,8 +99,8 @@ impl Render for SwitchView {
             .disabled(self.disabled)
             .loading(self.loading)
             .transition_duration(self.transition_duration)
-            .on_change_in(cx, |this, next_checked, event, _, cx| {
-                this.changes.push((next_checked, event.is_keyboard()));
+            .on_change_in(cx, |this, next_checked, _, cx| {
+                this.changes.push(next_checked);
                 this.checked = next_checked;
                 cx.notify();
             });
@@ -161,12 +164,12 @@ impl Render for HandlerPrecedenceView {
         let switch = Switch::new("handler-precedence").label("处理器优先级");
         let switch = if self.click_last {
             switch
-                .on_change_in(cx, |this, _, _, _, _| this.change_count += 1)
+                .on_change_in(cx, |this, _, _, _| this.change_count += 1)
                 .on_click_in(cx, |this, _, _, _| this.click_count += 1)
         } else {
             switch
                 .on_click_in(cx, |this, _, _, _| this.click_count += 1)
-                .on_change_in(cx, |this, _, _, _, _| this.change_count += 1)
+                .on_change_in(cx, |this, _, _, _| this.change_count += 1)
         };
         div()
             .id("handler-precedence-root")
@@ -184,10 +187,7 @@ fn switch_mouse_space_enter_and_disabled_follow_controlled_contract(cx: &mut Tes
     let (view, cx) = cx.add_window_view(|_, _| SwitchView::new(false, false, false));
     draw(cx);
     cx.simulate_click(point(px(18.), px(18.)), Modifiers::none());
-    assert_eq!(
-        view.read_with(cx, |view, _| view.changes.clone()),
-        [(true, false)]
-    );
+    assert_eq!(view.read_with(cx, |view, _| view.changes.clone()), [true]);
 
     cx.update(|window, cx| window.focus_next(cx));
     cx.simulate_event(KeyDownEvent {
@@ -201,7 +201,7 @@ fn switch_mouse_space_enter_and_disabled_follow_controlled_contract(cx: &mut Tes
     });
     assert_eq!(
         view.read_with(cx, |view, _| view.changes.clone()),
-        [(true, false), (false, true)]
+        [true, false]
     );
 
     cx.simulate_keystrokes("enter");
@@ -290,10 +290,7 @@ fn content_mode_preserves_mouse_space_enter_and_disabled_behavior(cx: &mut TestA
     let (view, cx) = cx.add_window_view(|_, _| SwitchView::new(false, false, true));
     draw(cx);
     cx.simulate_click(point(px(30.), px(18.)), Modifiers::none());
-    assert_eq!(
-        view.read_with(cx, |view, _| view.changes.clone()),
-        [(true, false)]
-    );
+    assert_eq!(view.read_with(cx, |view, _| view.changes.clone()), [true]);
 
     draw(cx);
     cx.update(|window, cx| window.focus_next(cx));
@@ -307,7 +304,7 @@ fn content_mode_preserves_mouse_space_enter_and_disabled_behavior(cx: &mut TestA
     });
     assert_eq!(
         view.read_with(cx, |view, _| view.changes.clone()),
-        [(true, false), (false, true)]
+        [true, false]
     );
     cx.simulate_event(KeyDownEvent {
         keystroke: Keystroke::parse("enter").unwrap(),
@@ -340,10 +337,7 @@ fn content_mode_renders_in_all_theme_modes_and_with_reduced_motion(cx: &mut Test
     cx.update(|_, cx| cx.set_reduce_motion(true));
     cx.simulate_click(point(px(30.), px(18.)), Modifiers::none());
     draw(cx);
-    assert_eq!(
-        view.read_with(cx, |view, _| view.changes.clone()),
-        [(true, false)]
-    );
+    assert_eq!(view.read_with(cx, |view, _| view.changes.clone()), [true]);
 }
 
 #[gpui::test]

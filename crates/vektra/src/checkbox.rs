@@ -6,13 +6,12 @@ use crate::{
     icon::{Icon, IconSource, IntoIconSource},
     size::{ComponentSize, component_size},
     theme,
-    traits::{Disableable, Focusable, Sizable},
+    traits::{Changeable, Disableable, Focusable, Sizable},
 };
 use gpui::{
-    App, ClickEvent, Context, CursorStyle, ElementId, InteractiveElement, IntoElement,
-    KeyDownEvent, KeyUpEvent, KeyboardButton, Modifiers, MouseButton, ParentElement, RenderOnce,
-    Role, SharedString, StatefulInteractiveElement, Styled, Toggled, Window, div,
-    prelude::FluentBuilder,
+    App, Context, CursorStyle, ElementId, InteractiveElement, IntoElement, KeyDownEvent,
+    KeyUpEvent, Modifiers, MouseButton, ParentElement, RenderOnce, Role, SharedString,
+    StatefulInteractiveElement, Styled, Toggled, Window, div, prelude::FluentBuilder,
 };
 use std::rc::Rc;
 use vektra_theme::{CheckboxStateTokens, ResolvedTheme};
@@ -20,7 +19,7 @@ use vektra_theme::{CheckboxStateTokens, ResolvedTheme};
 const DEFAULT_CHECKED_ICON: &str = "components/checkbox/check.svg";
 const DEFAULT_INDETERMINATE_ICON: &str = "components/checkbox/minus.svg";
 
-type ChangeHandler = Rc<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static>;
+type ChangeHandler = Rc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
 
 /// Vektra Checkbox。
 ///
@@ -180,10 +179,7 @@ impl Checkbox {
     ///
     /// 回调收到的 bool 是下一 checked 值。Checkbox 不会自行持久化该值，宿主应在
     /// 回调中更新自己的状态并触发重绘。
-    pub fn on_change(
-        mut self,
-        handler: impl Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
+    pub fn on_change(mut self, handler: impl Fn(bool, &mut Window, &mut App) + 'static) -> Self {
         self.on_change = Some(Rc::new(handler));
         self
     }
@@ -192,14 +188,12 @@ impl Checkbox {
     pub fn on_change_in<T: 'static>(
         self,
         cx: &Context<T>,
-        handler: impl Fn(&mut T, bool, &ClickEvent, &mut Window, &mut Context<T>) + 'static,
+        handler: impl Fn(&mut T, bool, &mut Window, &mut Context<T>) + 'static,
     ) -> Self {
-        let listener = cx.listener(move |this, payload: &(bool, ClickEvent), window, cx| {
-            handler(this, payload.0, &payload.1, window, cx);
+        let listener = cx.listener(move |this, next_checked: &bool, window, cx| {
+            handler(this, *next_checked, window, cx);
         });
-        self.on_change(move |next_checked, event, window, cx| {
-            listener(&(next_checked, event.clone()), window, cx);
-        })
+        self.on_change(move |next_checked, window, cx| listener(&next_checked, window, cx))
     }
 
     /// 注册组件实际获得焦点时调用的回调。
@@ -319,6 +313,20 @@ impl Disableable for Checkbox {
     }
 }
 
+impl Changeable<bool> for Checkbox {
+    fn on_change(self, handler: impl Fn(bool, &mut Window, &mut App) + 'static) -> Self {
+        Checkbox::on_change(self, handler)
+    }
+
+    fn on_change_in<T: 'static>(
+        self,
+        cx: &Context<T>,
+        handler: impl Fn(&mut T, bool, &mut Window, &mut Context<T>) + 'static,
+    ) -> Self {
+        Checkbox::on_change_in(self, cx, handler)
+    }
+}
+
 impl Focusable for Checkbox {
     fn on_focus(self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         Checkbox::on_focus(self, handler)
@@ -360,8 +368,8 @@ impl RenderOnce for Checkbox {
         let on_change = self.on_change.clone().filter(|_| !self.disabled);
         let on_click: Option<ClickHandler> = on_change.map(|handler| {
             Rc::new(
-                move |event: &ClickEvent, window: &mut Window, cx: &mut App| {
-                    handler(next_checked, event, window, cx);
+                move |_: &gpui::ClickEvent, window: &mut Window, cx: &mut App| {
+                    handler(next_checked, window, cx);
                 },
             ) as ClickHandler
         });
@@ -557,7 +565,11 @@ fn apply_interaction(
                 if is_plain_key_up(event, "space") {
                     window.prevent_default();
                     cx.stop_propagation();
-                    (handler)(&button::keyboard_click(KeyboardButton::Space), window, cx);
+                    (handler)(
+                        &button::keyboard_click(gpui::KeyboardButton::Space),
+                        window,
+                        cx,
+                    );
                 }
             })
         })

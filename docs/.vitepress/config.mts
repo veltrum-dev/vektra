@@ -79,6 +79,7 @@ function zhThemeConfig(): DefaultTheme.Config {
         items: [
           { text: "Button", link: "/components/button" },
           { text: "Checkbox", link: "/components/checkbox" },
+          { text: "Radio", link: "/components/radio" },
           { text: "Switch", link: "/components/switch" },
           { text: "IconButton", link: "/components/icon-button" },
           { text: "Tooltip", link: "/components/tooltip" }
@@ -88,6 +89,7 @@ function zhThemeConfig(): DefaultTheme.Config {
         text: "API 参考",
         items: [
           { text: "总览", link: "/api/" },
+          { text: "Changeable", link: "/api/changeable" },
           { text: "Clickable", link: "/api/clickable" },
           { text: "Focusable", link: "/api/focusable" },
           { text: "Disableable", link: "/api/disableable" },
@@ -136,6 +138,7 @@ function enThemeConfig(): DefaultTheme.Config {
         items: [
           { text: "Button", link: "/en/components/button" },
           { text: "Checkbox", link: "/en/components/checkbox" },
+          { text: "Radio", link: "/en/components/radio" },
           { text: "Switch", link: "/en/components/switch" },
           { text: "IconButton", link: "/en/components/icon-button" },
           { text: "Tooltip", link: "/en/components/tooltip" }
@@ -145,6 +148,7 @@ function enThemeConfig(): DefaultTheme.Config {
         text: "API Reference",
         items: [
           { text: "Overview", link: "/en/api/" },
+          { text: "Changeable", link: "/en/api/changeable" },
           { text: "Clickable", link: "/en/api/clickable" },
           { text: "Focusable", link: "/en/api/focusable" },
           { text: "Disableable", link: "/en/api/disableable" },

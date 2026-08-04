@@ -3,8 +3,8 @@ use gpui::{
     ParentElement, Render, Styled, TestAppContext, Window, div, point, px,
 };
 use vektra::{
-    Button, Checkbox, Clickable, ComponentSize, Disableable, IconButton, IconSource, Sizable,
-    Switch,
+    Button, Changeable, Checkbox, Clickable, ComponentSize, Disableable, IconButton, IconSource,
+    Sizable, Switch,
 };
 
 #[test]
@@ -72,6 +72,47 @@ fn components_with_standard_activation_entry_implement_clickable() {
     let _switch = clickable(Switch::new("switch-clickable"));
 }
 
+#[test]
+fn controlled_components_implement_changeable_with_inherent_forwarding() {
+    fn changeable<C: Changeable<bool>>(component: C) -> C {
+        component.on_change(|_, _, _| {})
+    }
+
+    let _checkbox = changeable(Checkbox::new("checkbox-changeable").on_change(|_, _, _| {}));
+    let _switch = changeable(Switch::new("switch-changeable").on_change(|_, _, _| {}));
+}
+
+struct GenericChangeableView {
+    values: Vec<bool>,
+}
+
+fn bind_bool_change<C: Changeable<bool>>(component: C, cx: &Context<GenericChangeableView>) -> C {
+    component.on_change_in(cx, |this, value, _, cx| {
+        this.values.push(value);
+        cx.notify();
+    })
+}
+
+impl Render for GenericChangeableView {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .id("generic-changeable-root")
+            .size(px(180.))
+            .child(bind_bool_change(
+                Checkbox::new("generic-changeable").label("泛型变化"),
+                cx,
+            ))
+    }
+}
+
+#[gpui::test]
+fn generic_changeable_on_change_in_uses_the_same_behavior(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, _| GenericChangeableView { values: Vec::new() });
+    draw(cx);
+    cx.simulate_click(point(px(18.), px(18.)), Modifiers::none());
+    assert_eq!(view.read_with(cx, |view, _| view.values.clone()), [true]);
+}
+
 #[derive(Debug, Clone, Copy)]
 enum Target {
     Button,
@@ -115,16 +156,9 @@ impl CapabilityView {
         cx.notify();
     }
 
-    fn record_checkbox(
-        &mut self,
-        next_checked: bool,
-        event: &ClickEvent,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn record_checkbox(&mut self, next_checked: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.count += 1;
         self.notify_count += 1;
-        self.saw_keyboard_event = event.is_keyboard();
         self.last_checkbox_next = Some(next_checked);
         window.prevent_default();
         cx.notify();
@@ -156,8 +190,8 @@ impl Render for CapabilityView {
                 Checkbox::new("target")
                     .label("接受条款")
                     .disabled(self.disabled)
-                    .on_change_in(cx, |this, next_checked, event, window, cx| {
-                        this.record_checkbox(next_checked, event, window, cx);
+                    .on_change_in(cx, |this, next_checked, window, cx| {
+                        this.record_checkbox(next_checked, window, cx);
                     }),
             ),
         }
@@ -202,17 +236,12 @@ fn run_checkbox_activation(
     cx: &mut TestAppContext,
     disabled: bool,
     activation: Activation,
-) -> (usize, usize, bool, Option<bool>) {
+) -> (usize, usize, Option<bool>) {
     let (view, cx) = cx.add_window_view(|_, _| CapabilityView::new(Target::Checkbox, disabled));
     draw(cx);
     activate(cx, activation);
     view.read_with(cx, |view, _| {
-        (
-            view.count,
-            view.notify_count,
-            view.saw_keyboard_event,
-            view.last_checkbox_next,
-        )
+        (view.count, view.notify_count, view.last_checkbox_next)
     })
 }
 
@@ -268,7 +297,7 @@ fn icon_button_on_click_in_space_updates_entity(cx: &mut TestAppContext) {
 fn checkbox_on_change_in_mouse_updates_entity(cx: &mut TestAppContext) {
     assert_eq!(
         run_checkbox_activation(cx, false, Activation::Mouse),
-        (1, 1, false, Some(true))
+        (1, 1, Some(true))
     );
 }
 
@@ -276,7 +305,7 @@ fn checkbox_on_change_in_mouse_updates_entity(cx: &mut TestAppContext) {
 fn checkbox_on_change_in_space_updates_entity(cx: &mut TestAppContext) {
     assert_eq!(
         run_checkbox_activation(cx, false, Activation::Space),
-        (1, 1, true, Some(true))
+        (1, 1, Some(true))
     );
 }
 
@@ -284,7 +313,7 @@ fn checkbox_on_change_in_space_updates_entity(cx: &mut TestAppContext) {
 fn checkbox_enter_does_not_activate(cx: &mut TestAppContext) {
     assert_eq!(
         run_checkbox_activation(cx, false, Activation::Enter),
-        (0, 0, false, None)
+        (0, 0, None)
     );
 }
 
@@ -340,7 +369,7 @@ fn icon_button_disabled_blocks_space(cx: &mut TestAppContext) {
 fn checkbox_disabled_blocks_mouse(cx: &mut TestAppContext) {
     assert_eq!(
         run_checkbox_activation(cx, true, Activation::Mouse),
-        (0, 0, false, None)
+        (0, 0, None)
     );
 }
 
@@ -348,6 +377,6 @@ fn checkbox_disabled_blocks_mouse(cx: &mut TestAppContext) {
 fn checkbox_disabled_blocks_space(cx: &mut TestAppContext) {
     assert_eq!(
         run_checkbox_activation(cx, true, Activation::Space),
-        (0, 0, false, None)
+        (0, 0, None)
     );
 }

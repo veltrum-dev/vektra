@@ -130,6 +130,61 @@ pub struct CheckboxTokens {
     pub focus_width: Pixels,
 }
 
+/// Radio 某个选中/交互状态的 GPUI 样式 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RadioStateTokens {
+    /// 单项交互背景色。
+    pub background: Hsla,
+    /// 圆形指示器背景色。
+    pub indicator_background: Hsla,
+    /// 圆形指示器边框色。
+    pub border: Hsla,
+    /// 选中圆点颜色。
+    pub dot: Hsla,
+    /// 主标签文本色。
+    pub label: Hsla,
+    /// 描述文本色。
+    pub description: Hsla,
+}
+
+/// RadioGroup 某个语义尺寸的 GPUI 尺寸 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RadioSizeTokens {
+    /// 圆形指示器尺寸。
+    pub indicator_size: Pixels,
+    /// 选中圆点尺寸。
+    pub dot_size: Pixels,
+    /// 指示器与文本之间的间距。
+    pub label_gap: Pixels,
+    /// 标签与描述之间的间距。
+    pub description_gap: Pixels,
+    /// 主标签字号。
+    pub font_size: Pixels,
+    /// 主标签行高。
+    pub line_height: Pixels,
+    /// 描述字号。
+    pub description_font_size: Pixels,
+    /// 描述行高。
+    pub description_line_height: Pixels,
+    /// 单项最小点击尺寸。
+    pub hit_size: Pixels,
+    /// 单项水平内边距。
+    pub hit_padding_x: Pixels,
+    /// 单项垂直内边距。
+    pub hit_padding_y: Pixels,
+    /// 组内相邻单项间距。
+    pub group_gap: Pixels,
+}
+
+/// Radio 组件所需的公共 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RadioTokens {
+    /// 指示器边框宽度。
+    pub border_width: Pixels,
+    /// focus-visible 边框宽度。
+    pub focus_width: Pixels,
+}
+
 /// Switch 某个 visual/interaction state 的 GPUI 样式 token。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SwitchStateTokens {
@@ -266,6 +321,8 @@ pub struct ResolvedTheme {
     pub button: ButtonTokens,
     /// Checkbox 公共 token。
     pub checkbox: CheckboxTokens,
+    /// Radio 公共 token。
+    pub radio: RadioTokens,
     /// Switch 公共 token。
     pub switch: SwitchTokens,
     /// Tooltip 公共 token。
@@ -318,6 +375,18 @@ impl ResolvedTheme {
                 focus_width: optional_dimension(
                     &tokens,
                     "checkbox.focus-width",
+                    "foundation.border.focus",
+                )?,
+            },
+            radio: RadioTokens {
+                border_width: optional_dimension(
+                    &tokens,
+                    "radio.border-width",
+                    "foundation.border.width",
+                )?,
+                focus_width: optional_dimension(
+                    &tokens,
+                    "radio.focus-width",
                     "foundation.border.focus",
                 )?,
             },
@@ -542,6 +611,111 @@ impl ResolvedTheme {
             hit_padding_y: optional_dimension(
                 &self.tokens,
                 &format!("{prefix}.hit-padding-y"),
+                "foundation.space.1",
+            )?,
+        })
+    }
+
+    /// 读取 Radio 的选中/交互状态 token。
+    pub fn radio_state(&self, selected: bool, state: &str) -> Result<RadioStateTokens, ThemeError> {
+        let selection = if selected { "selected" } else { "unselected" };
+        let prefix = format!("radio.state.{selection}.{state}");
+        Ok(RadioStateTokens {
+            background: optional_color(
+                &self.tokens,
+                &format!("{prefix}.background"),
+                radio_background_fallback(state),
+            )?,
+            indicator_background: optional_color(
+                &self.tokens,
+                &format!("{prefix}.indicator-background"),
+                radio_indicator_background_fallback(state),
+            )?,
+            border: optional_color(
+                &self.tokens,
+                &format!("{prefix}.border"),
+                radio_border_fallback(selected, state),
+            )?,
+            dot: optional_color(
+                &self.tokens,
+                &format!("{prefix}.dot"),
+                radio_dot_fallback(selected, state),
+            )?,
+            label: optional_color(
+                &self.tokens,
+                &format!("{prefix}.label"),
+                checkbox_label_fallback(state),
+            )?,
+            description: optional_color(
+                &self.tokens,
+                &format!("{prefix}.description"),
+                radio_description_fallback(state),
+            )?,
+        })
+    }
+
+    /// 读取 RadioGroup 的语义尺寸 token。
+    pub fn radio_size(&self, size: &str) -> Result<RadioSizeTokens, ThemeError> {
+        let prefix = format!("radio.size.{size}");
+        Ok(RadioSizeTokens {
+            indicator_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.indicator-size"),
+                checkbox_box_size_fallback(size),
+            )?,
+            dot_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.dot-size"),
+                radio_dot_size_fallback(size),
+            )?,
+            label_gap: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.label-gap"),
+                checkbox_label_gap_fallback(size),
+            )?,
+            description_gap: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.description-gap"),
+                "foundation.space.1",
+            )?,
+            font_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.font-size"),
+                checkbox_font_size_fallback(size),
+            )?,
+            line_height: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.line-height"),
+                checkbox_line_height_fallback(size),
+            )?,
+            description_font_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.description-font-size"),
+                "foundation.font.size.xs",
+            )?,
+            description_line_height: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.description-line-height"),
+                "foundation.space.4",
+            )?,
+            hit_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.hit-size"),
+                "foundation.space.4",
+            )?,
+            hit_padding_x: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.hit-padding-x"),
+                "foundation.space.1",
+            )?,
+            hit_padding_y: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.hit-padding-y"),
+                "foundation.space.1",
+            )?,
+            group_gap: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.group-gap"),
                 "foundation.space.1",
             )?,
         })
@@ -853,6 +1027,62 @@ fn checkbox_line_height_fallback(size: &str) -> &'static str {
         "sm" => "foundation.space.4",
         "md" | "lg" => "foundation.space.4",
         _ => "foundation.space.4",
+    }
+}
+
+fn radio_background_fallback(state: &str) -> &'static str {
+    match state {
+        "hover" => "semantic.accent",
+        "pressed" => "semantic.accent-pressed",
+        _ => "semantic.background",
+    }
+}
+
+fn radio_indicator_background_fallback(state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-background"
+    } else {
+        "semantic.background"
+    }
+}
+
+fn radio_border_fallback(selected: bool, state: &str) -> &'static str {
+    if state == "focus-visible" {
+        "semantic.ring"
+    } else if state == "disabled" {
+        "semantic.disabled-border"
+    } else if selected {
+        "semantic.primary"
+    } else {
+        "semantic.input-border"
+    }
+}
+
+fn radio_dot_fallback(selected: bool, state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-foreground"
+    } else if selected {
+        "semantic.primary"
+    } else {
+        "semantic.background"
+    }
+}
+
+fn radio_description_fallback(state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-foreground"
+    } else {
+        "semantic.on-muted"
+    }
+}
+
+fn radio_dot_size_fallback(size: &str) -> &'static str {
+    match size {
+        "xs" => "foundation.space.1",
+        "sm" => "foundation.space.1_5",
+        "md" => "foundation.space.2",
+        "lg" => "foundation.space.2_5",
+        _ => "foundation.space.2",
     }
 }
 

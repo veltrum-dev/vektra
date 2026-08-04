@@ -36,7 +36,11 @@ fn button_showcase_is_selected_by_stable_id() {
 }
 
 #[test]
-fn checkbox_switch_icon_button_and_tooltip_are_selected_by_stable_ids() {
+fn checkbox_radio_switch_icon_button_and_tooltip_are_selected_by_stable_ids() {
+    assert_eq!(
+        parse_demo_query("?demo=radio/basic"),
+        DemoSelection::RadioBasic
+    );
     assert_eq!(
         parse_demo_query("?demo=checkbox/basic"),
         DemoSelection::CheckboxBasic
@@ -72,6 +76,17 @@ fn switch_demo_covers_compact_and_all_state_content_forms() {
     for size in ["Xs", "Sm", "Md", "Lg"] {
         assert!(source.contains(&format!("ComponentSize::{size}")));
     }
+}
+
+#[test]
+fn radio_demo_uses_controlled_group_and_disabled_item() {
+    let source = include_str!("../../src/demos/radio.rs");
+
+    assert!(source.contains("RadioGroup::new(\"preview-plan-group\")"));
+    assert!(source.contains(".selected_value(self.plan)"));
+    assert!(source.contains(".on_change_in"));
+    assert!(source.contains("Radio::new"));
+    assert!(source.contains(".disabled(true)"));
 }
 
 #[test]

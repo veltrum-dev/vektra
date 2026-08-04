@@ -69,7 +69,7 @@ impl Render for SwitchExample {
                         Switch::new("notifications")
                             .checked(self.notifications)
                             .label("MD · 推送通知（紧凑，默认 180ms）")
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.notifications = next_checked;
                                 cx.notify();
                             })
@@ -90,7 +90,7 @@ impl Render for SwitchExample {
                             .label("SM · 自动更新")
                             .size(ComponentSize::Sm)
                             .transition_duration(Duration::from_millis(100))
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.analytics = next_checked;
                                 cx.notify();
                             }),
@@ -106,7 +106,7 @@ impl Render for SwitchExample {
                             )))
                             .label("MD · 声音提醒（默认 180ms）")
                             .size(ComponentSize::Md)
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.icon_status = next_checked;
                                 cx.notify();
                             }),
@@ -125,7 +125,7 @@ impl Render for SwitchExample {
                             .label("LG · 在线状态")
                             .size(ComponentSize::Lg)
                             .transition_duration(Duration::from_millis(400))
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.detailed_status = next_checked;
                                 cx.notify();
                             }),
@@ -137,7 +137,7 @@ impl Render for SwitchExample {
                             .unchecked_content(SwitchContent::text("关闭"))
                             .label("MD · 无动画切换（Duration::ZERO）")
                             .transition_duration(Duration::ZERO)
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.instant_status = next_checked;
                                 cx.notify();
                             }),

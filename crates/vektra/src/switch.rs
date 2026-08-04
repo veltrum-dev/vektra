@@ -6,7 +6,7 @@ use crate::{
     icon::{Icon, IconSource, IntoIconSource},
     size::{ComponentSize, component_size},
     theme,
-    traits::{Clickable, Disableable, Focusable, Sizable},
+    traits::{Changeable, Clickable, Disableable, Focusable, Sizable},
 };
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, Context, CursorStyle, ElementId,
@@ -17,7 +17,13 @@ use gpui::{
 use std::{rc::Rc, time::Duration};
 use vektra_theme::{ResolvedTheme, SwitchSizeTokens, SwitchStateTokens};
 
-type ChangeHandler = Rc<dyn Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static>;
+type ChangeHandler = Rc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
+
+#[derive(Clone)]
+enum ActivationHandler {
+    Change(ChangeHandler),
+    Click(ClickHandler),
+}
 
 pub(crate) const DEFAULT_SWITCH_TRANSITION_DURATION: Duration = Duration::from_millis(180);
 const SWITCH_LOADING_SPINNER_DURATION: Duration = Duration::from_millis(900);
@@ -92,7 +98,7 @@ pub struct Switch {
     aria_description: Option<SharedString>,
     checked_content: Option<SwitchContent>,
     unchecked_content: Option<SwitchContent>,
-    on_change: Option<ChangeHandler>,
+    on_activate: Option<ActivationHandler>,
     on_focus: Option<FocusHandler>,
     on_blur: Option<FocusHandler>,
 }
@@ -115,7 +121,7 @@ impl Switch {
             aria_description: None,
             checked_content: None,
             unchecked_content: None,
-            on_change: None,
+            on_activate: None,
             on_focus: None,
             on_blur: None,
         }
@@ -217,11 +223,8 @@ impl Switch {
     ///
     /// 每次有效激活只同步调用一次，参数为 `!checked`。这不是运行时事件总线，宿主
     /// 必须自行更新业务状态并触发重绘。
-    pub fn on_change(
-        mut self,
-        handler: impl Fn(bool, &ClickEvent, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.on_change = Some(Rc::new(handler));
+    pub fn on_change(mut self, handler: impl Fn(bool, &mut Window, &mut App) + 'static) -> Self {
+        self.on_activate = Some(ActivationHandler::Change(Rc::new(handler)));
         self
     }
 
@@ -234,9 +237,7 @@ impl Switch {
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
     ) -> Self {
-        self.on_change = Some(Rc::new(move |_, event, window, cx| {
-            handler(event, window, cx);
-        }));
+        self.on_activate = Some(ActivationHandler::Click(Rc::new(handler)));
         self
     }
 
@@ -259,14 +260,12 @@ impl Switch {
     pub fn on_change_in<T: 'static>(
         self,
         cx: &Context<T>,
-        handler: impl Fn(&mut T, bool, &ClickEvent, &mut Window, &mut Context<T>) + 'static,
+        handler: impl Fn(&mut T, bool, &mut Window, &mut Context<T>) + 'static,
     ) -> Self {
-        let listener = cx.listener(move |this, payload: &(bool, ClickEvent), window, cx| {
-            handler(this, payload.0, &payload.1, window, cx);
+        let listener = cx.listener(move |this, next_checked: &bool, window, cx| {
+            handler(this, *next_checked, window, cx);
         });
-        self.on_change(move |next_checked, event, window, cx| {
-            listener(&(next_checked, event.clone()), window, cx);
-        })
+        self.on_change(move |next_checked, window, cx| listener(&next_checked, window, cx))
     }
 
     /// 注册组件实际获得焦点时调用的回调。
@@ -376,6 +375,20 @@ impl Disableable for Switch {
     }
 }
 
+impl Changeable<bool> for Switch {
+    fn on_change(self, handler: impl Fn(bool, &mut Window, &mut App) + 'static) -> Self {
+        Switch::on_change(self, handler)
+    }
+
+    fn on_change_in<T: 'static>(
+        self,
+        cx: &Context<T>,
+        handler: impl Fn(&mut T, bool, &mut Window, &mut Context<T>) + 'static,
+    ) -> Self {
+        Switch::on_change_in(self, cx, handler)
+    }
+}
+
 impl Clickable for Switch {
     fn on_click(self, handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
         Switch::on_click(self, handler)
@@ -424,15 +437,16 @@ impl RenderOnce for Switch {
         } else {
             states.normal
         };
-        let on_change = self
-            .on_change
+        let on_activate = self
+            .on_activate
             .clone()
             .filter(|_| !self.disabled && !self.loading);
-        let on_click: Option<ClickHandler> = on_change.map(|handler| {
+        let on_click: Option<ClickHandler> = on_activate.map(|handler| {
             let next_checked = !self.checked;
             Rc::new(
-                move |event: &ClickEvent, window: &mut Window, cx: &mut App| {
-                    handler(next_checked, event, window, cx);
+                move |event: &ClickEvent, window: &mut Window, cx: &mut App| match &handler {
+                    ActivationHandler::Change(handler) => handler(next_checked, window, cx),
+                    ActivationHandler::Click(handler) => handler(event, window, cx),
                 },
             ) as ClickHandler
         });

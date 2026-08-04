@@ -45,14 +45,14 @@ Without state content, Switch keeps its existing compact track. Configuring eith
 | `.cursor_style(CursorStyle)` | Sets the idle enabled cursor; loading uses Arrow and disabled always wins. |
 | `.aria_label(text)` | Overrides or supplies the accessible name. |
 | `.aria_description(text)` | Supplies supplementary accessibility text. |
-| `.on_change(handler)` | Receives the next bool and GPUI [`ClickEvent`](/en/api/gpui-types#clickevent). |
+| `.on_change(handler)` | Receives the next bool, `Window`, and `App`; it carries no `ClickEvent`. |
 | `.on_change_in(cx, handler)` | Binds the change callback to a host Entity. |
 | `.on_click(handler)` | Provides the standard raw activation entry for starting a request first. |
 | `.on_click_in(cx, handler)` | Binds the standard activation entry to a host Entity. |
 | `.on_focus` / `.on_blur` | Registers real focus transitions. |
 | `.on_focus_in` / `.on_blur_in` | Registers Entity-bound focus callbacks. |
 
-`Switch` implements [`Clickable`](/en/api/clickable), [`Disableable`](/en/api/disableable), [`Focusable`](/en/api/focusable), and [`Sizable`](/en/api/sizable). `on_click` and `on_change` share one activation-handler slot. The later builder wins, so one activation never invokes two competing callbacks.
+`Switch` implements [`Changeable<bool>`](/en/api/changeable), [`Clickable`](/en/api/clickable), [`Disableable`](/en/api/disableable), [`Focusable`](/en/api/focusable), and [`Sizable`](/en/api/sizable). `on_click` and `on_change` share one activation-handler slot. The later builder wins, so one activation never invokes two competing callbacks.
 
 ## Keyboard, Focus, And Accessibility
 

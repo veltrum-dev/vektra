@@ -1,8 +1,9 @@
 //! Vektra GPUI 组件库。
 //!
-//! 第一阶段提供默认主题、Button、Icon 和 IconButton。Button 的 loading、progress
-//! 和 selected 状态由调用方控制，不在组件内管理异步任务。Vektra 是组件库，不要求
-//! 应用调用 `vektra::init(cx)`，也不要求使用 Vektra 根容器。
+//! 提供默认主题和可组合的 Button、Checkbox、RadioGroup、Switch、Icon、IconButton
+//! 与 Tooltip。受控组件的业务值由调用方持有，并通过 [`Changeable`] 请求下一值；
+//! Vektra 不在组件内管理业务状态或异步任务。Vektra 是组件库，不要求应用调用
+//! `vektra::init(cx)`，也不要求使用 Vektra 根容器。
 //!
 //! 默认构建会携带框架默认主题资源。启用 `icons` feature 后，同一个
 //! `vektra::assets::Assets` 还会携带 Vektra 内置 SVG 图标。
@@ -12,6 +13,7 @@ mod checkbox;
 mod focus;
 pub mod icon;
 mod icon_button;
+mod radio;
 mod size;
 mod switch;
 mod theme;
@@ -24,14 +26,16 @@ pub use checkbox::Checkbox;
 pub use icon::IconName;
 pub use icon::{Icon, IconSource, IntoIconSource};
 pub use icon_button::{IconButton, IconButtonVariant};
+pub use radio::{Radio, RadioGroup};
 pub use size::{ComponentSize, component_size, set_component_size};
 pub use switch::{Switch, SwitchContent};
 pub use theme::{current_theme, resolved_theme_mode, semantic_colors, set_theme_mode, theme_mode};
 pub use tooltip::{Tooltip, TooltipPlacement};
-pub use traits::{Clickable, Disableable, Focusable, Sizable};
+pub use traits::{Changeable, Clickable, Disableable, Focusable, Sizable};
 pub use vektra_macros::IntoIconSource;
 pub use vektra_theme::{
-    ResolvedTheme, ResolvedThemeMode, SemanticColors, ThemeMode, TooltipTokens,
+    RadioSizeTokens, RadioStateTokens, RadioTokens, ResolvedTheme, ResolvedThemeMode,
+    SemanticColors, ThemeMode, TooltipTokens,
 };
 
 /// Vektra 自带资源。

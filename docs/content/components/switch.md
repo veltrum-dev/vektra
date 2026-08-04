@@ -45,14 +45,14 @@ track、thumb 与 label 只有一个交互目标、一个 Tab stop 和一个可�
 | `.cursor_style(CursorStyle)` | 设置空闲可用光标；loading 使用 Arrow，disabled 始终优先。 |
 | `.aria_label(text)` | 覆盖或提供可访问名称。 |
 | `.aria_description(text)` | 提供补充无障碍描述。 |
-| `.on_change(handler)` | 接收下一 bool 值和 GPUI [`ClickEvent`](/api/gpui-types#clickevent)。 |
+| `.on_change(handler)` | 接收下一 bool 值、`Window` 和 `App`，不携带 `ClickEvent`。 |
 | `.on_change_in(cx, handler)` | 绑定宿主 Entity 的状态变化回调。 |
 | `.on_click(handler)` | 标准原始激活入口，适合先启动后台请求。 |
 | `.on_click_in(cx, handler)` | 将标准激活入口绑定到宿主 Entity。 |
 | `.on_focus` / `.on_blur` | 注册真实焦点转换回调。 |
 | `.on_focus_in` / `.on_blur_in` | 注册 Entity 绑定的焦点回调。 |
 
-`Switch` 实现 [`Clickable`](/api/clickable)、[`Disableable`](/api/disableable)、[`Focusable`](/api/focusable) 和 [`Sizable`](/api/sizable)。`on_click` 与 `on_change` 共用一个激活 handler 槽，连续配置时后调用者生效，不会在一次激活中重复调用两套回调。
+`Switch` 实现 [`Changeable<bool>`](/api/changeable)、[`Clickable`](/api/clickable)、[`Disableable`](/api/disableable)、[`Focusable`](/api/focusable) 和 [`Sizable`](/api/sizable)。`on_click` 与 `on_change` 共用一个激活 handler 槽，连续配置时后调用者生效，不会在一次激活中重复调用两套回调。
 
 ## 键盘、焦点与无障碍
 

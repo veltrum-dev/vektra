@@ -212,7 +212,7 @@ impl CheckboxDemo {
                         Checkbox::new("checkbox-controlled")
                             .checked(self.terms.checked)
                             .label(controlled)
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.terms.apply_change(next_checked);
                                 cx.notify();
                             })
@@ -230,7 +230,7 @@ impl CheckboxDemo {
                             .checked(self.mixed.checked)
                             .indeterminate(self.mixed.indeterminate)
                             .label(mixed)
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.mixed.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -246,7 +246,7 @@ impl CheckboxDemo {
                             .checked(self.no_label.checked)
                             .aria_label(no_label)
                             .aria_description("Standalone checkbox")
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.no_label.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -259,7 +259,7 @@ impl CheckboxDemo {
                         .checked(self.xs.checked)
                         .label("XS")
                         .size(ComponentSize::Xs)
-                        .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                        .on_change_in(cx, |this, next_checked, _window, cx| {
                             this.checkbox_demo.xs.apply_change(next_checked);
                             cx.notify();
                         }),
@@ -267,7 +267,7 @@ impl CheckboxDemo {
                         .checked(self.sm.checked)
                         .label("SM")
                         .size(ComponentSize::Sm)
-                        .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                        .on_change_in(cx, |this, next_checked, _window, cx| {
                             this.checkbox_demo.sm.apply_change(next_checked);
                             cx.notify();
                         }),
@@ -275,7 +275,7 @@ impl CheckboxDemo {
                         .checked(self.md.checked)
                         .label("MD")
                         .size(ComponentSize::Md)
-                        .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                        .on_change_in(cx, |this, next_checked, _window, cx| {
                             this.checkbox_demo.md.apply_change(next_checked);
                             cx.notify();
                         }),
@@ -284,7 +284,7 @@ impl CheckboxDemo {
                         .indeterminate(self.lg.indeterminate)
                         .label("LG")
                         .size(ComponentSize::Lg)
-                        .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                        .on_change_in(cx, |this, next_checked, _window, cx| {
                             this.checkbox_demo.lg.apply_change(next_checked);
                             cx.notify();
                         }),
@@ -301,7 +301,7 @@ impl CheckboxDemo {
                             .checked(self.custom_unchecked.checked)
                             .label("unchecked")
                             .unchecked_icon(IconSource::asset("icons/settings.svg"))
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo
                                     .custom_unchecked
                                     .apply_change(next_checked);
@@ -313,7 +313,7 @@ impl CheckboxDemo {
                             .checked(self.custom_checked.checked)
                             .label("checked")
                             .checked_icon(IconName::Settings)
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.custom_checked.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -324,7 +324,7 @@ impl CheckboxDemo {
                             .indeterminate(self.custom_mixed.indeterminate)
                             .label("mixed")
                             .indeterminate_icon(IconName::Settings)
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.custom_mixed.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -345,7 +345,7 @@ impl CheckboxDemo {
                                 IconSource::asset("components/checkbox/heart-filled.svg"),
                             )
                             .aria_label(favorite)
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.favorite.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -364,7 +364,7 @@ impl CheckboxDemo {
                             .checked(self.batch_all_selected())
                             .indeterminate(self.batch_indeterminate())
                             .label(batch_all)
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.set_batch_checked(next_checked);
                                 cx.notify();
                             }),
@@ -378,7 +378,7 @@ impl CheckboxDemo {
                                 Checkbox::new("checkbox-batch-product")
                                     .checked(self.batch_product.checked)
                                     .label(batch_product)
-                                    .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                                    .on_change_in(cx, |this, next_checked, _window, cx| {
                                         this.checkbox_demo.batch_product.apply_change(next_checked);
                                         cx.notify();
                                     }),
@@ -387,7 +387,7 @@ impl CheckboxDemo {
                                 Checkbox::new("checkbox-batch-billing")
                                     .checked(self.batch_billing.checked)
                                     .label(batch_billing)
-                                    .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                                    .on_change_in(cx, |this, next_checked, _window, cx| {
                                         this.checkbox_demo.batch_billing.apply_change(next_checked);
                                         cx.notify();
                                     }),
@@ -396,7 +396,7 @@ impl CheckboxDemo {
                                 Checkbox::new("checkbox-batch-security")
                                     .checked(self.batch_security.checked)
                                     .label(batch_security)
-                                    .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                                    .on_change_in(cx, |this, next_checked, _window, cx| {
                                         this.checkbox_demo
                                             .batch_security
                                             .apply_change(next_checked);
@@ -441,7 +441,7 @@ impl CheckboxDemo {
                         Checkbox::new("checkbox-global")
                             .checked(self.global_size.checked)
                             .label(global_size)
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.global_size.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -451,7 +451,7 @@ impl CheckboxDemo {
                             .checked(self.explicit_size.checked)
                             .label(explicit)
                             .size(ComponentSize::Md)
-                            .on_change_in(cx, |this, next_checked, _, _window, cx| {
+                            .on_change_in(cx, |this, next_checked, _window, cx| {
                                 this.checkbox_demo.explicit_size.apply_change(next_checked);
                                 cx.notify();
                             }),

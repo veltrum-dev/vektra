@@ -157,6 +157,7 @@ fn list_merges_deduplicates_and_sorts() {
             "themes/default/dark.json",
             "themes/default/foundation.json",
             "themes/default/light.json",
+            "themes/default/radio.json",
             "themes/default/switch.json",
             "themes/default/tooltip.json",
         ]

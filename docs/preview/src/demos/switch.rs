@@ -151,7 +151,7 @@ impl SwitchDemo {
                         Switch::new("switch-notifications")
                             .checked(self.notifications)
                             .label(notifications)
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.switch_demo.notifications = next_checked;
                                 cx.notify();
                             })
@@ -177,7 +177,7 @@ impl SwitchDemo {
                             .checked(self.no_label)
                             .aria_label(no_label)
                             .aria_description("Standalone controlled switch")
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.switch_demo.no_label = next_checked;
                                 cx.notify();
                             }),
@@ -192,7 +192,7 @@ impl SwitchDemo {
                         .unchecked_content(SwitchContent::text(xs_unchecked_text))
                         .label(xs_label)
                         .size(ComponentSize::Xs)
-                        .on_change_in(cx, |this, next_checked, _, _, cx| {
+                        .on_change_in(cx, |this, next_checked, _, cx| {
                             this.switch_demo.xs = next_checked;
                             cx.notify();
                         }),
@@ -202,7 +202,7 @@ impl SwitchDemo {
                         .unchecked_content(SwitchContent::text(unchecked_text))
                         .label(sm_label)
                         .size(ComponentSize::Sm)
-                        .on_change_in(cx, |this, next_checked, _, _, cx| {
+                        .on_change_in(cx, |this, next_checked, _, cx| {
                             this.switch_demo.sm = next_checked;
                             cx.notify();
                         }),
@@ -216,7 +216,7 @@ impl SwitchDemo {
                         )))
                         .label(md_label)
                         .size(ComponentSize::Md)
-                        .on_change_in(cx, |this, next_checked, _, _, cx| {
+                        .on_change_in(cx, |this, next_checked, _, cx| {
                             this.switch_demo.md = next_checked;
                             cx.notify();
                         }),
@@ -232,7 +232,7 @@ impl SwitchDemo {
                         ))
                         .label(lg_label)
                         .size(ComponentSize::Lg)
-                        .on_change_in(cx, |this, next_checked, _, _, cx| {
+                        .on_change_in(cx, |this, next_checked, _, cx| {
                             this.switch_demo.lg = next_checked;
                             cx.notify();
                         }),
@@ -249,7 +249,7 @@ impl SwitchDemo {
                         Switch::new("switch-default-duration")
                             .checked(self.notifications)
                             .label(default_duration_label)
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.switch_demo.notifications = next_checked;
                                 cx.notify();
                             }),
@@ -261,7 +261,7 @@ impl SwitchDemo {
                             .unchecked_content(SwitchContent::text(unchecked_text))
                             .label(fast_duration_label)
                             .transition_duration(Duration::from_millis(100))
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.switch_demo.fast = next_checked;
                                 cx.notify();
                             }),
@@ -273,7 +273,7 @@ impl SwitchDemo {
                             .unchecked_content(SwitchContent::text(unchecked_text))
                             .label(slow_duration_label)
                             .transition_duration(Duration::from_millis(400))
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.switch_demo.slow = next_checked;
                                 cx.notify();
                             }),
@@ -285,7 +285,7 @@ impl SwitchDemo {
                             .unchecked_content(SwitchContent::text(unchecked_text))
                             .label(zero_duration_label)
                             .transition_duration(Duration::ZERO)
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.switch_demo.instant = next_checked;
                                 cx.notify();
                             }),
@@ -294,7 +294,7 @@ impl SwitchDemo {
                         Switch::new("switch-loading-controller")
                             .checked(self.loading)
                             .label(loading_controller_label)
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.switch_demo.loading = next_checked;
                                 cx.notify();
                             }),

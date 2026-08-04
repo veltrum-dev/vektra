@@ -197,7 +197,7 @@ impl Render for CheckboxExample {
                         Checkbox::new("terms")
                             .checked(self.demo.terms.checked)
                             .label("接受服务条款")
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.demo.terms.apply_change(next_checked);
                                 cx.notify();
                             })
@@ -209,7 +209,7 @@ impl Render for CheckboxExample {
                             .checked(self.demo.mixed.checked)
                             .indeterminate(self.demo.mixed.indeterminate)
                             .label("部分选中项目")
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.demo.mixed.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -219,7 +219,7 @@ impl Render for CheckboxExample {
                             .checked(self.demo.no_label.checked)
                             .aria_label("无可见标签的复选框")
                             .aria_description("示例展示 aria_label 用法")
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.demo.no_label.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -236,7 +236,7 @@ impl Render for CheckboxExample {
                                 .checked(self.demo.xs.checked)
                                 .label("XS")
                                 .size(ComponentSize::Xs)
-                                .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                .on_change_in(cx, |this, next_checked, _, cx| {
                                     this.demo.xs.apply_change(next_checked);
                                     cx.notify();
                                 }),
@@ -244,7 +244,7 @@ impl Render for CheckboxExample {
                                 .checked(self.demo.sm.checked)
                                 .label("SM")
                                 .size(ComponentSize::Sm)
-                                .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                .on_change_in(cx, |this, next_checked, _, cx| {
                                     this.demo.sm.apply_change(next_checked);
                                     cx.notify();
                                 }),
@@ -252,7 +252,7 @@ impl Render for CheckboxExample {
                                 .checked(self.demo.md.checked)
                                 .label("MD")
                                 .size(ComponentSize::Md)
-                                .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                .on_change_in(cx, |this, next_checked, _, cx| {
                                     this.demo.md.apply_change(next_checked);
                                     cx.notify();
                                 }),
@@ -261,7 +261,7 @@ impl Render for CheckboxExample {
                                 .indeterminate(self.demo.lg.indeterminate)
                                 .label("LG")
                                 .size(ComponentSize::Lg)
-                                .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                .on_change_in(cx, |this, next_checked, _, cx| {
                                     this.demo.lg.apply_change(next_checked);
                                     cx.notify();
                                 }),
@@ -272,7 +272,7 @@ impl Render for CheckboxExample {
                             .checked(self.demo.custom_icon.checked)
                             .label("自定义选中图标")
                             .checked_icon(IconName::Settings)
-                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                            .on_change_in(cx, |this, next_checked, _, cx| {
                                 this.demo.custom_icon.apply_change(next_checked);
                                 cx.notify();
                             }),
@@ -291,7 +291,7 @@ impl Render for CheckboxExample {
                                         vektra::IconSource::asset("icons/heart-filled.svg"),
                                     )
                                     .aria_label("收藏")
-                                    .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                    .on_change_in(cx, |this, next_checked, _, cx| {
                                         this.demo.favorite.apply_change(next_checked);
                                         cx.notify();
                                     }),
@@ -308,7 +308,7 @@ impl Render for CheckboxExample {
                                     .checked(self.demo.batch_all_selected())
                                     .indeterminate(self.demo.batch_indeterminate())
                                     .label("所有通知")
-                                    .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                    .on_change_in(cx, |this, next_checked, _, cx| {
                                         this.demo.set_batch_checked(next_checked);
                                         cx.notify();
                                     }),
@@ -322,7 +322,7 @@ impl Render for CheckboxExample {
                                         Checkbox::new("batch-product")
                                             .checked(self.demo.batch_product.checked)
                                             .label("产品更新")
-                                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                            .on_change_in(cx, |this, next_checked, _, cx| {
                                                 this.demo.batch_product.apply_change(next_checked);
                                                 cx.notify();
                                             }),
@@ -331,7 +331,7 @@ impl Render for CheckboxExample {
                                         Checkbox::new("batch-billing")
                                             .checked(self.demo.batch_billing.checked)
                                             .label("账单提醒")
-                                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                            .on_change_in(cx, |this, next_checked, _, cx| {
                                                 this.demo.batch_billing.apply_change(next_checked);
                                                 cx.notify();
                                             }),
@@ -340,7 +340,7 @@ impl Render for CheckboxExample {
                                         Checkbox::new("batch-security")
                                             .checked(self.demo.batch_security.checked)
                                             .label("安全警报")
-                                            .on_change_in(cx, |this, next_checked, _, _, cx| {
+                                            .on_change_in(cx, |this, next_checked, _, cx| {
                                                 this.demo.batch_security.apply_change(next_checked);
                                                 cx.notify();
                                             }),

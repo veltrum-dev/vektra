@@ -4,7 +4,7 @@ These are GPUI types, not Vektra types. Vektra uses them at public callback boun
 
 ## `ClickEvent`
 
-Used by `Clickable::on_click` and `Checkbox::on_change` to distinguish mouse and keyboard activation. [Pinned source](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/interactive.rs#L281).
+Used only by raw activation entries such as `Clickable::on_click`. `Changeable::on_change` carries no click event because changes may also originate from arrow keys, Home, or End. [Pinned source](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/interactive.rs#L281).
 
 ## `Window`
 

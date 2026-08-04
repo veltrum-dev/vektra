@@ -41,7 +41,7 @@ Checkbox 是受控复选框组件，适合单项开关、批量选择和父级�
 | `.indicator_icons(unchecked, checked)` | 使用未选中/选中图标替代默认方框指示器。 |
 | `.aria_label(text)` | 覆盖或提供可访问名称。 |
 | `.aria_description(text)` | 提供补充无障碍描述。 |
-| `.on_change(handler)` | 同步回调，参数包含下一 checked 值和 GPUI [`ClickEvent`](/api/gpui-types#clickevent)。 |
+| `.on_change(handler)` | 同步回调，参数为下一 checked 值、`Window` 和 `App`，不携带 `ClickEvent`。 |
 | `.on_change_in(cx, handler)` | 绑定宿主 Entity 状态的同步回调。 |
 | `.on_focus(handler)` / `.on_blur(handler)` | 注册真实聚焦与失焦转换回调。 |
 | `.on_focus_in(cx, handler)` / `.on_blur_in(cx, handler)` | 注册绑定宿主 Entity 的焦点回调。 |
@@ -65,6 +65,8 @@ Checkbox 是受控复选框组件，适合单项开关、批量选择和父级�
 ## 异步任务
 
 `on_change` 和 `on_change_in` 保持同步。如果需要发起 HTTP 请求或异步校验，请在回调体内使用宿主 Entity 的 `cx.spawn` / `cx.spawn_in`，并按生命周期需要保存返回的 `Task`。
+
+`Checkbox` 实现 [`Changeable<bool>`](/api/changeable)；固有 builder 与 trait 调用委托到同一实现。
 
 ## 已知限制
 

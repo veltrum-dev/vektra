@@ -18,6 +18,7 @@ const LIGHT: &str = "themes/default/light.json";
 const DARK: &str = "themes/default/dark.json";
 const BUTTON: &str = "themes/default/button.json";
 const CHECKBOX: &str = "themes/default/checkbox.json";
+const RADIO: &str = "themes/default/radio.json";
 const SWITCH: &str = "themes/default/switch.json";
 const TOOLTIP: &str = "themes/default/tooltip.json";
 
@@ -33,6 +34,7 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
     })?;
     let button = load_builtin_text(BUTTON)?;
     let checkbox = load_builtin_text(CHECKBOX)?;
+    let radio = load_builtin_text(RADIO)?;
     let switch = load_builtin_text(SWITCH)?;
     let tooltip = load_builtin_text(TOOLTIP)?;
 
@@ -41,6 +43,7 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
         &mode_source,
         &button,
         &checkbox,
+        &radio,
         &switch,
         &tooltip,
     ])?;
@@ -151,7 +154,13 @@ mod tests {
             }
             for size in ["xs", "sm", "md", "lg"] {
                 theme.checkbox_size(size).unwrap();
+                theme.radio_size(size).unwrap();
                 theme.switch_size(size).unwrap();
+            }
+            for selected in [false, true] {
+                for state in ["normal", "hover", "pressed", "focus-visible", "disabled"] {
+                    theme.radio_state(selected, state).unwrap();
+                }
             }
             for visual_state in ["unchecked", "checked"] {
                 for state in ["normal", "hover", "pressed", "focus-visible", "disabled"] {
@@ -209,7 +218,9 @@ mod tests {
 
     #[test]
     fn default_theme_resources_are_loaded_from_assets_crate() {
-        for path in [FOUNDATION, LIGHT, DARK, BUTTON, CHECKBOX, SWITCH, TOOLTIP] {
+        for path in [
+            FOUNDATION, LIGHT, DARK, BUTTON, CHECKBOX, RADIO, SWITCH, TOOLTIP,
+        ] {
             let text = load_builtin_text(path).unwrap();
             assert!(!text.is_empty(), "`{path}` 应从 vektra-assets 读取");
         }

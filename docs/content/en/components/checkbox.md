@@ -41,7 +41,7 @@ A parent Checkbox can derive `checked` and `indeterminate` from child items: che
 | `.indicator_icons(unchecked, checked)` | Replaces the default box indicator with unchecked/checked icons. |
 | `.aria_label(text)` | Overrides or provides the accessible name. |
 | `.aria_description(text)` | Provides supplementary accessibility text. |
-| `.on_change(handler)` | Synchronous callback with the next checked value and GPUI [`ClickEvent`](/en/api/gpui-types#clickevent). |
+| `.on_change(handler)` | Synchronous callback with the next checked value, `Window`, and `App`; it carries no `ClickEvent`. |
 | `.on_change_in(cx, handler)` | Synchronous callback bound to a host Entity. |
 | `.on_focus(handler)` / `.on_blur(handler)` | Registers callbacks for real focus and blur transitions. |
 | `.on_focus_in(cx, handler)` / `.on_blur_in(cx, handler)` | Registers focus callbacks bound to a host Entity. |
@@ -65,6 +65,8 @@ Enabled Checkbox can be focused with Tab. Space activates; Enter does not. The l
 ## Async Work
 
 `on_change` and `on_change_in` are synchronous. For HTTP requests or async validation, start work inside the callback with the host Entity's `cx.spawn` / `cx.spawn_in`, and store the returned `Task` when lifecycle management needs it.
+
+`Checkbox` implements [`Changeable<bool>`](/en/api/changeable); its inherent builders and trait calls delegate to the same implementation.
 
 ## Known Limits
 

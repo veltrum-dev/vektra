@@ -4,7 +4,7 @@
 
 ## `ClickEvent`
 
-出现在 `Clickable::on_click` 和 `Checkbox::on_change` 中，用于区分鼠标与键盘激活。[查看锁定源码](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/interactive.rs#L281)。
+仅出现在 `Clickable::on_click` 等原始激活入口中，用于区分鼠标与键盘激活。`Changeable::on_change` 不携带它，因为变化也可能来自方向键、Home 或 End。[查看锁定源码](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/interactive.rs#L281)。
 
 ## `Window`
 
