@@ -1,4 +1,4 @@
-use gpui::{App, ClickEvent, Context, Window};
+use gpui::{App, ClickEvent, Context, CursorStyle, Window};
 
 /// 支持标准激活回调的组件能力。
 ///
@@ -10,6 +10,11 @@ pub trait Clickable: Sized {
     /// 回调参数依次为 `ClickEvent`、当前 `Window` 和应用级 `App`。组件可以将鼠标
     /// 点击、Enter 或 Space 等语义激活统一转发到该回调。
     fn on_click(self, handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self;
+
+    /// 设置可用状态下的鼠标光标。
+    ///
+    /// disabled、loading 或 progress 等组件自身状态仍应优先表达自己的交互反馈。
+    fn cursor_style(self, cursor_style: CursorStyle) -> Self;
 
     /// 注册可访问宿主 Entity 状态的点击回调。
     ///

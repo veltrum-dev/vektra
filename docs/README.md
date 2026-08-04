@@ -1,6 +1,6 @@
 # Vektra 文档开发
 
-本文说明如何在本地开发 VitePress 文档站和 GPUI WASM preview。
+本文说明如何在本地开发 VitePress 文档站、GPUI WASM preview 和 Vektra rustdoc API 参考。
 
 ## 环境要求
 
@@ -45,6 +45,7 @@ trunk serve
 常用地址：
 
 - `http://127.0.0.1:8080/?demo=button/basic`
+- `http://127.0.0.1:8080/?demo=checkbox/basic`
 - `http://127.0.0.1:8080/?demo=button/showcase&theme=dark&lang=en-US`
 
 缺少或非法 `theme` 参数时，独立 preview 会使用 `ThemeMode::System`。缺少或非法 `lang` 参数时，preview 使用中文。
@@ -56,7 +57,21 @@ cd docs
 VEKTRA_DOCS_BASE=/vektra/ bun run build
 ```
 
-构建流程会先运行 `bun run preview:build`，再运行 `vitepress build`。最终站点位于 `docs/.vitepress/dist/`，不要提交该目录。
+构建流程依次运行 WASM preview、VitePress 和 `cargo doc -p vektra --all-features --no-deps`，并把 rustdoc 复制到站点产物的 `docs/.vitepress/dist/api/rust/`。最终站点位于 `docs/.vitepress/dist/`，不要提交该目录。
+
+## API 参考与 rustdoc
+
+只生成并在浏览器打开完整 Rust API：
+
+```bash
+cd docs
+bun run api:rustdoc
+open ../target/doc/vektra/index.html
+```
+
+Cargo 原始产物位于 `target/doc/`。完整文档构建会把它临时复制到 `docs/.vitepress/dist/api/rust/`，站内稳定入口是 `/api/rust/vektra/`（项目页部署时是 `/vektra/api/rust/vektra/`）。`target/doc/` 和复制后的站点产物都是生成目录，不提交。
+
+VitePress API 页面负责概念、行为、跨组件导航和受编译约束的示例；rustdoc 负责 Vektra 自有 API 的穷尽式符号参考。`ClickEvent`、`Window`、`App`、`Context<T>` 等 GPUI 类型不复制定义，而是从双语“GPUI 依赖类型”页面链接到 workspace 当前锁定 commit 的源码。
 
 本地预览构建结果时，默认用根路径构建再启动 VitePress preview：
 
@@ -77,12 +92,13 @@ cd docs
 VEKTRA_DOCS_BASE=/vektra/ bun run build
 ```
 
-验证时检查 `docs/.vitepress/dist/index.html` 中的静态资源路径是否以 `/vektra/` 开头，并确认 `docs/.vitepress/dist/previews/index.html`、preview JS/WASM 和字体都存在。
+验证时检查 `docs/.vitepress/dist/index.html` 中的静态资源路径是否以 `/vektra/` 开头，并确认 preview、rustdoc、JS/WASM 和字体都存在。
 
 ```bash
 rg '"/vektra/' .vitepress/dist/index.html
 test -f .vitepress/dist/previews/index.html
 test -f .vitepress/dist/previews/assets/fonts/noto-sans-sc/NotoSansSC-VF.ttf
+test -f .vitepress/dist/api/rust/vektra/index.html
 find .vitepress/dist/previews -name '*.wasm' -print
 ```
 

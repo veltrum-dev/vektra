@@ -1,10 +1,11 @@
 use super::*;
+use crate::IconButton;
 use crate::{resolved_theme_mode, set_theme_mode};
 use gpui::{
     AnyWindowHandle, AppContext, AtlasKey, AtlasTextureId, AtlasTextureKind, AtlasTile, ClickEvent,
-    Context, DevicePixels, HeadlessAppContext, InputEvent, KeyUpEvent, Keystroke, Modifiers,
-    MouseMoveEvent, NoopTextSystem, PlatformAtlas, PlatformHeadlessRenderer, Render, Scene, Size,
-    TestAppContext, TileId, VisualTestContext, point, px, rgb, size,
+    Context, CursorStyle, DevicePixels, HeadlessAppContext, InputEvent, KeyUpEvent, Keystroke,
+    Modifiers, MouseMoveEvent, NoopTextSystem, PlatformAtlas, PlatformHeadlessRenderer, Render,
+    Scene, Size, TestAppContext, TileId, VisualTestContext, point, px, rgb, size,
 };
 use std::{
     borrow::Cow,
@@ -19,7 +20,7 @@ use vektra_theme::{ResolvedThemeMode, ThemeMode};
 fn defaults_resolve_to_primary_md_and_enabled() {
     let button = Button::new("save").label("Save");
     assert_eq!(button.resolved_variant(), ButtonVariant::Primary);
-    assert_eq!(button.resolved_size(), ButtonSize::Md);
+    assert_eq!(button.explicit_size(), None);
     assert!(!button.is_disabled());
 }
 
@@ -72,9 +73,31 @@ fn tooltip_placement_defaults_to_bottom_and_last_call_wins() {
 fn explicit_variant_and_size_are_preserved() {
     let button = Button::new("save")
         .variant(ButtonVariant::Ghost)
-        .size(ButtonSize::Lg);
+        .size(ComponentSize::Lg);
     assert_eq!(button.resolved_variant(), ButtonVariant::Ghost);
-    assert_eq!(button.resolved_size(), ButtonSize::Lg);
+    assert_eq!(button.explicit_size(), Some(ComponentSize::Lg));
+}
+
+#[test]
+fn cursor_style_builder_is_stored_and_priority_is_stateful() {
+    let button = Button::new("copy").cursor_style(CursorStyle::DragCopy);
+    assert_eq!(button.cursor_style_value(), Some(CursorStyle::DragCopy));
+    assert_eq!(
+        resolved_cursor_style(false, false, Some(CursorStyle::DragCopy)),
+        CursorStyle::DragCopy
+    );
+    assert_eq!(
+        resolved_cursor_style(false, true, Some(CursorStyle::DragCopy)),
+        CursorStyle::Arrow
+    );
+    assert_eq!(
+        resolved_cursor_style(true, false, Some(CursorStyle::DragCopy)),
+        CursorStyle::OperationNotAllowed
+    );
+    assert_eq!(
+        resolved_cursor_style(false, false, None),
+        CursorStyle::PointingHand
+    );
 }
 
 #[test]
@@ -433,10 +456,10 @@ impl Render for StateMatrixView {
             ButtonVariant::Link,
         ] {
             for size in [
-                ButtonSize::Xs,
-                ButtonSize::Sm,
-                ButtonSize::Md,
-                ButtonSize::Lg,
+                ComponentSize::Xs,
+                ComponentSize::Sm,
+                ComponentSize::Md,
+                ComponentSize::Lg,
             ] {
                 let id = format!("{variant:?}-{size:?}");
                 buttons.push(
@@ -688,6 +711,39 @@ fn dispatch_mouse_move(
     })
     .expect("headless Button 测试窗口应能派发鼠标事件");
     cx.run_until_parked();
+}
+
+#[gpui::test]
+fn global_component_size_defaults_and_can_be_overridden(cx: &mut TestAppContext) {
+    let (_view, cx) = test_view(cx, false);
+    cx.update(|_window, cx| {
+        assert_eq!(crate::component_size(cx), ComponentSize::Md);
+        assert_eq!(Button::new("default").resolved_size(cx), ComponentSize::Md);
+        assert_eq!(
+            IconButton::new("icon", IconSource::asset("icons/settings.svg")).resolved_size(cx),
+            ComponentSize::Md
+        );
+
+        crate::set_component_size(ComponentSize::Sm, cx);
+        assert_eq!(crate::component_size(cx), ComponentSize::Sm);
+        assert_eq!(Button::new("default").resolved_size(cx), ComponentSize::Sm);
+        assert_eq!(
+            Button::new("explicit")
+                .size(ComponentSize::Lg)
+                .resolved_size(cx),
+            ComponentSize::Lg
+        );
+        assert_eq!(
+            IconButton::new("icon", IconSource::asset("icons/settings.svg")).resolved_size(cx),
+            ComponentSize::Sm
+        );
+        assert_eq!(
+            IconButton::new("icon-explicit", IconSource::asset("icons/settings.svg"))
+                .size(ComponentSize::Xs)
+                .resolved_size(cx),
+            ComponentSize::Xs
+        );
+    });
 }
 
 #[gpui::test]

@@ -34,10 +34,6 @@ vektra-macros = { path = "crates/vektra-macros" }
 vektra-theme = { path = "crates/theme" }
 vektra = { path = "crates/vektra" }
 
-[patch.crates-io]
-block = { path = "third_party/block" }
-proc-macro-error2 = { path = "third_party/proc-macro-error2" }
-
 [profile.dev]
 codegen-units = 16
 debug = "limited"

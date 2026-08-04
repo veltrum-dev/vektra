@@ -8,20 +8,25 @@
 //! `vektra::assets::Assets` 还会携带 Vektra 内置 SVG 图标。
 
 mod button;
+mod checkbox;
+mod focus;
 pub mod icon;
 mod icon_button;
+mod size;
 mod theme;
 mod tooltip;
 pub mod traits;
 
-pub use button::{Button, ButtonSize, ButtonVariant};
+pub use button::{Button, ButtonVariant};
+pub use checkbox::Checkbox;
 #[cfg(feature = "icons")]
 pub use icon::IconName;
 pub use icon::{Icon, IconSource, IntoIconSource};
 pub use icon_button::{IconButton, IconButtonVariant};
+pub use size::{ComponentSize, component_size, set_component_size};
 pub use theme::{current_theme, resolved_theme_mode, semantic_colors, set_theme_mode, theme_mode};
 pub use tooltip::{Tooltip, TooltipPlacement};
-pub use traits::{Clickable, Disableable};
+pub use traits::{Clickable, Disableable, Focusable, Sizable};
 pub use vektra_macros::IntoIconSource;
 pub use vektra_theme::{
     ResolvedTheme, ResolvedThemeMode, SemanticColors, ThemeMode, TooltipTokens,

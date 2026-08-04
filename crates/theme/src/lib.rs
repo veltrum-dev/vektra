@@ -10,7 +10,8 @@ pub mod mode;
 pub mod profile;
 
 pub use adapter::{
-    ButtonSizeTokens, ButtonStateTokens, IconTokens, ResolvedTheme, SemanticColors, TooltipTokens,
+    ButtonSizeTokens, ButtonStateTokens, CheckboxSizeTokens, CheckboxStateTokens, CheckboxTokens,
+    IconTokens, ResolvedTheme, SemanticColors, TooltipTokens,
 };
 pub use default_theme::{default_theme, default_tokens};
 pub use error::ThemeError;

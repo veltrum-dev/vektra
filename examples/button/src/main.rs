@@ -9,7 +9,7 @@ use gpui::{
 actions!(vektra_button_example, [Tab, TabPrev]);
 use gpui_platform::application;
 use vektra::{
-    Button, ButtonSize, ButtonVariant, IconName, IconSource, ThemeMode, current_theme,
+    Button, ButtonVariant, ComponentSize, IconName, IconSource, ThemeMode, current_theme,
     resolved_theme_mode, set_theme_mode, theme_mode,
 };
 
@@ -47,6 +47,16 @@ impl ButtonExample {
     fn record_click(&mut self, label: SharedString, _: &mut Window, cx: &mut Context<Self>) {
         self.clicks += 1;
         self.last_clicked = label;
+        cx.notify();
+    }
+
+    fn record_focus(&mut self, label: &'static str, focused: bool, cx: &mut Context<Self>) {
+        self.last_clicked = if focused {
+            format!("已聚焦：{label}")
+        } else {
+            format!("已失焦：{label}")
+        }
+        .into();
         cx.notify();
     }
 
@@ -417,28 +427,28 @@ impl ButtonExample {
             .child(
                 self.click_button(format!("{id_prefix}-xs"), "超小", cx)
                     .variant(variant)
-                    .size(ButtonSize::Xs),
+                    .size(ComponentSize::Xs),
             )
             .child(
                 self.click_button(format!("{id_prefix}-sm"), "小", cx)
                     .variant(variant)
-                    .size(ButtonSize::Sm),
+                    .size(ComponentSize::Sm),
             )
             .child(
                 self.click_button(format!("{id_prefix}-md"), "中", cx)
                     .variant(variant)
-                    .size(ButtonSize::Md),
+                    .size(ComponentSize::Md),
             )
             .child(
                 self.click_button(format!("{id_prefix}-lg"), "大", cx)
                     .variant(variant)
-                    .size(ButtonSize::Lg),
+                    .size(ComponentSize::Lg),
             )
             .child(
                 Button::new(format!("{id_prefix}-disabled"))
                     .label("禁用")
                     .variant(variant)
-                    .size(ButtonSize::Md)
+                    .size(ComponentSize::Md)
                     .disabled(true),
             )
     }
@@ -456,6 +466,12 @@ impl ButtonExample {
             .aria_description(label)
             .on_click_in(cx, move |this, _, window, cx| {
                 this.record_click(clicked.clone(), window, cx);
+            })
+            .on_focus_in(cx, move |this, _, cx| {
+                this.record_focus(label, true, cx);
+            })
+            .on_blur_in(cx, move |this, _, cx| {
+                this.record_focus(label, false, cx);
             })
     }
 }

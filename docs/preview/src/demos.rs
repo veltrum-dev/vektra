@@ -1,4 +1,5 @@
 mod button;
+mod checkbox;
 mod icon_button;
 mod tooltip;
 
@@ -14,6 +15,7 @@ actions!(vektra_docs_preview, [Tab, TabPrev]);
 pub(crate) enum DemoSelection {
     ButtonBasic,
     ButtonShowcase,
+    CheckboxBasic,
     IconButtonBasic,
     TooltipBasic,
     Unknown(String),
@@ -22,6 +24,7 @@ pub(crate) enum DemoSelection {
 impl DemoSelection {
     pub(crate) const DEFAULT_ID: &'static str = "button/basic";
     pub(crate) const SHOWCASE_ID: &'static str = "button/showcase";
+    pub(crate) const CHECKBOX_ID: &'static str = "checkbox/basic";
     pub(crate) const ICON_BUTTON_ID: &'static str = "icon-button/basic";
     pub(crate) const TOOLTIP_ID: &'static str = "tooltip/basic";
 
@@ -30,6 +33,7 @@ impl DemoSelection {
             None => Self::ButtonBasic,
             Some(Self::DEFAULT_ID) => Self::ButtonBasic,
             Some(Self::SHOWCASE_ID) => Self::ButtonShowcase,
+            Some(Self::CHECKBOX_ID) => Self::CheckboxBasic,
             Some(Self::ICON_BUTTON_ID) => Self::IconButtonBasic,
             Some(Self::TOOLTIP_ID) => Self::TooltipBasic,
             Some(value) => Self::Unknown(value.to_owned()),
@@ -40,6 +44,7 @@ impl DemoSelection {
         match self {
             Self::ButtonBasic => Self::DEFAULT_ID,
             Self::ButtonShowcase => Self::SHOWCASE_ID,
+            Self::CheckboxBasic => Self::CHECKBOX_ID,
             Self::IconButtonBasic => Self::ICON_BUTTON_ID,
             Self::TooltipBasic => Self::TOOLTIP_ID,
             Self::Unknown(value) => value,
@@ -50,6 +55,7 @@ impl DemoSelection {
         match self {
             Self::ButtonBasic
             | Self::ButtonShowcase
+            | Self::CheckboxBasic
             | Self::IconButtonBasic
             | Self::TooltipBasic => "ready",
             Self::Unknown(_) => "unknown-demo",
@@ -78,6 +84,13 @@ impl PreviewLang {
         }
     }
 
+    fn no_recent_focus(self) -> &'static str {
+        match self {
+            Self::ZhCn => "焦点尚未移动",
+            Self::EnUs => "Focus has not moved yet",
+        }
+    }
+
     fn unknown_title(self) -> &'static str {
         match self {
             Self::ZhCn => "未知预览",
@@ -88,16 +101,18 @@ impl PreviewLang {
     fn unknown_body(self, demo_id: &str) -> String {
         match self {
             Self::ZhCn => format!(
-                "不支持 demo_id `{demo_id}`。当前支持的预览：`{}`、`{}`、`{}`、`{}`。",
+                "不支持 demo_id `{demo_id}`。当前支持的预览：`{}`、`{}`、`{}`、`{}`、`{}`。",
                 DemoSelection::DEFAULT_ID,
                 DemoSelection::SHOWCASE_ID,
+                DemoSelection::CHECKBOX_ID,
                 DemoSelection::ICON_BUTTON_ID,
                 DemoSelection::TOOLTIP_ID
             ),
             Self::EnUs => format!(
-                "Unsupported demo_id `{demo_id}`. Supported previews: `{}`, `{}`, `{}`, and `{}`.",
+                "Unsupported demo_id `{demo_id}`. Supported previews: `{}`, `{}`, `{}`, `{}`, and `{}`.",
                 DemoSelection::DEFAULT_ID,
                 DemoSelection::SHOWCASE_ID,
+                DemoSelection::CHECKBOX_ID,
                 DemoSelection::ICON_BUTTON_ID,
                 DemoSelection::TOOLTIP_ID
             ),
@@ -110,6 +125,8 @@ pub(crate) struct PreviewApp {
     language: PreviewLang,
     font_family: &'static str,
     button_demo: button::ButtonDemo,
+    checkbox_demo: checkbox::CheckboxDemo,
+    focus_status: gpui::SharedString,
     focus_handle: FocusHandle,
 }
 
@@ -136,6 +153,8 @@ impl PreviewApp {
             language,
             font_family,
             button_demo: button::ButtonDemo::new(language),
+            checkbox_demo: checkbox::CheckboxDemo::new(),
+            focus_status: language.no_recent_focus().into(),
             focus_handle,
         }
     }
@@ -157,6 +176,22 @@ impl PreviewApp {
         cx.notify();
     }
 
+    pub(crate) fn record_focus(
+        &mut self,
+        label: &'static str,
+        focused: bool,
+        cx: &mut Context<Self>,
+    ) {
+        self.focus_status = match (self.language, focused) {
+            (PreviewLang::ZhCn, true) => format!("已聚焦：{label}"),
+            (PreviewLang::ZhCn, false) => format!("已失焦：{label}"),
+            (PreviewLang::EnUs, true) => format!("Focused: {label}"),
+            (PreviewLang::EnUs, false) => format!("Blurred: {label}"),
+        }
+        .into();
+        cx.notify();
+    }
+
     fn on_tab(&mut self, _: &Tab, window: &mut Window, cx: &mut Context<Self>) {
         window.focus_next(cx);
     }
@@ -168,17 +203,22 @@ impl PreviewApp {
 
 impl Render for PreviewApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let focus_status = self.focus_status.clone();
         let child = match &self.selection {
             DemoSelection::ButtonBasic => self
                 .button_demo
-                .render_basic(self.language, window, cx)
+                .render_basic(self.language, focus_status, window, cx)
                 .into_any_element(),
             DemoSelection::ButtonShowcase => self
                 .button_demo
                 .render_showcase(self.language, window, cx)
                 .into_any_element(),
+            DemoSelection::CheckboxBasic => self
+                .checkbox_demo
+                .render(self.language, focus_status, window, cx)
+                .into_any_element(),
             DemoSelection::IconButtonBasic => {
-                icon_button::render(self.language, window, cx).into_any_element()
+                icon_button::render(self.language, focus_status, window, cx).into_any_element()
             }
             DemoSelection::TooltipBasic => {
                 tooltip::render(self.language, window, cx).into_any_element()
@@ -407,6 +447,7 @@ fn current_demo_id() -> Option<String> {
     match parse_demo_query(&query) {
         DemoSelection::ButtonBasic => Some(DemoSelection::DEFAULT_ID.to_owned()),
         DemoSelection::ButtonShowcase => Some(DemoSelection::SHOWCASE_ID.to_owned()),
+        DemoSelection::CheckboxBasic => Some(DemoSelection::CHECKBOX_ID.to_owned()),
         DemoSelection::IconButtonBasic => Some(DemoSelection::ICON_BUTTON_ID.to_owned()),
         DemoSelection::TooltipBasic => Some(DemoSelection::TOOLTIP_ID.to_owned()),
         DemoSelection::Unknown(value) => Some(value),

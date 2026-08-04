@@ -3,7 +3,7 @@ use gpui::{
     AnyElement, Context, FontWeight, InteractiveElement, IntoElement, ParentElement, SharedString,
     StatefulInteractiveElement, Styled, Window, div, px, relative,
 };
-use vektra::{Button, ButtonSize, ButtonVariant, IconName, IconSource};
+use vektra::{Button, ButtonVariant, ComponentSize, IconName, IconSource};
 
 pub(super) struct ButtonDemo {
     clicks: usize,
@@ -56,6 +56,7 @@ impl ButtonDemo {
     pub(super) fn render_basic(
         &self,
         language: PreviewLang,
+        focus_status: SharedString,
         window: &mut Window,
         cx: &mut Context<PreviewApp>,
     ) -> AnyElement {
@@ -79,6 +80,7 @@ impl ButtonDemo {
                     .p(px(20.))
                     .max_w(px(980.))
                     .child(self.header(copy.basic_title, copy.basic_intro))
+                    .child(focus_status)
                     .child(self.status_line(&copy, theme_mode, resolved_theme))
                     .child(
                         self.section(copy.section_basic).child(
@@ -88,7 +90,17 @@ impl ButtonDemo {
                                 .flex_wrap()
                                 .items_center()
                                 // #region button-basic
-                                .child(self.click_button("button-basic-interactive", copy.add, cx))
+                                // #region button-focus
+                                .child(
+                                    self.click_button("button-basic-interactive", copy.add, cx)
+                                        .on_focus_in(cx, move |this, _, cx| {
+                                            this.record_focus(copy.add, true, cx);
+                                        })
+                                        .on_blur_in(cx, move |this, _, cx| {
+                                            this.record_focus(copy.add, false, cx);
+                                        }),
+                                )
+                                // #endregion button-focus
                                 .child(
                                     Button::new("button-basic-disabled")
                                         .label(copy.disabled)
@@ -489,22 +501,22 @@ impl ButtonDemo {
                             .flex_wrap()
                             .child(
                                 self.click_button("button-showcase-xs", "XS", cx)
-                                    .size(ButtonSize::Xs)
+                                    .size(ComponentSize::Xs)
                                     .variant(ButtonVariant::Ghost),
                             )
                             .child(
                                 self.click_button("button-showcase-sm", "SM", cx)
-                                    .size(ButtonSize::Sm)
+                                    .size(ComponentSize::Sm)
                                     .variant(ButtonVariant::Secondary),
                             )
                             .child(
                                 self.click_button("button-showcase-md", "MD", cx)
-                                    .size(ButtonSize::Md)
+                                    .size(ComponentSize::Md)
                                     .variant(ButtonVariant::Outline),
                             )
                             .child(
                                 self.click_button("button-showcase-lg", "LG", cx)
-                                    .size(ButtonSize::Lg)
+                                    .size(ComponentSize::Lg)
                                     .end_icon(IconName::Settings),
                             ),
                     )
@@ -595,19 +607,19 @@ impl ButtonDemo {
             .items_center()
             .child(
                 self.click_button(format!("{id_prefix}-xs"), copy.size_xs, cx)
-                    .size(ButtonSize::Xs),
+                    .size(ComponentSize::Xs),
             )
             .child(
                 self.click_button(format!("{id_prefix}-sm"), copy.size_sm, cx)
-                    .size(ButtonSize::Sm),
+                    .size(ComponentSize::Sm),
             )
             .child(
                 self.click_button(format!("{id_prefix}-md"), copy.size_md, cx)
-                    .size(ButtonSize::Md),
+                    .size(ComponentSize::Md),
             )
             .child(
                 self.click_button(format!("{id_prefix}-lg"), copy.size_lg, cx)
-                    .size(ButtonSize::Lg),
+                    .size(ComponentSize::Lg),
             )
     }
 

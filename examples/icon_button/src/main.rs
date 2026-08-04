@@ -9,7 +9,7 @@ use gpui::{
 actions!(vektra_icon_button_example, [Tab, TabPrev]);
 use gpui_platform::application;
 use vektra::{
-    ButtonSize, Icon, IconButton, IconButtonVariant, IconName, IconSource, ThemeMode,
+    ComponentSize, Icon, IconButton, IconButtonVariant, IconName, IconSource, ThemeMode,
     current_theme, resolved_theme_mode, set_theme_mode,
 };
 
@@ -41,6 +41,16 @@ impl IconButtonExample {
     fn record_click(&mut self, label: SharedString, _: &mut Window, cx: &mut Context<Self>) {
         self.clicks += 1;
         self.last_clicked = label;
+        cx.notify();
+    }
+
+    fn record_focus(&mut self, label: &'static str, focused: bool, cx: &mut Context<Self>) {
+        self.last_clicked = if focused {
+            format!("已聚焦：{label}")
+        } else {
+            format!("已失焦：{label}")
+        }
+        .into();
         cx.notify();
     }
 
@@ -130,35 +140,35 @@ impl Render for IconButtonExample {
                                 "variant-primary",
                                 "主要",
                                 IconButtonVariant::Primary,
-                                ButtonSize::Md,
+                                ComponentSize::Md,
                                 cx,
                             ),
                             self.icon_button(
                                 "variant-outline",
                                 "描边",
                                 IconButtonVariant::Outline,
-                                ButtonSize::Md,
+                                ComponentSize::Md,
                                 cx,
                             ),
                             self.icon_button(
                                 "variant-ghost",
                                 "幽灵",
                                 IconButtonVariant::Ghost,
-                                ButtonSize::Md,
+                                ComponentSize::Md,
                                 cx,
                             ),
                             self.icon_button(
                                 "variant-destructive",
                                 "危险",
                                 IconButtonVariant::Destructive,
-                                ButtonSize::Md,
+                                ComponentSize::Md,
                                 cx,
                             ),
                             self.icon_button(
                                 "variant-secondary",
                                 "次要",
                                 IconButtonVariant::Secondary,
-                                ButtonSize::Md,
+                                ComponentSize::Md,
                                 cx,
                             ),
                         ]),
@@ -169,28 +179,28 @@ impl Render for IconButtonExample {
                                 "size-xs",
                                 "超小",
                                 IconButtonVariant::Outline,
-                                ButtonSize::Xs,
+                                ComponentSize::Xs,
                                 cx,
                             ),
                             self.icon_button(
                                 "size-sm",
                                 "小",
                                 IconButtonVariant::Outline,
-                                ButtonSize::Sm,
+                                ComponentSize::Sm,
                                 cx,
                             ),
                             self.icon_button(
                                 "size-md",
                                 "中",
                                 IconButtonVariant::Outline,
-                                ButtonSize::Md,
+                                ComponentSize::Md,
                                 cx,
                             ),
                             self.icon_button(
                                 "size-lg",
                                 "大",
                                 IconButtonVariant::Outline,
-                                ButtonSize::Lg,
+                                ComponentSize::Lg,
                                 cx,
                             ),
                         ]),
@@ -250,7 +260,7 @@ impl IconButtonExample {
         id: &'static str,
         label: &'static str,
         variant: IconButtonVariant,
-        size: ButtonSize,
+        size: ComponentSize,
         cx: &mut Context<Self>,
     ) -> IconButton {
         self.default_icon_button(id, label, cx)
@@ -271,6 +281,12 @@ impl IconButtonExample {
             .tooltip(label)
             .on_click_in(cx, move |this, _, window, cx| {
                 this.record_click(clicked.clone(), window, cx);
+            })
+            .on_focus_in(cx, move |this, _, cx| {
+                this.record_focus(label, true, cx);
+            })
+            .on_blur_in(cx, move |this, _, cx| {
+                this.record_focus(label, false, cx);
             })
     }
 

@@ -38,7 +38,7 @@ jobs:
         working-directory: docs
         run: bun install --frozen-lockfile
 
-      - name: Build docs
+      - name: Build VitePress, WASM previews, and rustdoc
         working-directory: docs
         env:
           VEKTRA_DOCS_BASE: /vektra/

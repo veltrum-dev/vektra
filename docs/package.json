@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "bun run preview:build && vitepress dev --host 127.0.0.1",
     "dev:vitepress": "vitepress dev --host 127.0.0.1",
-    "build": "bun run preview:build && vitepress build",
+    "build": "bun run preview:build && vitepress build && bun run api:publish",
     "serve": "vitepress preview --host 127.0.0.1",
-    "preview:build": "bun run scripts/build-preview.ts"
+    "preview:build": "bun run scripts/build-preview.ts",
+    "api:rustdoc": "cd .. && cargo doc -p vektra --all-features --no-deps",
+    "api:publish": "bun run scripts/build-rustdoc.ts"
   },
   "devDependencies": {
     "lucide-vue-next": "1.0.0",

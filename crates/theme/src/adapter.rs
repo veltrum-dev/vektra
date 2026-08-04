@@ -83,6 +83,53 @@ pub struct ButtonTokens {
     pub focus_width: Pixels,
 }
 
+/// Checkbox 某个 state 的 GPUI 样式 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CheckboxStateTokens {
+    /// 交互根背景色。
+    pub background: Hsla,
+    /// 方框背景色。
+    pub box_background: Hsla,
+    /// 方框边框色。
+    pub border: Hsla,
+    /// 状态图标色。
+    pub icon: Hsla,
+    /// label 文本色。
+    pub label: Hsla,
+}
+
+/// Checkbox 某个 size 的 GPUI 尺寸 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CheckboxSizeTokens {
+    /// 方框正方形尺寸。
+    pub box_size: Pixels,
+    /// 状态图标正方形尺寸。
+    pub icon_size: Pixels,
+    /// label 与方框之间的间距。
+    pub label_gap: Pixels,
+    /// 字号。
+    pub font_size: Pixels,
+    /// 行高。
+    pub line_height: Pixels,
+    /// 圆角。
+    pub radius: Pixels,
+    /// 点击目标最小尺寸。
+    pub hit_size: Pixels,
+    /// 点击目标水平内边距。
+    pub hit_padding_x: Pixels,
+    /// 点击目标垂直内边距。
+    pub hit_padding_y: Pixels,
+}
+
+/// Checkbox 组件所需的公共 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CheckboxTokens {
+    /// 方框边框宽度。
+    pub border_width: Pixels,
+    /// focus-visible 边框宽度。
+    pub focus_width: Pixels,
+}
+
 /// Icon 组件所需的 GPUI token。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IconTokens {
@@ -144,6 +191,8 @@ pub struct ResolvedTheme {
     pub icon: IconTokens,
     /// Button 公共 token。
     pub button: ButtonTokens,
+    /// Checkbox 公共 token。
+    pub checkbox: CheckboxTokens,
     /// Tooltip 公共 token。
     pub tooltip: TooltipTokens,
     tokens: ResolvedTokens,
@@ -184,6 +233,18 @@ impl ResolvedTheme {
             button: ButtonTokens {
                 border_width: dimension(&tokens, "button.border-width")?,
                 focus_width: dimension(&tokens, "button.focus-width")?,
+            },
+            checkbox: CheckboxTokens {
+                border_width: optional_dimension(
+                    &tokens,
+                    "checkbox.border-width",
+                    "foundation.border.width",
+                )?,
+                focus_width: optional_dimension(
+                    &tokens,
+                    "checkbox.focus-width",
+                    "foundation.border.focus",
+                )?,
             },
             tooltip: TooltipTokens {
                 background: optional_color(&tokens, "tooltip.background", "semantic.surface")?,
@@ -310,6 +371,94 @@ impl ResolvedTheme {
             content_gap: dimension(&self.tokens, &format!("{prefix}.content-gap"))?,
         })
     }
+
+    /// 读取 Checkbox state token。
+    pub fn checkbox_state(
+        &self,
+        visual_state: &str,
+        state: &str,
+    ) -> Result<CheckboxStateTokens, ThemeError> {
+        let prefix = format!("checkbox.state.{visual_state}.{state}");
+        Ok(CheckboxStateTokens {
+            background: optional_color(
+                &self.tokens,
+                &format!("{prefix}.background"),
+                "semantic.background",
+            )?,
+            box_background: optional_color(
+                &self.tokens,
+                &format!("{prefix}.box-background"),
+                checkbox_box_background_fallback(visual_state, state),
+            )?,
+            border: optional_color(
+                &self.tokens,
+                &format!("{prefix}.border"),
+                checkbox_border_fallback(visual_state, state),
+            )?,
+            icon: optional_color(
+                &self.tokens,
+                &format!("{prefix}.icon"),
+                checkbox_icon_fallback(visual_state, state),
+            )?,
+            label: optional_color(
+                &self.tokens,
+                &format!("{prefix}.label"),
+                checkbox_label_fallback(state),
+            )?,
+        })
+    }
+
+    /// 读取 Checkbox size token。
+    pub fn checkbox_size(&self, size: &str) -> Result<CheckboxSizeTokens, ThemeError> {
+        let prefix = format!("checkbox.size.{size}");
+        Ok(CheckboxSizeTokens {
+            box_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.box-size"),
+                checkbox_box_size_fallback(size),
+            )?,
+            icon_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.icon-size"),
+                checkbox_icon_size_fallback(size),
+            )?,
+            label_gap: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.label-gap"),
+                checkbox_label_gap_fallback(size),
+            )?,
+            font_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.font-size"),
+                checkbox_font_size_fallback(size),
+            )?,
+            line_height: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.line-height"),
+                checkbox_line_height_fallback(size),
+            )?,
+            radius: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.radius"),
+                "foundation.radius.sm",
+            )?,
+            hit_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.hit-size"),
+                "foundation.space.4",
+            )?,
+            hit_padding_x: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.hit-padding-x"),
+                "foundation.space.1",
+            )?,
+            hit_padding_y: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.hit-padding-y"),
+                "foundation.space.1",
+            )?,
+        })
+    }
 }
 
 fn color(tokens: &ResolvedTokens, path: &str) -> Result<Hsla, ThemeError> {
@@ -352,4 +501,92 @@ fn optional_dimension(
             fallback
         },
     )
+}
+
+fn checkbox_box_background_fallback(visual_state: &str, state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-background"
+    } else if visual_state == "unchecked" {
+        "semantic.background"
+    } else {
+        "semantic.primary"
+    }
+}
+
+fn checkbox_border_fallback(visual_state: &str, state: &str) -> &'static str {
+    if state == "focus-visible" {
+        "semantic.ring"
+    } else if state == "disabled" {
+        "semantic.disabled-border"
+    } else if visual_state == "unchecked" {
+        "semantic.input-border"
+    } else {
+        "semantic.primary"
+    }
+}
+
+fn checkbox_icon_fallback(visual_state: &str, state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-foreground"
+    } else if visual_state == "unchecked" {
+        "semantic.foreground"
+    } else {
+        "semantic.on-primary"
+    }
+}
+
+fn checkbox_label_fallback(state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-foreground"
+    } else {
+        "semantic.foreground"
+    }
+}
+
+fn checkbox_box_size_fallback(size: &str) -> &'static str {
+    match size {
+        "xs" => "foundation.space.3",
+        "sm" => "foundation.space.4",
+        "md" => "foundation.space.4",
+        "lg" => "foundation.space.4",
+        _ => "foundation.space.4",
+    }
+}
+
+fn checkbox_icon_size_fallback(size: &str) -> &'static str {
+    match size {
+        "xs" => "foundation.space.2",
+        "sm" => "foundation.space.2_5",
+        "md" => "foundation.space.3",
+        "lg" => "foundation.space.3",
+        _ => "foundation.space.3",
+    }
+}
+
+fn checkbox_label_gap_fallback(size: &str) -> &'static str {
+    match size {
+        "xs" => "foundation.space.1_5",
+        "sm" => "foundation.space.2",
+        "md" => "foundation.space.2",
+        "lg" => "foundation.space.2_5",
+        _ => "foundation.space.2",
+    }
+}
+
+fn checkbox_font_size_fallback(size: &str) -> &'static str {
+    match size {
+        "xs" => "foundation.font.size.xs",
+        "sm" => "foundation.font.size.sm",
+        "md" | "lg" => "foundation.font.size.md",
+        _ => "foundation.font.size.md",
+    }
+}
+
+fn checkbox_line_height_fallback(size: &str) -> &'static str {
+    match size {
+        "xs" => "foundation.space.3",
+        "sm" => "foundation.space.4",
+        "md" | "lg" => "foundation.space.4",
+        _ => "foundation.space.4",
+    }
 }

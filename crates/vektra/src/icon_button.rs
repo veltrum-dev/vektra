@@ -1,18 +1,20 @@
 //! 只包含图标的 Button 组件。
 
 use crate::{
-    ButtonSize,
     button::{self, ClickHandler},
+    focus::{self, FocusHandler},
     icon::{Icon, IconSource, IntoIconSource},
+    size::{ComponentSize, component_size},
     theme,
     tooltip::{self, Tooltip, TooltipPlacement},
-    traits::{Clickable, Disableable},
+    traits::{Clickable, Disableable, Focusable, Sizable},
 };
 use gpui::{
-    App, ClickEvent, Context, ElementId, Hsla, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, Role, SharedString, StatefulInteractiveElement, Styled, Window, div,
+    App, ClickEvent, Context, CursorStyle, ElementId, Hsla, InteractiveElement, IntoElement,
+    ParentElement, RenderOnce, Role, SharedString, StatefulInteractiveElement, Styled, Window, div,
     prelude::FluentBuilder,
 };
+use std::rc::Rc;
 use vektra_theme::ButtonStateTokens;
 
 /// IconButton 的视觉语义变体。
@@ -55,10 +57,13 @@ pub struct IconButton {
     icon: IconSource,
     aria_label: Option<SharedString>,
     variant: Option<IconButtonVariant>,
-    size: Option<ButtonSize>,
+    size: Option<ComponentSize>,
     icon_color: Option<Hsla>,
     disabled: bool,
     on_click: Option<ClickHandler>,
+    on_focus: Option<FocusHandler>,
+    on_blur: Option<FocusHandler>,
+    cursor_style: Option<CursorStyle>,
     tooltip: Option<Tooltip>,
     tooltip_placement: TooltipPlacement,
     aria_description: Option<SharedString>,
@@ -78,6 +83,9 @@ impl IconButton {
             icon_color: None,
             disabled: false,
             on_click: None,
+            on_focus: None,
+            on_blur: None,
+            cursor_style: None,
             tooltip: None,
             tooltip_placement: TooltipPlacement::default(),
             aria_description: None,
@@ -125,8 +133,9 @@ impl IconButton {
 
     /// 设置 IconButton 尺寸。
     ///
-    /// 未调用时在渲染阶段解析为 `ButtonSize::Md`。
-    pub fn size(mut self, size: ButtonSize) -> Self {
+    /// 未调用时在渲染阶段读取当前全局 [`ComponentSize`]，全局值默认是
+    /// [`ComponentSize::Md`]。
+    pub fn size(mut self, size: ComponentSize) -> Self {
         self.size = Some(size);
         self
     }
@@ -149,6 +158,14 @@ impl IconButton {
         self
     }
 
+    /// 设置可用状态下的鼠标光标。
+    ///
+    /// disabled 状态会优先显示不可操作光标，不会被此设置绕过。
+    pub fn cursor_style(mut self, cursor_style: CursorStyle) -> Self {
+        self.cursor_style = Some(cursor_style);
+        self
+    }
+
     /// 注册激活回调。
     ///
     /// 鼠标点击、聚焦后的 Enter 和 Space 都会通过同一个三参数回调触发。
@@ -158,6 +175,36 @@ impl IconButton {
     ) -> Self {
         self.on_click = Some(std::rc::Rc::new(handler));
         self
+    }
+
+    /// 注册组件实际获得焦点时调用的回调。
+    pub fn on_focus(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.on_focus = Some(Rc::new(handler));
+        self
+    }
+
+    /// 注册可访问宿主 Entity 状态的聚焦回调。
+    pub fn on_focus_in<T: 'static>(
+        self,
+        cx: &Context<T>,
+        handler: impl Fn(&mut T, &mut Window, &mut Context<T>) + 'static,
+    ) -> Self {
+        Focusable::on_focus_in(self, cx, handler)
+    }
+
+    /// 注册组件实际失去焦点时调用的回调。
+    pub fn on_blur(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.on_blur = Some(Rc::new(handler));
+        self
+    }
+
+    /// 注册可访问宿主 Entity 状态的失焦回调。
+    pub fn on_blur_in<T: 'static>(
+        self,
+        cx: &Context<T>,
+        handler: impl Fn(&mut T, &mut Window, &mut Context<T>) + 'static,
+    ) -> Self {
+        Focusable::on_blur_in(self, cx, handler)
     }
 
     /// 注册可访问宿主 Entity 状态的激活回调。
@@ -183,8 +230,8 @@ impl IconButton {
         self.variant.unwrap_or(IconButtonVariant::Primary)
     }
 
-    pub(crate) fn resolved_size(&self) -> ButtonSize {
-        self.size.unwrap_or(ButtonSize::Md)
+    pub(crate) fn resolved_size(&self, cx: &App) -> ComponentSize {
+        self.size.unwrap_or_else(|| component_size(cx))
     }
 
     pub(crate) fn resolved_icon_color(&self, visible: ButtonStateTokens) -> Hsla {
@@ -208,6 +255,16 @@ impl IconButton {
     #[cfg(test)]
     pub(crate) fn icon_color_value(&self) -> Option<Hsla> {
         self.icon_color
+    }
+
+    #[cfg(test)]
+    pub(crate) fn explicit_size(&self) -> Option<ComponentSize> {
+        self.size
+    }
+
+    #[cfg(test)]
+    pub(crate) fn cursor_style_value(&self) -> Option<CursorStyle> {
+        self.cursor_style
     }
 
     #[cfg(test)]
@@ -235,6 +292,10 @@ impl Clickable for IconButton {
     fn on_click(self, handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
         IconButton::on_click(self, handler)
     }
+
+    fn cursor_style(self, cursor_style: CursorStyle) -> Self {
+        IconButton::cursor_style(self, cursor_style)
+    }
 }
 
 impl Disableable for IconButton {
@@ -243,15 +304,38 @@ impl Disableable for IconButton {
     }
 }
 
+impl Focusable for IconButton {
+    fn on_focus(self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        IconButton::on_focus(self, handler)
+    }
+
+    fn on_blur(self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        IconButton::on_blur(self, handler)
+    }
+}
+
+impl Sizable for IconButton {
+    fn size(self, size: ComponentSize) -> Self {
+        IconButton::size(self, size)
+    }
+}
+
 impl RenderOnce for IconButton {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let tooltip_focusable = !self.disabled;
+        let focus_state = focus::state_for(
+            &self.id,
+            !self.disabled,
+            self.on_focus.clone(),
+            self.on_blur.clone(),
+            window,
+            cx,
+        );
         let tooltip_state = self.tooltip.clone().map(|tooltip| {
             tooltip::state_for(
                 &self.id,
                 tooltip,
                 self.tooltip_placement,
-                !self.disabled,
+                &focus_state,
                 window,
                 cx,
             )
@@ -259,7 +343,7 @@ impl RenderOnce for IconButton {
         let theme = theme::current_theme(window, cx);
         let variant = self.resolved_variant().token_key();
         let size = theme
-            .button_size(self.resolved_size().token_key())
+            .button_size(self.resolved_size(cx).token_key())
             .expect("Vektra 默认 Button size token 必须通过测试保持有效");
         let states = button::ResolvedButtonStates::new(&theme, variant);
         let visible = if self.disabled {
@@ -293,13 +377,15 @@ impl RenderOnce for IconButton {
                 .child(Icon::new(self.icon).size(size.icon_size).color(icon_color)),
             self.disabled,
             on_click,
+            self.cursor_style,
             states,
             theme.button.focus_width,
             false,
         );
+        let element = focus::attach_interaction(element, &focus_state, !self.disabled, cx);
 
         if let Some(state) = tooltip_state {
-            let element = tooltip::attach_interaction(element, &state, tooltip_focusable, cx);
+            let element = tooltip::attach_interaction(element, &state);
             tooltip::attach_prepaint_listener(element, state)
         } else {
             tooltip::into_any(element)

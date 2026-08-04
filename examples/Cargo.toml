@@ -17,6 +17,10 @@ name = "button"
 path = "button/src/main.rs"
 
 [[example]]
+name = "checkbox"
+path = "checkbox/src/main.rs"
+
+[[example]]
 name = "custom_assets"
 path = "custom_assets/src/main.rs"
 

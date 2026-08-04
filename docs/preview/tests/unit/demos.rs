@@ -36,7 +36,11 @@ fn button_showcase_is_selected_by_stable_id() {
 }
 
 #[test]
-fn icon_button_and_tooltip_are_selected_by_stable_ids() {
+fn checkbox_icon_button_and_tooltip_are_selected_by_stable_ids() {
+    assert_eq!(
+        parse_demo_query("?demo=checkbox/basic"),
+        DemoSelection::CheckboxBasic
+    );
     assert_eq!(
         parse_demo_query("?demo=icon-button/basic"),
         DemoSelection::IconButtonBasic

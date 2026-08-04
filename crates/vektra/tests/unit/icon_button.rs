@@ -59,10 +59,9 @@ fn tooltip_placement_defaults_to_bottom_and_can_be_overridden() {
 fn defaults_are_unresolved_until_render() {
     let button = IconButton::new("settings", IconSource::asset("icons/settings.svg"));
     assert_eq!(button.variant, None);
-    assert_eq!(button.size, None);
+    assert_eq!(button.explicit_size(), None);
     assert_eq!(button.icon_color_value(), None);
     assert_eq!(button.resolved_variant(), IconButtonVariant::Primary);
-    assert_eq!(button.resolved_size(), ButtonSize::Md);
     assert!(!button.is_disabled());
 }
 
@@ -104,6 +103,13 @@ fn icon_color_is_preserved() {
     let button =
         IconButton::new("settings", IconSource::asset("icons/settings.svg")).icon_color(color);
     assert_eq!(button.icon_color_value(), Some(color));
+}
+
+#[test]
+fn cursor_style_builder_is_stored() {
+    let button = IconButton::new("settings", IconSource::asset("icons/settings.svg"))
+        .cursor_style(CursorStyle::DragCopy);
+    assert_eq!(button.cursor_style_value(), Some(CursorStyle::DragCopy));
 }
 
 #[gpui::test]
@@ -237,10 +243,10 @@ fn renders_all_sizes_variants_and_themes(cx: &mut TestAppContext) {
                 .into_iter()
                 .flat_map(|variant| {
                     [
-                        ButtonSize::Xs,
-                        ButtonSize::Sm,
-                        ButtonSize::Md,
-                        ButtonSize::Lg,
+                        ComponentSize::Xs,
+                        ComponentSize::Sm,
+                        ComponentSize::Md,
+                        ComponentSize::Lg,
                     ]
                     .into_iter()
                     .map(move |size| {

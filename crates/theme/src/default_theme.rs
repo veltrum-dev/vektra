@@ -17,6 +17,7 @@ const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const DARK: &str = "themes/default/dark.json";
 const BUTTON: &str = "themes/default/button.json";
+const CHECKBOX: &str = "themes/default/checkbox.json";
 const TOOLTIP: &str = "themes/default/tooltip.json";
 
 static LIGHT_THEME: OnceLock<Arc<ResolvedTheme>> = OnceLock::new();
@@ -30,9 +31,10 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
         ResolvedThemeMode::Dark => DARK,
     })?;
     let button = load_builtin_text(BUTTON)?;
+    let checkbox = load_builtin_text(CHECKBOX)?;
     let tooltip = load_builtin_text(TOOLTIP)?;
 
-    let tokens = parse_token_sets(&[&foundation, &mode_source, &button, &tooltip])?;
+    let tokens = parse_token_sets(&[&foundation, &mode_source, &button, &checkbox, &tooltip])?;
     profile::validate(&tokens)?;
     Ok(tokens)
 }
@@ -132,6 +134,14 @@ mod tests {
             }
             for size in ["xs", "sm", "md", "lg"] {
                 theme.button_size(size).unwrap();
+            }
+            for visual_state in ["unchecked", "checked", "indeterminate"] {
+                for state in ["normal", "hover", "pressed", "focus-visible", "disabled"] {
+                    theme.checkbox_state(visual_state, state).unwrap();
+                }
+            }
+            for size in ["xs", "sm", "md", "lg"] {
+                theme.checkbox_size(size).unwrap();
             }
         }
     }

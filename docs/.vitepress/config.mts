@@ -63,6 +63,7 @@ function zhThemeConfig(): DefaultTheme.Config {
       { text: "首页", link: "/" },
       { text: "快速开始", link: "/guide/getting-started" },
       { text: "组件", link: "/components/button" },
+      { text: "API 参考", link: "/api/" },
       { text: "GitHub", link: "https://github.com/veltrum-dev/vektra" }
     ],
     sidebar: [
@@ -77,8 +78,22 @@ function zhThemeConfig(): DefaultTheme.Config {
         text: "组件",
         items: [
           { text: "Button", link: "/components/button" },
+          { text: "Checkbox", link: "/components/checkbox" },
           { text: "IconButton", link: "/components/icon-button" },
           { text: "Tooltip", link: "/components/tooltip" }
+        ]
+      },
+      {
+        text: "API 参考",
+        items: [
+          { text: "总览", link: "/api/" },
+          { text: "Clickable", link: "/api/clickable" },
+          { text: "Focusable", link: "/api/focusable" },
+          { text: "Disableable", link: "/api/disableable" },
+          { text: "Sizable", link: "/api/sizable" },
+          { text: "回调模型", link: "/api/callbacks" },
+          { text: "Vektra 公共类型", link: "/api/public-types" },
+          { text: "GPUI 依赖类型", link: "/api/gpui-types" }
         ]
       }
     ],
@@ -104,6 +119,7 @@ function enThemeConfig(): DefaultTheme.Config {
       { text: "Home", link: "/en/" },
       { text: "Quick Start", link: "/en/guide/getting-started" },
       { text: "Components", link: "/en/components/button" },
+      { text: "API Reference", link: "/en/api/" },
       { text: "GitHub", link: "https://github.com/veltrum-dev/vektra" }
     ],
     sidebar: [
@@ -118,8 +134,22 @@ function enThemeConfig(): DefaultTheme.Config {
         text: "Components",
         items: [
           { text: "Button", link: "/en/components/button" },
+          { text: "Checkbox", link: "/en/components/checkbox" },
           { text: "IconButton", link: "/en/components/icon-button" },
           { text: "Tooltip", link: "/en/components/tooltip" }
+        ]
+      },
+      {
+        text: "API Reference",
+        items: [
+          { text: "Overview", link: "/en/api/" },
+          { text: "Clickable", link: "/en/api/clickable" },
+          { text: "Focusable", link: "/en/api/focusable" },
+          { text: "Disableable", link: "/en/api/disableable" },
+          { text: "Sizable", link: "/en/api/sizable" },
+          { text: "Callback Model", link: "/en/api/callbacks" },
+          { text: "Vektra Public Types", link: "/en/api/public-types" },
+          { text: "GPUI Dependency Types", link: "/en/api/gpui-types" }
         ]
       }
     ],

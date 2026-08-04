@@ -50,6 +50,12 @@ fn loads_and_lists_default_theme_resources() {
             .contains("tooltip")
     );
     assert!(
+        Assets::load_text("themes/default/checkbox.json")
+            .unwrap()
+            .unwrap()
+            .contains("checkbox")
+    );
+    assert!(
         Assets
             .list("themes/default")
             .unwrap()
@@ -73,6 +79,28 @@ fn loading_indicator_is_a_core_resource() {
             .unwrap()
             .iter()
             .any(|path| path.as_ref() == "components/button/loading.svg")
+    );
+}
+
+#[test]
+fn checkbox_icons_are_core_resources() {
+    for path in [
+        "components/checkbox/check.svg",
+        "components/checkbox/heart-filled.svg",
+        "components/checkbox/heart.svg",
+        "components/checkbox/minus.svg",
+    ] {
+        let bytes = Assets.load(path).unwrap().unwrap();
+        let svg = std::str::from_utf8(bytes.as_ref()).unwrap();
+        assert!(svg.contains("viewBox=\"0 0 16 16\""));
+        assert!(svg.contains("currentColor"));
+    }
+    assert!(
+        Assets
+            .list("components/checkbox")
+            .unwrap()
+            .iter()
+            .any(|path| path.as_ref() == "components/checkbox/check.svg")
     );
 }
 
@@ -118,6 +146,7 @@ fn list_merges_deduplicates_and_sorts() {
         paths,
         vec![
             "themes/default/button.json",
+            "themes/default/checkbox.json",
             "themes/default/custom.json",
             "themes/default/dark.json",
             "themes/default/foundation.json",
@@ -159,6 +188,12 @@ fn default_build_only_embeds_the_core_loading_indicator() {
     assert!(
         Assets
             .load("components/button/loading.svg")
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        Assets
+            .load("components/checkbox/check.svg")
             .unwrap()
             .is_some()
     );

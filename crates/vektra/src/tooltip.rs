@@ -1,10 +1,10 @@
 //! 纯文本、非交互式 Tooltip 组件。
 
-use crate::theme;
+use crate::{focus, theme};
 use gpui::{
     Animation, AnimationExt, AnyElement, AnyTooltip, AnyView, App, AppContext, AvailableSpace,
-    Bounds, BoxShadow, Context, Div, Element, ElementId, Entity, FocusHandle, GlobalElementId,
-    Hsla, InspectorElementId, InteractiveElement, IntoElement, KeystrokeEvent, LayoutId, Modifiers,
+    Bounds, BoxShadow, Context, Div, Element, ElementId, Entity, GlobalElementId, Hsla,
+    InspectorElementId, InteractiveElement, IntoElement, KeystrokeEvent, LayoutId, Modifiers,
     ParentElement, Path, PathBuilder, Pixels, Point, Render, RenderOnce, SharedString, Size,
     Stateful, StatefulInteractiveElement, Style, Styled, Subscription, Task, WeakEntity, Window,
     div, ease_out_quint, point, px,
@@ -811,7 +811,6 @@ fn sanitize_length(value: Pixels) -> Pixels {
 }
 
 pub(crate) struct TooltipTrigger {
-    focus_handle: FocusHandle,
     tooltip: Tooltip,
     hovered: bool,
     bubble_hovered: bool,
@@ -829,32 +828,11 @@ pub(crate) struct TooltipTrigger {
     close_task: Option<Task<()>>,
     transition_task: Option<Task<()>>,
     escape_subscription: Option<Subscription>,
-    _focus_subscription: Subscription,
-    _blur_subscription: Subscription,
 }
 
 impl TooltipTrigger {
-    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let focus_handle = cx.focus_handle().tab_index(0);
-        let focus_subscription = cx.on_focus(&focus_handle, window, |this, window, cx| {
-            this.keyboard_focused = window.last_input_was_keyboard();
-            this.focus_dismissed = false;
-            if this.keyboard_focused {
-                this.ensure_escape_listener(window, cx);
-                this.reconcile(cx);
-            }
-        });
-        let blur_subscription = cx.on_blur(&focus_handle, window, |this, _window, cx| {
-            this.keyboard_focused = false;
-            this.focus_dismissed = false;
-            if this.hover_dismissed {
-                this.schedule_close_grace(cx);
-            }
-            this.reconcile(cx);
-        });
-
+    fn new(_: &mut Window, _: &mut Context<Self>) -> Self {
         Self {
-            focus_handle,
             tooltip: Tooltip::new(SharedString::default()),
             hovered: false,
             bubble_hovered: false,
@@ -872,9 +850,25 @@ impl TooltipTrigger {
             close_task: None,
             transition_task: None,
             escape_subscription: None,
-            _focus_subscription: focus_subscription,
-            _blur_subscription: blur_subscription,
         }
+    }
+
+    fn handle_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.keyboard_focused = window.last_input_was_keyboard();
+        self.focus_dismissed = false;
+        if self.keyboard_focused {
+            self.ensure_escape_listener(window, cx);
+            self.reconcile(cx);
+        }
+    }
+
+    fn handle_blur(&mut self, cx: &mut Context<Self>) {
+        self.keyboard_focused = false;
+        self.focus_dismissed = false;
+        if self.hover_dismissed {
+            self.schedule_close_grace(cx);
+        }
+        self.reconcile(cx);
     }
 
     fn update_tooltip(&mut self, tooltip: Tooltip, window: &Window, cx: &mut Context<Self>) {
@@ -1238,32 +1232,32 @@ pub(crate) fn state_for(
     id: &ElementId,
     tooltip: Tooltip,
     placement: TooltipPlacement,
-    tab_stop: bool,
+    focus_state: &Entity<focus::FocusState>,
     window: &mut Window,
     cx: &mut App,
 ) -> Entity<TooltipTrigger> {
     let state = window.use_keyed_state((id.clone(), "tooltip-trigger"), cx, TooltipTrigger::new);
     state.update(cx, |state, cx| {
-        state.focus_handle = state.focus_handle.clone().tab_stop(tab_stop).tab_index(0);
         state.update_tooltip(tooltip, window, cx);
         state.update_placement(placement, cx);
     });
+    let weak_state = state.downgrade();
+    let on_focus = Rc::new(move |window: &mut Window, cx: &mut App| {
+        let _ = weak_state.update(cx, |state, cx| state.handle_focus(window, cx));
+    });
+    let weak_state = state.downgrade();
+    let on_blur = Rc::new(move |_window: &mut Window, cx: &mut App| {
+        let _ = weak_state.update(cx, |state, cx| state.handle_blur(cx));
+    });
+    focus::set_observers(focus_state, on_focus, on_blur, cx);
     state
 }
 
 pub(crate) fn attach_interaction(
     element: Stateful<Div>,
     state: &Entity<TooltipTrigger>,
-    focusable: bool,
-    cx: &App,
 ) -> Stateful<Div> {
-    let focus_handle = state.read(cx).focus_handle.clone();
     let state = state.downgrade();
-    let element = if focusable {
-        element.track_focus(&focus_handle)
-    } else {
-        element
-    };
     element.on_hover(move |hovered, window, cx| {
         let _ = state.update(cx, |state, cx| state.set_hovered(*hovered, window, cx));
     })

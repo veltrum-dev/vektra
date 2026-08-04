@@ -5,6 +5,10 @@
 
 mod clickable;
 mod disableable;
+mod focusable;
+mod sizable;
 
 pub use clickable::Clickable;
 pub use disableable::Disableable;
+pub use focusable::Focusable;
+pub use sizable::Sizable;

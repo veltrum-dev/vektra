@@ -34,7 +34,7 @@ During loading/progress, Button keeps focus and `Role::Button`, but consumes mou
 
 ## Variants and Sizes
 
-Button provides 6 `ButtonVariant` values and 4 `ButtonSize` values. A disabled button uses the disabled token for its current variant.
+Button provides 6 `ButtonVariant` values and 4 `ComponentSize` values. A disabled button uses the disabled token for its current variant.
 The ordinary variant rows in the preview use the default `Md` size. The separate size comparison area intentionally shows `Xs`, `Sm`, `Md`, and `Lg`; the height differences are not rendering inconsistencies.
 
 <<< ../../../preview/src/demos/button.rs#button-variants{rust}
@@ -61,7 +61,8 @@ Button sizes itself to its content by default. `.width(...)` sets a fixed width.
 
 | Trait | Contract |
 | --- | --- |
-| `Clickable` | Provides `on_click(...)` and `on_click_in(...)`. Mouse clicks, Enter, and Space enter the same callback contract. |
+| [`Clickable`](/en/api/clickable) | Provides `on_click(...)` and `on_click_in(...)`. Mouse clicks, Enter, and Space enter the same callback contract. |
+| [`Focusable`](/en/api/focusable) | Provides `on_focus`, `on_blur`, and Entity-bound forms for real focus transitions. |
 | `Disableable` | Provides `disabled(bool)`. `disabled(true)` blocks mouse clicks and Enter/Space activation. |
 
 ## Constructor and API
@@ -71,7 +72,7 @@ Button sizes itself to its content by default. `.width(...)` sets a fixed width.
 | `Button::new(id)` | Creates a Button with a stable `ElementId`. The `id` is used for GPUI interaction state, focus, and test targeting. |
 | `.label(label)` | Sets visible text. The accessible name uses the original label. |
 | `.variant(ButtonVariant)` | Sets visual semantics. Defaults to `Primary`. |
-| `.size(ButtonSize)` | Sets size. Defaults to `Md`. |
+| `.size(ComponentSize)` | Sets size. Defaults to `Md`. |
 | `.width(width)` | Sets a GPUI `DefiniteLength`, such as `gpui::px(200.)`. |
 | `.full_width()` | Fills the width offered by the parent layout. Shares state with `.width(...)`; the later call wins. |
 | `.start_icon(icon)` | Sets the leading decorative icon. A later call replaces the earlier icon. |
@@ -86,6 +87,8 @@ Button sizes itself to its content by default. `.width(...)` sets a fixed width.
 | `.aria_description(text)` | Sets a supplementary accessible description independently from the visual Tooltip. |
 | `.on_click(handler)` | Registers a standard GPUI click callback: `Fn(&ClickEvent, &mut Window, &mut App)`. |
 | `.on_click_in(cx, handler)` | Registers a callback that can access host Entity state. |
+| `.on_focus(handler)` / `.on_blur(handler)` | Registers standard GPUI focus and blur callbacks. |
+| `.on_focus_in(cx, handler)` / `.on_blur_in(cx, handler)` | Registers focus callbacks that can mutate the host Entity and call `cx.notify()`. |
 | `.id()` | Returns the stable `ElementId`. |
 | `.label_text()` | Returns the original label passed by the caller. |
 | `.display_label()` | Returns the visual label. |
@@ -101,7 +104,7 @@ Button sizes itself to its content by default. `.width(...)` sets a fixed width.
 | `Secondary` | Secondary filled button. |
 | `Link` | Link appearance with Button semantics; hover draws an underline. |
 
-## ButtonSize
+## ComponentSize
 
 | Size | Height |
 | --- | --- |
@@ -111,6 +114,7 @@ Button sizes itself to its content by default. `.width(...)` sets a fixed width.
 | `Lg` | 40px |
 
 Icon size, content gap, horizontal padding, radius, font size, and state colors come from the theme tokens for the current size and variant.
+When `.size(...)` is omitted, Button reads the global default from `component_size(cx)`. `set_component_size(size, cx)` refreshes windows and affects Button, IconButton, and Checkbox instances without explicit size overrides.
 
 When text is too narrow, it truncates visually. The original label remains available as the accessible name.
 
@@ -140,6 +144,10 @@ Button registers a GPUI Tab stop. With the pinned GPUI revision, the host window
 
 ## Focus and Accessibility
 
+Focus callbacks run only for real transitions and are independent from `on_click`, selected, loading, and progress. Rerendering the same `ElementId` does not fire them and installs the latest handler. Tooltip and business callbacks share one focus handle. `_in` means host Entity binding, not DOM `focusin`; see [`Focusable`](/en/api/focusable).
+
+Tab/Shift+Tab (wired by the host to GPUI traversal) and any programmatic transition targeting the same GPUI focus identity use the same lifecycle. Vektra intentionally adds no `focus()` or `focus_handle()` API. The current Button activation path prevents the default left-mouse-down behavior, so a click that runs an activation handler does not also force focus transfer; without an activation handler, GPUI's default pointer focus transfer remains active.
+
 The Button root always uses `Role::Button` and sets `aria_label` from the original label. Enabled and busy buttons set `tab_index(0)`; `focus_visible` uses the theme focus token and focus width. Disabled buttons leave the Tab order.
 
 After `.selected(false|true)`, the root reports False/True through `aria_toggled`; an ordinary Button does not report toggle state. Loading/progress uses a stable child ID derived from the Button `ElementId`, `Role::ProgressIndicator`, and the original label as its accessible name. Determinate progress reports a minimum of 0, maximum of 100, and the current percentage.
@@ -159,5 +167,5 @@ Button is a leaf component and does not manage layout wrapping for its parent. I
 - Button does not own asynchronous work, progress calculation, automatic selected toggling, or cancellation protocols.
 - Loading/progress is a non-activating submission state. Provide a separate Button for cancellation.
 - `Link` is link appearance with Button semantics; it does not become a navigation link.
-- Icon slots do not accept per-slot pixel sizes. The icon size comes from `ButtonSize`.
+- Icon slots do not accept per-slot pixel sizes. The icon size comes from `ComponentSize`.
 - The preview requires browser WebGPU and the font asset provided by the docs preview host.

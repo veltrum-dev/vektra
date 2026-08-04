@@ -2,10 +2,11 @@ use super::{PreviewApp, PreviewLang};
 use gpui::{
     AnyElement, Context, InteractiveElement, IntoElement, ParentElement, Styled, Window, div, px,
 };
-use vektra::{ButtonSize, IconButton, IconButtonVariant, IconName};
+use vektra::{ComponentSize, IconButton, IconButtonVariant, IconName};
 
 pub(super) fn render(
     language: PreviewLang,
+    focus_status: gpui::SharedString,
     window: &mut Window,
     cx: &mut Context<PreviewApp>,
 ) -> AnyElement {
@@ -34,34 +35,35 @@ pub(super) fn render(
         .text_color(theme.semantic.foreground)
         .child(div().text_size(px(24.)).child(title))
         .child(intro)
+        .child(focus_status)
         .child(
             div().flex().gap(px(10.)).flex_wrap().children([
                 icon_button(
                     "icon-primary",
                     "Primary",
                     IconButtonVariant::Primary,
-                    ButtonSize::Xs,
+                    ComponentSize::Xs,
                     cx,
                 ),
                 icon_button(
                     "icon-outline",
                     "Outline",
                     IconButtonVariant::Outline,
-                    ButtonSize::Sm,
+                    ComponentSize::Sm,
                     cx,
                 ),
                 icon_button(
                     "icon-ghost",
                     "Ghost",
                     IconButtonVariant::Ghost,
-                    ButtonSize::Md,
+                    ComponentSize::Md,
                     cx,
                 ),
                 icon_button(
                     "icon-danger",
                     "Destructive",
                     IconButtonVariant::Destructive,
-                    ButtonSize::Lg,
+                    ComponentSize::Lg,
                     cx,
                 ),
                 IconButton::new("icon-disabled", IconName::Settings)
@@ -77,7 +79,7 @@ fn icon_button(
     id: &'static str,
     label: &'static str,
     variant: IconButtonVariant,
-    size: ButtonSize,
+    size: ComponentSize,
     cx: &mut Context<PreviewApp>,
 ) -> IconButton {
     let clicked = gpui::SharedString::new_static(label);
@@ -89,5 +91,11 @@ fn icon_button(
         .size(size)
         .on_click_in(cx, move |this, _, window, cx| {
             this.record_button_click(clicked.clone(), window, cx);
+        })
+        .on_focus_in(cx, move |this, _, cx| {
+            this.record_focus(label, true, cx);
+        })
+        .on_blur_in(cx, move |this, _, cx| {
+            this.record_focus(label, false, cx);
         })
 }

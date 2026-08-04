@@ -2,7 +2,9 @@ use gpui::{
     ClickEvent, Context, InteractiveElement, IntoElement, KeyUpEvent, Keystroke, Modifiers,
     ParentElement, Render, Styled, TestAppContext, Window, div, point, px,
 };
-use vektra::{Button, Clickable, Disableable, IconButton, IconSource};
+use vektra::{
+    Button, Checkbox, Clickable, ComponentSize, Disableable, IconButton, IconSource, Sizable,
+};
 
 #[test]
 fn button_accepts_original_on_click_callback() {
@@ -36,6 +38,21 @@ fn button_and_icon_button_implement_disableable() {
         "icon-disableable",
         IconSource::asset("icons/settings.svg"),
     ));
+    let _checkbox = disable(Checkbox::new("checkbox-disableable"));
+}
+
+#[test]
+fn components_with_size_api_implement_sizable() {
+    fn sizable<C: Sizable>(component: C) -> C {
+        component.size(ComponentSize::Sm)
+    }
+
+    let _button = sizable(Button::new("button-sizable"));
+    let _icon_button = sizable(IconButton::new(
+        "icon-sizable",
+        IconSource::asset("icons/settings.svg"),
+    ));
+    let _checkbox = sizable(Checkbox::new("checkbox-sizable"));
 }
 
 #[test]
@@ -55,6 +72,7 @@ fn button_and_icon_button_implement_clickable() {
 enum Target {
     Button,
     IconButton,
+    Checkbox,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -70,6 +88,7 @@ struct CapabilityView {
     count: usize,
     notify_count: usize,
     saw_keyboard_event: bool,
+    last_checkbox_next: Option<bool>,
 }
 
 impl CapabilityView {
@@ -80,6 +99,7 @@ impl CapabilityView {
             count: 0,
             notify_count: 0,
             saw_keyboard_event: false,
+            last_checkbox_next: None,
         }
     }
 
@@ -87,6 +107,21 @@ impl CapabilityView {
         self.count += 1;
         self.notify_count += 1;
         self.saw_keyboard_event = event.is_keyboard();
+        window.prevent_default();
+        cx.notify();
+    }
+
+    fn record_checkbox(
+        &mut self,
+        next_checked: bool,
+        event: &ClickEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.count += 1;
+        self.notify_count += 1;
+        self.saw_keyboard_event = event.is_keyboard();
+        self.last_checkbox_next = Some(next_checked);
         window.prevent_default();
         cx.notify();
     }
@@ -111,6 +146,14 @@ impl Render for CapabilityView {
                     .disabled(self.disabled)
                     .on_click_in(cx, |this, event, window, cx| {
                         this.record(event, window, cx);
+                    }),
+            ),
+            Target::Checkbox => root.child(
+                Checkbox::new("target")
+                    .label("接受条款")
+                    .disabled(self.disabled)
+                    .on_change_in(cx, |this, next_checked, event, window, cx| {
+                        this.record_checkbox(next_checked, event, window, cx);
                     }),
             ),
         }
@@ -148,6 +191,24 @@ fn run_activation(
     activate(cx, activation);
     view.read_with(cx, |view, _| {
         (view.count, view.notify_count, view.saw_keyboard_event)
+    })
+}
+
+fn run_checkbox_activation(
+    cx: &mut TestAppContext,
+    disabled: bool,
+    activation: Activation,
+) -> (usize, usize, bool, Option<bool>) {
+    let (view, cx) = cx.add_window_view(|_, _| CapabilityView::new(Target::Checkbox, disabled));
+    draw(cx);
+    activate(cx, activation);
+    view.read_with(cx, |view, _| {
+        (
+            view.count,
+            view.notify_count,
+            view.saw_keyboard_event,
+            view.last_checkbox_next,
+        )
     })
 }
 
@@ -200,6 +261,30 @@ fn icon_button_on_click_in_space_updates_entity(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn checkbox_on_change_in_mouse_updates_entity(cx: &mut TestAppContext) {
+    assert_eq!(
+        run_checkbox_activation(cx, false, Activation::Mouse),
+        (1, 1, false, Some(true))
+    );
+}
+
+#[gpui::test]
+fn checkbox_on_change_in_space_updates_entity(cx: &mut TestAppContext) {
+    assert_eq!(
+        run_checkbox_activation(cx, false, Activation::Space),
+        (1, 1, true, Some(true))
+    );
+}
+
+#[gpui::test]
+fn checkbox_enter_does_not_activate(cx: &mut TestAppContext) {
+    assert_eq!(
+        run_checkbox_activation(cx, false, Activation::Enter),
+        (0, 0, false, None)
+    );
+}
+
+#[gpui::test]
 fn button_disabled_blocks_mouse(cx: &mut TestAppContext) {
     assert_eq!(
         run_activation(cx, Target::Button, true, Activation::Mouse),
@@ -244,5 +329,21 @@ fn icon_button_disabled_blocks_space(cx: &mut TestAppContext) {
     assert_eq!(
         run_activation(cx, Target::IconButton, true, Activation::Space),
         (0, 0, false)
+    );
+}
+
+#[gpui::test]
+fn checkbox_disabled_blocks_mouse(cx: &mut TestAppContext) {
+    assert_eq!(
+        run_checkbox_activation(cx, true, Activation::Mouse),
+        (0, 0, false, None)
+    );
+}
+
+#[gpui::test]
+fn checkbox_disabled_blocks_space(cx: &mut TestAppContext) {
+    assert_eq!(
+        run_checkbox_activation(cx, true, Activation::Space),
+        (0, 0, false, None)
     );
 }

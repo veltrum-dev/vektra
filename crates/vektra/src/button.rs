@@ -1,10 +1,12 @@
 //! Button 组件。
 
 use crate::{
+    focus::{self, FocusHandler},
     icon::{Icon, IconSource, IntoIconSource},
+    size::{ComponentSize, component_size},
     theme,
     tooltip::{self, Tooltip, TooltipPlacement},
-    traits::{Clickable, Disableable},
+    traits::{Clickable, Disableable, Focusable, Sizable},
 };
 use gpui::{
     Animation, AnimationExt, App, ClickEvent, Context, CursorStyle, DefiniteLength, ElementId,
@@ -53,30 +55,6 @@ impl ButtonVariant {
     }
 }
 
-/// Button 的尺寸。
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ButtonSize {
-    /// 24px 高度。
-    Xs,
-    /// 32px 高度。
-    Sm,
-    /// 36px 高度，默认尺寸。
-    Md,
-    /// 40px 高度。
-    Lg,
-}
-
-impl ButtonSize {
-    pub(crate) const fn token_key(self) -> &'static str {
-        match self {
-            Self::Xs => "xs",
-            Self::Sm => "sm",
-            Self::Md => "md",
-            Self::Lg => "lg",
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ButtonWidth {
     Fixed(DefiniteLength),
@@ -113,7 +91,7 @@ pub struct Button {
     label: SharedString,
     display_label: SharedString,
     variant: Option<ButtonVariant>,
-    size: Option<ButtonSize>,
+    size: Option<ComponentSize>,
     width: Option<ButtonWidth>,
     start_icon: Option<IconSource>,
     end_icon: Option<IconSource>,
@@ -122,6 +100,9 @@ pub struct Button {
     selected: Option<bool>,
     auto_insert_space: Option<bool>,
     on_click: Option<ClickHandler>,
+    on_focus: Option<FocusHandler>,
+    on_blur: Option<FocusHandler>,
+    cursor_style: Option<CursorStyle>,
     tooltip: Option<Tooltip>,
     tooltip_placement: TooltipPlacement,
     aria_description: Option<SharedString>,
@@ -147,6 +128,9 @@ impl Button {
             selected: None,
             auto_insert_space: None,
             on_click: None,
+            on_focus: None,
+            on_blur: None,
+            cursor_style: None,
             tooltip: None,
             tooltip_placement: TooltipPlacement::default(),
             aria_description: None,
@@ -172,8 +156,9 @@ impl Button {
 
     /// 设置 Button 尺寸。
     ///
-    /// 未调用时解析为 `ButtonSize::Md`。
-    pub fn size(mut self, size: ButtonSize) -> Self {
+    /// 未调用时在渲染阶段读取当前全局 [`ComponentSize`]，全局值默认是
+    /// [`ComponentSize::Md`]。
+    pub fn size(mut self, size: ComponentSize) -> Self {
         self.size = Some(size);
         self
     }
@@ -198,7 +183,7 @@ impl Button {
     /// 设置前置装饰图标。
     ///
     /// 后一次调用会覆盖前一次调用。图标尺寸和图标与文字之间的间距由主题中当前
-    /// `ButtonSize` 的 token 决定，调用方不能单独为插槽图标指定像素尺寸。
+    /// `ComponentSize` 的 token 决定，调用方不能单独为插槽图标指定像素尺寸。
     pub fn start_icon(mut self, icon: impl IntoIconSource) -> Self {
         self.start_icon = Some(icon.into_icon_source());
         self
@@ -287,6 +272,14 @@ impl Button {
         self
     }
 
+    /// 设置可用状态下的鼠标光标。
+    ///
+    /// disabled、loading 和 progress 会优先显示自身状态光标，不会被此设置绕过。
+    pub fn cursor_style(mut self, cursor_style: CursorStyle) -> Self {
+        self.cursor_style = Some(cursor_style);
+        self
+    }
+
     /// 注册激活回调。
     ///
     /// 鼠标点击、聚焦后的 Enter 和 Space 都会通过同一个三参数回调触发。
@@ -296,6 +289,38 @@ impl Button {
     ) -> Self {
         self.on_click = Some(Rc::new(handler));
         self
+    }
+
+    /// 注册组件实际获得焦点时调用的回调。
+    ///
+    /// 重新渲染或 Button 状态 builder 变化不会自行触发该回调。
+    pub fn on_focus(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.on_focus = Some(Rc::new(handler));
+        self
+    }
+
+    /// 注册可访问宿主 Entity 状态的聚焦回调。
+    pub fn on_focus_in<T: 'static>(
+        self,
+        cx: &Context<T>,
+        handler: impl Fn(&mut T, &mut Window, &mut Context<T>) + 'static,
+    ) -> Self {
+        Focusable::on_focus_in(self, cx, handler)
+    }
+
+    /// 注册组件实际失去焦点时调用的回调。
+    pub fn on_blur(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.on_blur = Some(Rc::new(handler));
+        self
+    }
+
+    /// 注册可访问宿主 Entity 状态的失焦回调。
+    pub fn on_blur_in<T: 'static>(
+        self,
+        cx: &Context<T>,
+        handler: impl Fn(&mut T, &mut Window, &mut Context<T>) + 'static,
+    ) -> Self {
+        Focusable::on_blur_in(self, cx, handler)
     }
 
     /// 注册可访问宿主 Entity 状态的激活回调。
@@ -331,8 +356,18 @@ impl Button {
         self.variant.unwrap_or(ButtonVariant::Primary)
     }
 
-    pub(crate) fn resolved_size(&self) -> ButtonSize {
-        self.size.unwrap_or(ButtonSize::Md)
+    pub(crate) fn resolved_size(&self, cx: &App) -> ComponentSize {
+        self.size.unwrap_or_else(|| component_size(cx))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn explicit_size(&self) -> Option<ComponentSize> {
+        self.size
+    }
+
+    #[cfg(test)]
+    pub(crate) fn cursor_style_value(&self) -> Option<CursorStyle> {
+        self.cursor_style
     }
 
     #[cfg(test)]
@@ -398,6 +433,10 @@ impl Clickable for Button {
     fn on_click(self, handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static) -> Self {
         Button::on_click(self, handler)
     }
+
+    fn cursor_style(self, cursor_style: CursorStyle) -> Self {
+        Button::cursor_style(self, cursor_style)
+    }
 }
 
 impl Disableable for Button {
@@ -406,15 +445,38 @@ impl Disableable for Button {
     }
 }
 
+impl Focusable for Button {
+    fn on_focus(self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        Button::on_focus(self, handler)
+    }
+
+    fn on_blur(self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        Button::on_blur(self, handler)
+    }
+}
+
+impl Sizable for Button {
+    fn size(self, size: ComponentSize) -> Self {
+        Button::size(self, size)
+    }
+}
+
 impl RenderOnce for Button {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let tooltip_focusable = !self.disabled;
+        let focus_state = focus::state_for(
+            &self.id,
+            !self.disabled,
+            self.on_focus.clone(),
+            self.on_blur.clone(),
+            window,
+            cx,
+        );
         let tooltip_state = self.tooltip.clone().map(|tooltip| {
             tooltip::state_for(
                 &self.id,
                 tooltip,
                 self.tooltip_placement,
-                !self.disabled,
+                &focus_state,
                 window,
                 cx,
             )
@@ -424,7 +486,7 @@ impl RenderOnce for Button {
         let underlines_on_hover = variant.underlines_on_hover();
         let variant = variant.token_key();
         let size = theme
-            .button_size(self.resolved_size().token_key())
+            .button_size(self.resolved_size(cx).token_key())
             .expect("Vektra 默认 Button size token 必须通过测试保持有效");
         let selected = self.selected;
         let states = if selected == Some(true) {
@@ -556,16 +618,20 @@ impl RenderOnce for Button {
 
         let element = apply_interaction_with_activity(
             element,
-            self.disabled,
-            busy,
-            on_click,
-            states,
-            theme.button.focus_width,
-            underlines_on_hover,
+            ButtonInteraction {
+                disabled: self.disabled,
+                busy,
+                on_click,
+                cursor_style: self.cursor_style,
+                states,
+                focus_width: theme.button.focus_width,
+                underline_on_hover: underlines_on_hover,
+            },
         );
+        let element = focus::attach_interaction(element, &focus_state, !self.disabled, cx);
 
         if let Some(state) = tooltip_state {
-            let element = tooltip::attach_interaction(element, &state, tooltip_focusable, cx);
+            let element = tooltip::attach_interaction(element, &state);
             tooltip::attach_prepaint_listener(element, state)
         } else {
             tooltip::into_any(element)
@@ -625,30 +691,48 @@ pub(crate) fn apply_interaction(
     element: gpui::Stateful<gpui::Div>,
     disabled: bool,
     on_click: Option<ClickHandler>,
+    cursor_style: Option<CursorStyle>,
     states: ResolvedButtonStates,
     focus_width: gpui::Pixels,
     underline_on_hover: bool,
 ) -> gpui::Stateful<gpui::Div> {
     apply_interaction_with_activity(
         element,
-        disabled,
-        false,
-        on_click,
-        states,
-        focus_width,
-        underline_on_hover,
+        ButtonInteraction {
+            disabled,
+            busy: false,
+            on_click,
+            cursor_style,
+            states,
+            focus_width,
+            underline_on_hover,
+        },
     )
+}
+
+pub(crate) struct ButtonInteraction {
+    disabled: bool,
+    busy: bool,
+    on_click: Option<ClickHandler>,
+    cursor_style: Option<CursorStyle>,
+    states: ResolvedButtonStates,
+    focus_width: gpui::Pixels,
+    underline_on_hover: bool,
 }
 
 fn apply_interaction_with_activity(
     element: gpui::Stateful<gpui::Div>,
-    disabled: bool,
-    busy: bool,
-    on_click: Option<ClickHandler>,
-    states: ResolvedButtonStates,
-    focus_width: gpui::Pixels,
-    underline_on_hover: bool,
+    interaction: ButtonInteraction,
 ) -> gpui::Stateful<gpui::Div> {
+    let ButtonInteraction {
+        disabled,
+        busy,
+        on_click,
+        cursor_style,
+        states,
+        focus_width,
+        underline_on_hover,
+    } = interaction;
     let on_key_enter = on_click.clone();
     let on_key_space = on_click.clone();
 
@@ -657,30 +741,26 @@ fn apply_interaction_with_activity(
             this.cursor(CursorStyle::OperationNotAllowed)
         })
         .when(!disabled, |this| {
-            this.cursor(if busy {
-                CursorStyle::Arrow
-            } else {
-                CursorStyle::PointingHand
-            })
-            .tab_index(0)
-            .hover(move |style| {
-                let style = style
-                    .bg(states.hover.background)
-                    .border_color(states.hover.border)
-                    .text_color(states.hover.foreground);
+            this.cursor(resolved_cursor_style(disabled, busy, cursor_style))
+                .tab_index(0)
+                .hover(move |style| {
+                    let style = style
+                        .bg(states.hover.background)
+                        .border_color(states.hover.border)
+                        .text_color(states.hover.foreground);
 
-                if underline_on_hover {
-                    style.underline()
-                } else {
+                    if underline_on_hover {
+                        style.underline()
+                    } else {
+                        style
+                    }
+                })
+                .focus_visible(move |style| {
                     style
-                }
-            })
-            .focus_visible(move |style| {
-                style
-                    .border(focus_width)
-                    .border_color(states.focused.border)
-                    .text_color(states.focused.foreground)
-            })
+                        .border(focus_width)
+                        .border_color(states.focused.border)
+                        .text_color(states.focused.foreground)
+                })
         })
         .when(!disabled && !busy, |this| {
             this.active(move |style| {
@@ -745,6 +825,20 @@ fn apply_interaction_with_activity(
                 }
             })
         })
+}
+
+pub(crate) fn resolved_cursor_style(
+    disabled: bool,
+    busy: bool,
+    cursor_style: Option<CursorStyle>,
+) -> CursorStyle {
+    if disabled {
+        CursorStyle::OperationNotAllowed
+    } else if busy {
+        CursorStyle::Arrow
+    } else {
+        cursor_style.unwrap_or(CursorStyle::PointingHand)
+    }
 }
 
 fn apply_width(

@@ -35,6 +35,9 @@ const BUTTON_VARIANTS: &[&str] = &[
 
 const BUTTON_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
 const BUTTON_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
+const CHECKBOX_VISUAL_STATES: &[&str] = &["unchecked", "checked", "indeterminate"];
+const CHECKBOX_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
+const CHECKBOX_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
 
 /// 校验解析后的 token 是否满足 Vektra 第一阶段组件需求。
 pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
@@ -102,6 +105,54 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
             "content-gap",
         ] {
             tokens.required(&format!("button.size.{size}.{field}"))?;
+        }
+    }
+
+    let checkbox_state_fields = ["background", "box-background", "border", "icon", "label"];
+    let has_checkbox_state_extension = CHECKBOX_VISUAL_STATES.iter().any(|visual_state| {
+        CHECKBOX_STATES.iter().any(|state| {
+            checkbox_state_fields.iter().any(|field| {
+                tokens
+                    .get(&format!("checkbox.state.{visual_state}.{state}.{field}"))
+                    .is_some()
+            })
+        })
+    });
+    if has_checkbox_state_extension {
+        tokens.required("checkbox.border-width")?;
+        tokens.required("checkbox.focus-width")?;
+        for visual_state in CHECKBOX_VISUAL_STATES {
+            for state in CHECKBOX_STATES {
+                for field in checkbox_state_fields {
+                    tokens.required(&format!("checkbox.state.{visual_state}.{state}.{field}"))?;
+                }
+            }
+        }
+    }
+
+    let checkbox_size_fields = [
+        "box-size",
+        "icon-size",
+        "label-gap",
+        "font-size",
+        "line-height",
+        "radius",
+        "hit-size",
+        "hit-padding-x",
+        "hit-padding-y",
+    ];
+    let has_checkbox_size_extension = CHECKBOX_SIZES.iter().any(|size| {
+        checkbox_size_fields.iter().any(|field| {
+            tokens
+                .get(&format!("checkbox.size.{size}.{field}"))
+                .is_some()
+        })
+    });
+    if has_checkbox_size_extension {
+        for size in CHECKBOX_SIZES {
+            for field in checkbox_size_fields {
+                tokens.required(&format!("checkbox.size.{size}.{field}"))?;
+            }
         }
     }
 

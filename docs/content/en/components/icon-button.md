@@ -26,10 +26,14 @@ The root supplies Button role, a square hit area, themed states, and one Tab sto
 | `.icon_color(color)` | Overrides enabled icon color only; disabled tokens still win. |
 | `.disabled(bool)` | Blocks mouse/keyboard activation and leaves the Tab order. |
 | `.on_click(...)` / `.on_click_in(...)` | Registers the shared mouse, Enter, and Space activation contract. |
+| `.on_focus(...)` / `.on_blur(...)` | Registers callbacks for real focus and blur transitions. |
+| `.on_focus_in(...)` / `.on_blur_in(...)` | Uses a host Entity listener so handlers can mutate state and call `cx.notify()`. |
 
 ## States, Keyboard, and Accessibility
 
 Normal, hover, pressed, focus-visible, and disabled use the Button theme matrix. The host wires Tab/Shift+Tab to GPUI focus traversal. Enter activates on keydown and Space on keyup. A string Tooltip appears after 500ms of hover or keyboard focus; configuration supports immediate `open(true)` or forced `open(false)`. Blur starts the exit transition. Escape dismisses without moving focus, and a controlled true value must change `false -> true` to reopen. Mouse-created focus does not start the keyboard Tooltip path.
+
+Business focus callbacks and Tooltip share one `FocusHandle`, so one transition calls business code once. Rerenders use the latest handler and disabled leaves Tab order. See [`Focusable`](/en/api/focusable) for `_in` and lifecycle semantics.
 
 Every icon-only button must have an `aria_label`. `aria_description` is supplementary semantics and Tooltip is visual help; Vektra does not copy between them. A disabled IconButton cannot focus or activate, but hover Tooltip remains available to explain why it is disabled.
 
