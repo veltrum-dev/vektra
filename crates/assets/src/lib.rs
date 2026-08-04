@@ -10,7 +10,7 @@ use std::{borrow::Cow, collections::BTreeSet};
 
 /// Vektra 默认资源集合。
 ///
-/// 该资源源默认提供 `themes/default/**/*`（含 Tooltip token）和 Button 使用的
+/// 该资源源默认提供 `themes/default/**/*`（含 Checkbox、Switch 与 Tooltip token）和 Button 使用的
 /// `components/button/loading.svg` 以及 Checkbox 默认状态图标。
 /// 启用 `icons` feature 时，额外提供其他 `icons/**/*.svg` 内置图标。应用没有自定义
 /// 资源时，可以把该类型直接传给 GPUI：

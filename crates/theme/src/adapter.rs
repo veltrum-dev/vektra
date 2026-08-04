@@ -130,6 +130,79 @@ pub struct CheckboxTokens {
     pub focus_width: Pixels,
 }
 
+/// Switch 某个 visual/interaction state 的 GPUI 样式 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SwitchStateTokens {
+    /// Track 背景色。
+    pub track_background: Hsla,
+    /// Track 边框色。
+    pub track_border: Hsla,
+    /// Thumb 背景色。
+    pub thumb: Hsla,
+    /// Label 文本色。
+    pub label: Hsla,
+    /// Track 内状态内容的前景色。
+    pub content: Hsla,
+    /// Thumb 内 loading spinner 的前景色。
+    pub spinner: Hsla,
+}
+
+/// Switch 某个 size 的 GPUI 尺寸 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SwitchSizeTokens {
+    /// Track 宽度。
+    pub track_width: Pixels,
+    /// Track 高度。
+    pub track_height: Pixels,
+    /// Track 内边距。
+    pub track_padding: Pixels,
+    /// Thumb 正方形尺寸。
+    pub thumb_size: Pixels,
+    /// Track 圆角。
+    pub track_radius: Pixels,
+    /// Thumb 圆角。
+    pub thumb_radius: Pixels,
+    /// Label 与 track 的间距。
+    pub label_gap: Pixels,
+    /// 字号。
+    pub font_size: Pixels,
+    /// 行高。
+    pub line_height: Pixels,
+    /// 点击目标最小尺寸。
+    pub hit_size: Pixels,
+    /// 点击目标水平内边距。
+    pub hit_padding_x: Pixels,
+    /// 点击目标垂直内边距。
+    pub hit_padding_y: Pixels,
+    /// 内容模式的 Track 高度。
+    pub content_track_height: Pixels,
+    /// 内容模式的 Track 内边距。
+    pub content_track_padding: Pixels,
+    /// 内容模式的 Thumb 正方形尺寸。
+    pub content_thumb_size: Pixels,
+    /// Thumb 槽与状态内容槽之间的间距。
+    pub content_slot_gap: Pixels,
+    /// 状态内容与 Track 逻辑边缘之间的内边距。
+    pub content_edge_padding: Pixels,
+    /// Track 内状态图标的正方形尺寸。
+    pub content_icon_size: Pixels,
+    /// 状态图标与文字之间的间距。
+    pub content_gap: Pixels,
+    /// Track 内状态文字的最大宽度。
+    pub content_max_text_width: Pixels,
+    /// Thumb 内 loading spinner 的正方形尺寸。
+    pub spinner_size: Pixels,
+}
+
+/// Switch 组件所需的公共 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SwitchTokens {
+    /// Track 边框宽度。
+    pub border_width: Pixels,
+    /// focus-visible 边框宽度。
+    pub focus_width: Pixels,
+}
+
 /// Icon 组件所需的 GPUI token。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct IconTokens {
@@ -193,6 +266,8 @@ pub struct ResolvedTheme {
     pub button: ButtonTokens,
     /// Checkbox 公共 token。
     pub checkbox: CheckboxTokens,
+    /// Switch 公共 token。
+    pub switch: SwitchTokens,
     /// Tooltip 公共 token。
     pub tooltip: TooltipTokens,
     tokens: ResolvedTokens,
@@ -243,6 +318,18 @@ impl ResolvedTheme {
                 focus_width: optional_dimension(
                     &tokens,
                     "checkbox.focus-width",
+                    "foundation.border.focus",
+                )?,
+            },
+            switch: SwitchTokens {
+                border_width: optional_dimension(
+                    &tokens,
+                    "switch.border-width",
+                    "foundation.border.width",
+                )?,
+                focus_width: optional_dimension(
+                    &tokens,
+                    "switch.focus-width",
                     "foundation.border.focus",
                 )?,
             },
@@ -459,6 +546,184 @@ impl ResolvedTheme {
             )?,
         })
     }
+
+    /// 读取 Switch state token。
+    pub fn switch_state(
+        &self,
+        visual_state: &str,
+        state: &str,
+    ) -> Result<SwitchStateTokens, ThemeError> {
+        let prefix = format!("switch.state.{visual_state}.{state}");
+        Ok(SwitchStateTokens {
+            track_background: optional_color(
+                &self.tokens,
+                &format!("{prefix}.track-background"),
+                switch_track_background_fallback(visual_state, state),
+            )?,
+            track_border: optional_color(
+                &self.tokens,
+                &format!("{prefix}.track-border"),
+                switch_track_border_fallback(visual_state, state),
+            )?,
+            thumb: optional_color(
+                &self.tokens,
+                &format!("{prefix}.thumb"),
+                switch_thumb_fallback(visual_state, state),
+            )?,
+            label: optional_color(
+                &self.tokens,
+                &format!("{prefix}.label"),
+                checkbox_label_fallback(state),
+            )?,
+            content: optional_color(
+                &self.tokens,
+                &format!("{prefix}.content"),
+                switch_content_fallback(visual_state, state),
+            )?,
+            spinner: optional_color(
+                &self.tokens,
+                &format!("{prefix}.spinner"),
+                switch_spinner_fallback(visual_state, state),
+            )?,
+        })
+    }
+
+    /// 读取 Switch size token。
+    pub fn switch_size(&self, size: &str) -> Result<SwitchSizeTokens, ThemeError> {
+        let prefix = format!("switch.size.{size}");
+        let track_width = optional_dimension(
+            &self.tokens,
+            &format!("{prefix}.track-width"),
+            switch_track_width_fallback(size),
+        )?;
+        let thumb_size = optional_dimension(
+            &self.tokens,
+            &format!("{prefix}.thumb-size"),
+            switch_track_height_fallback(size),
+        )?;
+        let track_height = optional_dimension(
+            &self.tokens,
+            &format!("{prefix}.track-height"),
+            switch_track_height_fallback(size),
+        )?;
+        let track_padding = optional_dimension(
+            &self.tokens,
+            &format!("{prefix}.track-padding"),
+            "foundation.space.0",
+        )?;
+        let hit_size = optional_dimension(
+            &self.tokens,
+            &format!("{prefix}.hit-size"),
+            switch_track_height_fallback(size),
+        )?;
+        Ok(SwitchSizeTokens {
+            track_width,
+            track_height,
+            track_padding,
+            thumb_size,
+            track_radius: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.track-radius"),
+                "foundation.radius.md",
+            )?,
+            thumb_radius: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.thumb-radius"),
+                "foundation.radius.md",
+            )?,
+            label_gap: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.label-gap"),
+                checkbox_label_gap_fallback(size),
+            )?,
+            font_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.font-size"),
+                checkbox_font_size_fallback(size),
+            )?,
+            line_height: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.line-height"),
+                checkbox_line_height_fallback(size),
+            )?,
+            hit_size,
+            hit_padding_x: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.hit-padding-x"),
+                "foundation.space.1",
+            )?,
+            hit_padding_y: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.hit-padding-y"),
+                "foundation.space.1",
+            )?,
+            content_track_height: if self
+                .tokens
+                .get(&format!("{prefix}.content-track-height"))
+                .is_some()
+            {
+                dimension(&self.tokens, &format!("{prefix}.content-track-height"))?
+            } else {
+                hit_size
+            },
+            content_track_padding: if self
+                .tokens
+                .get(&format!("{prefix}.content-track-padding"))
+                .is_some()
+            {
+                dimension(&self.tokens, &format!("{prefix}.content-track-padding"))?
+            } else {
+                track_padding
+            },
+            content_thumb_size: if self
+                .tokens
+                .get(&format!("{prefix}.content-thumb-size"))
+                .is_some()
+            {
+                dimension(&self.tokens, &format!("{prefix}.content-thumb-size"))?
+            } else {
+                thumb_size
+            },
+            content_slot_gap: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.content-slot-gap"),
+                "foundation.space.1",
+            )?,
+            content_edge_padding: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.content-edge-padding"),
+                "foundation.space.1",
+            )?,
+            content_icon_size: if self
+                .tokens
+                .get(&format!("{prefix}.content-icon-size"))
+                .is_some()
+            {
+                dimension(&self.tokens, &format!("{prefix}.content-icon-size"))?
+            } else {
+                thumb_size
+            },
+            content_gap: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.content-gap"),
+                "foundation.space.1",
+            )?,
+            content_max_text_width: if self
+                .tokens
+                .get(&format!("{prefix}.content-max-text-width"))
+                .is_some()
+            {
+                dimension(&self.tokens, &format!("{prefix}.content-max-text-width"))?
+            } else {
+                track_width
+            },
+            spinner_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.spinner-size"),
+                "foundation.space.2",
+            )?,
+        })
+    }
 }
 
 fn color(tokens: &ResolvedTokens, path: &str) -> Result<Hsla, ThemeError> {
@@ -589,4 +854,64 @@ fn checkbox_line_height_fallback(size: &str) -> &'static str {
         "md" | "lg" => "foundation.space.4",
         _ => "foundation.space.4",
     }
+}
+
+fn switch_track_background_fallback(visual_state: &str, state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-background"
+    } else if visual_state == "checked" {
+        "semantic.primary"
+    } else {
+        "semantic.muted"
+    }
+}
+
+fn switch_track_border_fallback(visual_state: &str, state: &str) -> &'static str {
+    if state == "focus-visible" {
+        "semantic.ring"
+    } else if state == "disabled" {
+        "semantic.disabled-border"
+    } else if visual_state == "checked" {
+        "semantic.primary"
+    } else {
+        "semantic.input-border"
+    }
+}
+
+fn switch_thumb_fallback(_visual_state: &str, state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-foreground"
+    } else {
+        "semantic.background"
+    }
+}
+
+fn switch_content_fallback(visual_state: &str, state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.disabled-foreground"
+    } else if visual_state == "checked" {
+        "semantic.on-primary"
+    } else {
+        "semantic.foreground"
+    }
+}
+
+fn switch_spinner_fallback(visual_state: &str, state: &str) -> &'static str {
+    if state == "disabled" {
+        "semantic.background"
+    } else if visual_state == "checked" {
+        "semantic.primary"
+    } else {
+        "semantic.foreground"
+    }
+}
+
+fn switch_track_width_fallback(size: &str) -> &'static str {
+    let _ = size;
+    "foundation.space.4"
+}
+
+fn switch_track_height_fallback(size: &str) -> &'static str {
+    let _ = size;
+    "foundation.space.3"
 }

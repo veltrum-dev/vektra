@@ -4,6 +4,7 @@ use gpui::{
 };
 use vektra::{
     Button, Checkbox, Clickable, ComponentSize, Disableable, IconButton, IconSource, Sizable,
+    Switch,
 };
 
 #[test]
@@ -28,7 +29,7 @@ fn icon_button_accepts_original_on_click_callback() {
 }
 
 #[test]
-fn button_and_icon_button_implement_disableable() {
+fn interactive_components_implement_disableable() {
     fn disable<C: Disableable>(component: C) -> C {
         component.disabled(true)
     }
@@ -39,6 +40,7 @@ fn button_and_icon_button_implement_disableable() {
         IconSource::asset("icons/settings.svg"),
     ));
     let _checkbox = disable(Checkbox::new("checkbox-disableable"));
+    let _switch = disable(Switch::new("switch-disableable"));
 }
 
 #[test]
@@ -53,10 +55,11 @@ fn components_with_size_api_implement_sizable() {
         IconSource::asset("icons/settings.svg"),
     ));
     let _checkbox = sizable(Checkbox::new("checkbox-sizable"));
+    let _switch = sizable(Switch::new("switch-sizable"));
 }
 
 #[test]
-fn button_and_icon_button_implement_clickable() {
+fn components_with_standard_activation_entry_implement_clickable() {
     fn clickable<C: Clickable>(component: C) -> C {
         component.on_click(|_, _, _| {})
     }
@@ -66,6 +69,7 @@ fn button_and_icon_button_implement_clickable() {
         "icon-clickable",
         IconSource::asset("icons/settings.svg"),
     ));
+    let _switch = clickable(Switch::new("switch-clickable"));
 }
 
 #[derive(Debug, Clone, Copy)]

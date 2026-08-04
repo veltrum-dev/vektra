@@ -33,6 +33,7 @@ trunk build --release --public-url ./
 - `button/basic`：组件页预览，覆盖 6 种 variant、4 种 size、disabled、图标、默认状态、中文自动空格、自动/固定/窄/full-width 宽度以及点击次数和最近点击项。
 - `button/showcase`：首页预览，展示少量代表性 variant、size、图标、disabled 和点击反馈。
 - `checkbox/basic`：Checkbox 的受控 checked、indeterminate、disabled、无 label aria、4 种 size、自定义状态图标和全局尺寸预览。
+- `switch/basic`：Switch 的受控 checked、disabled、无 label aria、4 种 size 与焦点生命周期预览。
 - `icon-button/basic`：IconButton 的 variant、size、disabled、键盘和 Tooltip 预览。
 - `tooltip/basic`：Button/IconButton 的自动触发、受控 `open`、Escape、无箭头、自定义颜色、关闭动画、disabled 和长文本 Tooltip 预览。
 

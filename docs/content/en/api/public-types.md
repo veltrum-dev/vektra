@@ -6,6 +6,8 @@
 | --- | --- |
 | `Button`, `ButtonVariant` | [Button component](/en/components/button) |
 | `Checkbox` | [Checkbox component](/en/components/checkbox) |
+| `Switch` | [Switch component](/en/components/switch) |
+| `SwitchContent` | [Switch track state content](/en/components/switch#api) |
 | `IconButton`, `IconButtonVariant` | [IconButton component](/en/components/icon-button) |
 | `Icon`, `IconSource`, `IntoIconSource`, `IconName` | Icons and asset sources; the same-name `IntoIconSource` exports include the trait and derive macro, while `IconName` requires the `icons` feature |
 | `Tooltip`, `TooltipPlacement` | [Tooltip component](/en/components/tooltip) |

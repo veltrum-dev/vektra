@@ -6,6 +6,8 @@
 | --- | --- |
 | `Button`, `ButtonVariant` | [Button 组件](/components/button) |
 | `Checkbox` | [Checkbox 组件](/components/checkbox) |
+| `Switch` | [Switch 组件](/components/switch) |
+| `SwitchContent` | [Switch 轨道状态内容](/components/switch#api) |
 | `IconButton`, `IconButtonVariant` | [IconButton 组件](/components/icon-button) |
 | `Icon`, `IconSource`, `IntoIconSource`, `IconName` | 图标与资源来源；`IntoIconSource` 同名导出包含 trait 与 derive macro，`IconName` 需要 `icons` feature |
 | `Tooltip`, `TooltipPlacement` | [Tooltip 组件](/components/tooltip) |

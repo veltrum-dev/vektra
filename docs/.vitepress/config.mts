@@ -79,6 +79,7 @@ function zhThemeConfig(): DefaultTheme.Config {
         items: [
           { text: "Button", link: "/components/button" },
           { text: "Checkbox", link: "/components/checkbox" },
+          { text: "Switch", link: "/components/switch" },
           { text: "IconButton", link: "/components/icon-button" },
           { text: "Tooltip", link: "/components/tooltip" }
         ]
@@ -135,6 +136,7 @@ function enThemeConfig(): DefaultTheme.Config {
         items: [
           { text: "Button", link: "/en/components/button" },
           { text: "Checkbox", link: "/en/components/checkbox" },
+          { text: "Switch", link: "/en/components/switch" },
           { text: "IconButton", link: "/en/components/icon-button" },
           { text: "Tooltip", link: "/en/components/tooltip" }
         ]

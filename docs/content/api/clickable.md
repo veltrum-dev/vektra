@@ -1,6 +1,6 @@
 # `Clickable`
 
-`Clickable` 是 Button 与 IconButton 共享的静态 builder 能力，不是跨 Entity 事件总线。
+`Clickable` 是 Button、IconButton 与 Switch 共享的静态 builder 能力，不是跨 Entity 事件总线。
 
 ```rust
 pub trait Clickable: Sized {
@@ -24,7 +24,7 @@ pub trait Clickable: Sized {
 }
 ```
 
-实现组件：[`Button`](/components/button) 与 [`IconButton`](/components/icon-button)。`on_click` 接收标准 GPUI 回调；`on_click_in` 通过 `Context::listener` 绑定宿主 Entity。Entity 销毁后 listener 按 GPUI 弱引用语义变为 no-op。
+实现组件：[`Button`](/components/button)、[`IconButton`](/components/icon-button) 与 [`Switch`](/components/switch)。`on_click` 接收标准 GPUI 回调；`on_click_in` 通过 `Context::listener` 绑定宿主 Entity。Entity 销毁后 listener 按 GPUI 弱引用语义变为 no-op。Switch 可用该入口先请求后台接口，成功后再更新受控 checked；它不会自动切换状态。
 
 <<< ../../preview/src/demos/button.rs#button-basic{rust}
 

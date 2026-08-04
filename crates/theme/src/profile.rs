@@ -38,6 +38,9 @@ const BUTTON_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
 const CHECKBOX_VISUAL_STATES: &[&str] = &["unchecked", "checked", "indeterminate"];
 const CHECKBOX_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
 const CHECKBOX_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
+const SWITCH_VISUAL_STATES: &[&str] = &["unchecked", "checked"];
+const SWITCH_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
+const SWITCH_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
 
 /// 校验解析后的 token 是否满足 Vektra 第一阶段组件需求。
 pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
@@ -153,6 +156,119 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
             for field in checkbox_size_fields {
                 tokens.required(&format!("checkbox.size.{size}.{field}"))?;
             }
+        }
+    }
+
+    let switch_state_fields = ["track-background", "track-border", "thumb", "label"];
+    let has_switch_state_extension = SWITCH_VISUAL_STATES.iter().any(|visual_state| {
+        SWITCH_STATES.iter().any(|state| {
+            switch_state_fields.iter().any(|field| {
+                tokens
+                    .get(&format!("switch.state.{visual_state}.{state}.{field}"))
+                    .is_some()
+            })
+        })
+    });
+    if has_switch_state_extension {
+        tokens.required("switch.border-width")?;
+        tokens.required("switch.focus-width")?;
+        for visual_state in SWITCH_VISUAL_STATES {
+            for state in SWITCH_STATES {
+                for field in switch_state_fields {
+                    tokens.required(&format!("switch.state.{visual_state}.{state}.{field}"))?;
+                }
+            }
+        }
+    }
+
+    let has_switch_content_state_extension = SWITCH_VISUAL_STATES.iter().any(|visual_state| {
+        SWITCH_STATES.iter().any(|state| {
+            tokens
+                .get(&format!("switch.state.{visual_state}.{state}.content"))
+                .is_some()
+        })
+    });
+    if has_switch_content_state_extension {
+        for visual_state in SWITCH_VISUAL_STATES {
+            for state in SWITCH_STATES {
+                tokens.required(&format!("switch.state.{visual_state}.{state}.content"))?;
+            }
+        }
+    }
+
+    let has_switch_spinner_state_extension = SWITCH_VISUAL_STATES.iter().any(|visual_state| {
+        SWITCH_STATES.iter().any(|state| {
+            tokens
+                .get(&format!("switch.state.{visual_state}.{state}.spinner"))
+                .is_some()
+        })
+    });
+    if has_switch_spinner_state_extension {
+        for visual_state in SWITCH_VISUAL_STATES {
+            for state in SWITCH_STATES {
+                tokens.required(&format!("switch.state.{visual_state}.{state}.spinner"))?;
+            }
+        }
+    }
+
+    let switch_size_fields = [
+        "track-width",
+        "track-height",
+        "track-padding",
+        "thumb-size",
+        "track-radius",
+        "thumb-radius",
+        "label-gap",
+        "font-size",
+        "line-height",
+        "hit-size",
+        "hit-padding-x",
+        "hit-padding-y",
+    ];
+    let has_switch_size_extension = SWITCH_SIZES.iter().any(|size| {
+        switch_size_fields
+            .iter()
+            .any(|field| tokens.get(&format!("switch.size.{size}.{field}")).is_some())
+    });
+    if has_switch_size_extension {
+        for size in SWITCH_SIZES {
+            for field in switch_size_fields {
+                tokens.required(&format!("switch.size.{size}.{field}"))?;
+            }
+        }
+    }
+
+    let switch_content_size_fields = [
+        "content-track-height",
+        "content-track-padding",
+        "content-thumb-size",
+        "content-slot-gap",
+        "content-edge-padding",
+        "content-icon-size",
+        "content-gap",
+        "content-max-text-width",
+    ];
+    let has_switch_content_size_extension = SWITCH_SIZES.iter().any(|size| {
+        switch_content_size_fields
+            .iter()
+            .any(|field| tokens.get(&format!("switch.size.{size}.{field}")).is_some())
+    });
+    if has_switch_content_size_extension {
+        for size in SWITCH_SIZES {
+            for field in switch_content_size_fields {
+                tokens.required(&format!("switch.size.{size}.{field}"))?;
+            }
+        }
+    }
+
+    let has_switch_spinner_size_extension = SWITCH_SIZES.iter().any(|size| {
+        tokens
+            .get(&format!("switch.size.{size}.spinner-size"))
+            .is_some()
+    });
+    if has_switch_spinner_size_extension {
+        for size in SWITCH_SIZES {
+            tokens.required(&format!("switch.size.{size}.spinner-size"))?;
         }
     }
 

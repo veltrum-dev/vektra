@@ -36,10 +36,14 @@ fn button_showcase_is_selected_by_stable_id() {
 }
 
 #[test]
-fn checkbox_icon_button_and_tooltip_are_selected_by_stable_ids() {
+fn checkbox_switch_icon_button_and_tooltip_are_selected_by_stable_ids() {
     assert_eq!(
         parse_demo_query("?demo=checkbox/basic"),
         DemoSelection::CheckboxBasic
+    );
+    assert_eq!(
+        parse_demo_query("?demo=switch/basic"),
+        DemoSelection::SwitchBasic
     );
     assert_eq!(
         parse_demo_query("?demo=icon-button/basic"),
@@ -49,6 +53,25 @@ fn checkbox_icon_button_and_tooltip_are_selected_by_stable_ids() {
         parse_demo_query("?demo=tooltip/basic"),
         DemoSelection::TooltipBasic
     );
+}
+
+#[test]
+fn switch_demo_covers_compact_and_all_state_content_forms() {
+    let source = include_str!("../../src/demos/switch.rs");
+
+    assert!(source.contains("Switch::new(\"switch-notifications\")"));
+    assert!(source.contains("SwitchContent::text"));
+    assert!(source.contains("SwitchContent::icon("));
+    assert!(source.contains("SwitchContent::icon_text"));
+    assert!(source.contains(".disabled(true)"));
+    assert!(source.contains(".loading(self.loading)"));
+    assert!(source.contains(".transition_duration(Duration::from_millis(100))"));
+    assert!(source.contains(".transition_duration(Duration::from_millis(400))"));
+    assert!(source.contains(".transition_duration(Duration::ZERO)"));
+    assert!(source.contains("switch-disabled-loading"));
+    for size in ["Xs", "Sm", "Md", "Lg"] {
+        assert!(source.contains(&format!("ComponentSize::{size}")));
+    }
 }
 
 #[test]

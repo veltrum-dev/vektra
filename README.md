@@ -13,6 +13,7 @@ crates.io 上的 `vektra` 0.0.1 只用于保留项目名称，不包含当前组
 - 本地文档开发：[docs/README.md](docs/README.md)
 - 资源与图标：[docs/content/guide/assets-and-icons.md](docs/content/guide/assets-and-icons.md)
 - Button API：[docs/content/components/button.md](docs/content/components/button.md)
+- Switch API：[docs/content/components/switch.md](docs/content/components/switch.md)
 - IconButton API：[docs/content/components/icon-button.md](docs/content/components/icon-button.md)
 - Tooltip API：[docs/content/components/tooltip.md](docs/content/components/tooltip.md)
 
@@ -53,6 +54,8 @@ vektra = { path = "crates/vektra", features = ["icons"] }
 
 ```bash
 cargo run --example button
+cargo run --example checkbox
+cargo run --example switch
 cargo run --example icon_button
 cargo run --example custom_assets
 cargo run --example tooltip

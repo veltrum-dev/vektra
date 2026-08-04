@@ -1,6 +1,7 @@
 mod button;
 mod checkbox;
 mod icon_button;
+mod switch;
 mod tooltip;
 
 use gpui::{
@@ -16,6 +17,7 @@ pub(crate) enum DemoSelection {
     ButtonBasic,
     ButtonShowcase,
     CheckboxBasic,
+    SwitchBasic,
     IconButtonBasic,
     TooltipBasic,
     Unknown(String),
@@ -25,6 +27,7 @@ impl DemoSelection {
     pub(crate) const DEFAULT_ID: &'static str = "button/basic";
     pub(crate) const SHOWCASE_ID: &'static str = "button/showcase";
     pub(crate) const CHECKBOX_ID: &'static str = "checkbox/basic";
+    pub(crate) const SWITCH_ID: &'static str = "switch/basic";
     pub(crate) const ICON_BUTTON_ID: &'static str = "icon-button/basic";
     pub(crate) const TOOLTIP_ID: &'static str = "tooltip/basic";
 
@@ -34,6 +37,7 @@ impl DemoSelection {
             Some(Self::DEFAULT_ID) => Self::ButtonBasic,
             Some(Self::SHOWCASE_ID) => Self::ButtonShowcase,
             Some(Self::CHECKBOX_ID) => Self::CheckboxBasic,
+            Some(Self::SWITCH_ID) => Self::SwitchBasic,
             Some(Self::ICON_BUTTON_ID) => Self::IconButtonBasic,
             Some(Self::TOOLTIP_ID) => Self::TooltipBasic,
             Some(value) => Self::Unknown(value.to_owned()),
@@ -45,6 +49,7 @@ impl DemoSelection {
             Self::ButtonBasic => Self::DEFAULT_ID,
             Self::ButtonShowcase => Self::SHOWCASE_ID,
             Self::CheckboxBasic => Self::CHECKBOX_ID,
+            Self::SwitchBasic => Self::SWITCH_ID,
             Self::IconButtonBasic => Self::ICON_BUTTON_ID,
             Self::TooltipBasic => Self::TOOLTIP_ID,
             Self::Unknown(value) => value,
@@ -56,6 +61,7 @@ impl DemoSelection {
             Self::ButtonBasic
             | Self::ButtonShowcase
             | Self::CheckboxBasic
+            | Self::SwitchBasic
             | Self::IconButtonBasic
             | Self::TooltipBasic => "ready",
             Self::Unknown(_) => "unknown-demo",
@@ -101,18 +107,20 @@ impl PreviewLang {
     fn unknown_body(self, demo_id: &str) -> String {
         match self {
             Self::ZhCn => format!(
-                "不支持 demo_id `{demo_id}`。当前支持的预览：`{}`、`{}`、`{}`、`{}`、`{}`。",
+                "不支持 demo_id `{demo_id}`。当前支持的预览：`{}`、`{}`、`{}`、`{}`、`{}`、`{}`。",
                 DemoSelection::DEFAULT_ID,
                 DemoSelection::SHOWCASE_ID,
                 DemoSelection::CHECKBOX_ID,
+                DemoSelection::SWITCH_ID,
                 DemoSelection::ICON_BUTTON_ID,
                 DemoSelection::TOOLTIP_ID
             ),
             Self::EnUs => format!(
-                "Unsupported demo_id `{demo_id}`. Supported previews: `{}`, `{}`, `{}`, `{}`, and `{}`.",
+                "Unsupported demo_id `{demo_id}`. Supported previews: `{}`, `{}`, `{}`, `{}`, `{}`, and `{}`.",
                 DemoSelection::DEFAULT_ID,
                 DemoSelection::SHOWCASE_ID,
                 DemoSelection::CHECKBOX_ID,
+                DemoSelection::SWITCH_ID,
                 DemoSelection::ICON_BUTTON_ID,
                 DemoSelection::TOOLTIP_ID
             ),
@@ -126,6 +134,7 @@ pub(crate) struct PreviewApp {
     font_family: &'static str,
     button_demo: button::ButtonDemo,
     checkbox_demo: checkbox::CheckboxDemo,
+    switch_demo: switch::SwitchDemo,
     focus_status: gpui::SharedString,
     focus_handle: FocusHandle,
 }
@@ -154,6 +163,7 @@ impl PreviewApp {
             font_family,
             button_demo: button::ButtonDemo::new(language),
             checkbox_demo: checkbox::CheckboxDemo::new(),
+            switch_demo: switch::SwitchDemo::new(),
             focus_status: language.no_recent_focus().into(),
             focus_handle,
         }
@@ -215,6 +225,10 @@ impl Render for PreviewApp {
                 .into_any_element(),
             DemoSelection::CheckboxBasic => self
                 .checkbox_demo
+                .render(self.language, focus_status, window, cx)
+                .into_any_element(),
+            DemoSelection::SwitchBasic => self
+                .switch_demo
                 .render(self.language, focus_status, window, cx)
                 .into_any_element(),
             DemoSelection::IconButtonBasic => {
@@ -448,6 +462,7 @@ fn current_demo_id() -> Option<String> {
         DemoSelection::ButtonBasic => Some(DemoSelection::DEFAULT_ID.to_owned()),
         DemoSelection::ButtonShowcase => Some(DemoSelection::SHOWCASE_ID.to_owned()),
         DemoSelection::CheckboxBasic => Some(DemoSelection::CHECKBOX_ID.to_owned()),
+        DemoSelection::SwitchBasic => Some(DemoSelection::SWITCH_ID.to_owned()),
         DemoSelection::IconButtonBasic => Some(DemoSelection::ICON_BUTTON_ID.to_owned()),
         DemoSelection::TooltipBasic => Some(DemoSelection::TOOLTIP_ID.to_owned()),
         DemoSelection::Unknown(value) => Some(value),

@@ -33,12 +33,20 @@ description: 用于在 Vektra 仓库中创建新的公开可见 GPUI 组件、�
    - `Render + Entity`：组件拥有内部状态、订阅、异步任务、焦点句柄或生命周期。
    - 自定义 `Element`：普通布局和现有控件无法满足绘制、性能、命中区域或特殊交互时。
 3. 判断状态由调用者控制还是组件内部拥有；优先采用可测试的显式状态输入和语义回调。
-4. 明确构造函数必填项、consuming builder、variant、size、tone、事件能力、slot 和导出路径。
+4. 明确构造函数必填项、consuming builder、variant、size、tone、事件能力、slot 和导出路径；逐项审计组件是否应实现仓库现有的标准能力 trait。
 5. 明确键盘、焦点、鼠标、主题、响应式、无障碍和跨平台语义。
 6. 明确测试、VitePress 文档、可编译 Rust 示例和 GPUI WASM 预览计划。
 7. 定义完成检查和验收命令。
 
 不要为了统一外观而过度抽象；只有至少两个组件共享相同语义和签名后，才提取新的共享能力。
+
+## 标准能力 trait
+
+- 先读取 `crates/vektra/src/traits/` 中的真实定义；组件公开 builder 与现有 trait 的语义和签名一致时，必须实现该标准 trait，不得只提供同名 inherent 方法。
+- 保留便于调用的 inherent forwarding builder，并让 trait 实现委托给同一实现，避免两套行为分叉。
+- 按需审计 `Clickable`、`Focusable`、`Disableable`、`Sizable`；具体适用条件和语义边界见 [component-api-design.md](references/component-api-design.md)。
+- 受控组件即使拥有 `on_change(next_value, ...)` 等语义回调，只要还需要供通用包装器、前置请求或中间件使用的原始激活入口，也应实现 `Clickable`；标准入口与语义入口必须复用同一激活路径，并明确组合优先级，禁止一次激活重复触发两套回调。
+- 为适用 trait 增加泛型能力测试和 inherent forwarding 测试，验证 trait 调用与直接 builder 调用遵循同一契约。
 
 ## 参考路由
 
@@ -61,6 +69,7 @@ description: 用于在 Vektra 仓库中创建新的公开可见 GPUI 组件、�
 公开可见组件完成前至少具备：
 
 - Rust API、中文 rustdoc、导出路径和稳定交互组件的 `ElementId` 支持。
+- 所有适用的仓库标准能力 trait 均已实现；不适用项有明确的语义理由和测试边界。
 - 对应 crate 独立 `tests/` 目录中的 API、事件、禁用状态、焦点和键盘行为测试。
 - `cargo fmt --all --check`、必要范围的 `cargo check`、`cargo clippy` 和 `cargo test` 结果。
 - VitePress 组件页面、实际参与 Cargo/WASM 编译的 Rust 示例、GPUI WASM demo 注册和可交互预览。

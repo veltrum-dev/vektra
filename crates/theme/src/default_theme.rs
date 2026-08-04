@@ -18,6 +18,7 @@ const LIGHT: &str = "themes/default/light.json";
 const DARK: &str = "themes/default/dark.json";
 const BUTTON: &str = "themes/default/button.json";
 const CHECKBOX: &str = "themes/default/checkbox.json";
+const SWITCH: &str = "themes/default/switch.json";
 const TOOLTIP: &str = "themes/default/tooltip.json";
 
 static LIGHT_THEME: OnceLock<Arc<ResolvedTheme>> = OnceLock::new();
@@ -32,9 +33,17 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
     })?;
     let button = load_builtin_text(BUTTON)?;
     let checkbox = load_builtin_text(CHECKBOX)?;
+    let switch = load_builtin_text(SWITCH)?;
     let tooltip = load_builtin_text(TOOLTIP)?;
 
-    let tokens = parse_token_sets(&[&foundation, &mode_source, &button, &checkbox, &tooltip])?;
+    let tokens = parse_token_sets(&[
+        &foundation,
+        &mode_source,
+        &button,
+        &checkbox,
+        &switch,
+        &tooltip,
+    ])?;
     profile::validate(&tokens)?;
     Ok(tokens)
 }
@@ -142,6 +151,12 @@ mod tests {
             }
             for size in ["xs", "sm", "md", "lg"] {
                 theme.checkbox_size(size).unwrap();
+                theme.switch_size(size).unwrap();
+            }
+            for visual_state in ["unchecked", "checked"] {
+                for state in ["normal", "hover", "pressed", "focus-visible", "disabled"] {
+                    theme.switch_state(visual_state, state).unwrap();
+                }
             }
         }
     }
@@ -194,7 +209,7 @@ mod tests {
 
     #[test]
     fn default_theme_resources_are_loaded_from_assets_crate() {
-        for path in [FOUNDATION, LIGHT, DARK, BUTTON, TOOLTIP] {
+        for path in [FOUNDATION, LIGHT, DARK, BUTTON, CHECKBOX, SWITCH, TOOLTIP] {
             let text = load_builtin_text(path).unwrap();
             assert!(!text.is_empty(), "`{path}` 应从 vektra-assets 读取");
         }

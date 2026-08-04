@@ -38,6 +38,29 @@
 
 不要使用字符串事件名称，不复刻 DOM `EventTarget`、运行时事件表、capture/bubble 架构或 JavaScript 类继承，不为了“未来可能使用”提前建立复杂事件层。
 
+### Vektra 标准能力映射
+
+实现或审查公开组件时，逐项检查 `crates/vektra/src/traits/` 中当前存在的标准能力：
+
+- `Clickable`：组件支持标准原始激活入口，并提供语义一致的 `on_click` 与 `cursor_style` 时实现。Button、IconButton 直接使用该入口；Switch 等受控组件可将它作为后台请求、权限检查或通用包装器的前置入口。
+- `Focusable`：组件公开真实 `on_focus`、`on_blur` 生命周期 builder 时实现；builder 状态变化不得伪造焦点事件。
+- `Disableable`：组件公开 `disabled(bool)`，并同时阻止自身鼠标与语义键盘激活时实现。
+- `Sizable`：组件公开 `size(ComponentSize)`，并通过组件主题 token 解析共享语义尺寸时实现。
+
+适用能力必须同时提供：
+
+1. 用户可直接调用的 inherent forwarding builder；
+2. 委托到同一行为实现的标准 trait impl；
+3. 使用泛型 trait bound 的编译/行为测试；
+4. 直接 builder 与 trait 调用的契约一致性测试。
+
+受控组件可以同时保留语义回调与标准原始激活入口。例如 Switch 的
+`on_change(next_checked, ClickEvent, ...)` 便于立即采用下一值，`Clickable::on_click` 则便于
+宿主先请求后台接口，成功后再更新 checked。两者必须适配到同一内部激活路径，并明确采用
+“后调用者生效”等单一优先级；不得在一次激活中无条件同时调用两者。组件仍不应自行等待请求
+或提前修改受控状态。不要新增公开 `Loadable`、`Toggleable` 等 trait，除非至少两个组件已经
+共享完全一致且稳定的公开契约。
+
 ## Clickable 目标 API
 
 `Clickable` 统一组件激活能力。目标调用形式为：

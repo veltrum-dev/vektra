@@ -2,8 +2,9 @@ use gpui::{App, ClickEvent, Context, CursorStyle, Window};
 
 /// 支持标准激活回调的组件能力。
 ///
-/// `Clickable` 统一 Button、IconButton 等组件的点击/键盘激活契约。它是静态
-/// builder 能力，不是运行时事件总线；组件仍然通过自身渲染逻辑决定何时触发回调。
+/// `Clickable` 统一 Button、IconButton、Switch 等组件的原始激活入口。它是静态
+/// builder 能力，不是运行时事件总线；组件仍然通过自身渲染逻辑决定何时触发回调，
+/// 受控组件也不会因此自行改变业务状态。
 pub trait Clickable: Sized {
     /// 注册标准 GPUI 点击回调。
     ///

@@ -56,6 +56,12 @@ fn loads_and_lists_default_theme_resources() {
             .contains("checkbox")
     );
     assert!(
+        Assets::load_text("themes/default/switch.json")
+            .unwrap()
+            .unwrap()
+            .contains("switch")
+    );
+    assert!(
         Assets
             .list("themes/default")
             .unwrap()
@@ -151,6 +157,7 @@ fn list_merges_deduplicates_and_sorts() {
             "themes/default/dark.json",
             "themes/default/foundation.json",
             "themes/default/light.json",
+            "themes/default/switch.json",
             "themes/default/tooltip.json",
         ]
     );
