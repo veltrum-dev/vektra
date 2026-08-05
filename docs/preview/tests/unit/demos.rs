@@ -1,4 +1,5 @@
 use super::{DemoSelection, PreviewLang, parse_demo_query, parse_lang_query, parse_theme_query};
+use std::{collections::BTreeSet, fs, path::PathBuf};
 use vektra::ThemeMode;
 
 #[test]
@@ -36,31 +37,12 @@ fn button_showcase_is_selected_by_stable_id() {
 }
 
 #[test]
-fn checkbox_radio_switch_input_icon_button_and_tooltip_are_selected_by_stable_ids() {
-    assert_eq!(
-        parse_demo_query("?demo=radio/basic"),
-        DemoSelection::RadioBasic
-    );
-    assert_eq!(
-        parse_demo_query("?demo=checkbox/basic"),
-        DemoSelection::CheckboxBasic
-    );
-    assert_eq!(
-        parse_demo_query("?demo=switch/basic"),
-        DemoSelection::SwitchBasic
-    );
-    assert_eq!(
-        parse_demo_query("?demo=icon-button/basic"),
-        DemoSelection::IconButtonBasic
-    );
-    assert_eq!(
-        parse_demo_query("?demo=input/basic"),
-        DemoSelection::InputBasic
-    );
-    assert_eq!(
-        parse_demo_query("?demo=tooltip/basic"),
-        DemoSelection::TooltipBasic
-    );
+fn every_registered_demo_id_round_trips_through_query_parsing() {
+    for demo_id in DemoSelection::ALL_IDS {
+        let selection = parse_demo_query(&format!("?demo={demo_id}"));
+        assert_eq!(selection.id(), *demo_id, "demo ID 未正确注册：{demo_id}");
+        assert!(!matches!(selection, DemoSelection::Unknown(_)));
+    }
 }
 
 #[test]
@@ -95,15 +77,31 @@ fn input_demo_covers_search_actions_variants_sizes_slots_clear_and_states() {
     assert!(source.contains("中文 IME"));
 
     let basic = source
-        .split("// #region input-basic")
+        .split("// #region input-example-basic")
         .nth(1)
         .unwrap()
-        .split("// #endregion input-basic")
+        .split("// #endregion input-example-basic")
         .next()
         .unwrap();
-    assert!(basic.contains(".attached_suffix("));
-    assert!(basic.contains("Button::new(\"input-submit-search\")"));
-    assert!(basic.contains(".size(ComponentSize::Md)"));
+    assert!(basic.contains("Entity<InputState>"));
+    assert!(basic.contains("InputState::new(\"\", cx)"));
+    assert!(basic.contains("Input::new(\"name-input\""));
+    assert!(!basic.contains(".prefix("));
+    assert!(!basic.contains(".suffix("));
+    assert!(!basic.contains(".attached_suffix("));
+    assert!(!basic.contains(".clearable("));
+    assert!(!basic.contains(".invalid("));
+
+    let group = source
+        .split("// #region input-example-group")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion input-example-group")
+        .next()
+        .unwrap();
+    assert!(group.contains(".attached_suffix("));
+    assert!(group.contains("Button::new(\"search-button\")"));
+    assert!(group.contains(".size(ComponentSize::Md)"));
 
     let text_search = source
         .split("Input::new(\"search-text-only\"")
@@ -158,6 +156,111 @@ fn input_demo_covers_search_actions_variants_sizes_slots_clear_and_states() {
     assert!(attached_icon_search.contains(".size(ComponentSize::Md)"));
     assert!(attached_icon_search.contains(".aria_label(search_label)"));
     assert!(attached_icon_search.contains(".tooltip(search_label)"));
+}
+
+#[test]
+fn controlled_basic_examples_keep_only_their_required_state() {
+    let checkbox = include_str!("../../src/demos/checkbox.rs")
+        .split("// #region checkbox-example-basic")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion checkbox-example-basic")
+        .next()
+        .unwrap();
+    assert_eq!(checkbox.matches("checked: bool").count(), 1);
+    assert!(!checkbox.contains("indeterminate"));
+    assert!(!checkbox.contains("batch_"));
+    assert!(!checkbox.contains("IconSource"));
+
+    let switch = include_str!("../../src/demos/switch.rs")
+        .split("// #region switch-example-basic")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion switch-example-basic")
+        .next()
+        .unwrap();
+    assert_eq!(switch.matches("checked: bool").count(), 1);
+    assert!(!switch.contains("loading"));
+    assert!(!switch.contains("SwitchContent"));
+
+    let radio = include_str!("../../src/demos/radio.rs")
+        .split("// #region radio-example-basic")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion radio-example-basic")
+        .next()
+        .unwrap();
+    assert_eq!(radio.matches("Option<BasicPlan>").count(), 1);
+    assert!(!radio.contains("pending"));
+    assert!(!radio.contains("disabled"));
+}
+
+#[test]
+fn component_pages_pair_every_preview_with_compiled_source_and_registered_id() {
+    let docs_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../content");
+    let components = [
+        "button",
+        "checkbox",
+        "radio",
+        "switch",
+        "icon-button",
+        "input",
+        "tooltip",
+    ];
+    let mut documented_ids = BTreeSet::new();
+
+    for component in components {
+        let chinese = fs::read_to_string(docs_root.join(format!("components/{component}.md")))
+            .expect("中文组件文档必须可读取");
+        let english = fs::read_to_string(docs_root.join(format!("en/components/{component}.md")))
+            .expect("英文组件文档必须可读取");
+
+        for source in [&chinese, &english] {
+            assert!(!source.contains("<VektraPreview"));
+            assert_eq!(
+                source.matches("<VektraExample").count(),
+                source.matches("</VektraExample>").count()
+            );
+            assert_eq!(
+                source.matches("<VektraExample").count(),
+                source.matches("<<<").count()
+            );
+        }
+
+        let chinese_ids = example_ids(&chinese);
+        let english_ids = example_ids(&english);
+        assert_eq!(chinese_ids, english_ids, "{component} 中英文示例必须一致");
+        assert_eq!(
+            chinese_ids.first().map(String::as_str),
+            Some(format!("{component}/basic").as_str()),
+            "{component} 的第一个示例必须是 Basic"
+        );
+        documented_ids.extend(chinese_ids);
+    }
+
+    let expected = DemoSelection::DOCUMENTED_IDS
+        .iter()
+        .map(|id| (*id).to_owned())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(documented_ids, expected);
+
+    for demo_id in documented_ids {
+        assert_eq!(DemoSelection::from_demo_id(Some(&demo_id)).id(), demo_id);
+    }
+}
+
+fn example_ids(source: &str) -> Vec<String> {
+    source
+        .match_indices("<VektraExample demo=\"")
+        .map(|(index, marker)| {
+            let remainder = &source[index + marker.len()..];
+            remainder
+                .split_once('"')
+                .expect("VektraExample 必须提供闭合的 demo 属性")
+                .0
+                .to_owned()
+        })
+        .collect()
 }
 
 #[test]

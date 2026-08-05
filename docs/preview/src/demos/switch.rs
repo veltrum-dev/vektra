@@ -6,6 +6,58 @@ use gpui::{
 use std::time::Duration;
 use vektra::{ComponentSize, IconSource, Switch, SwitchContent};
 
+// #region switch-example-basic
+pub(super) struct SwitchBasicDemo {
+    checked: bool,
+}
+
+impl SwitchBasicDemo {
+    pub(super) const fn new() -> Self {
+        Self { checked: false }
+    }
+
+    fn switch(&self, cx: &mut Context<PreviewApp>) -> Switch {
+        Switch::new("analytics-switch")
+            .checked(self.checked)
+            .label("使用分析")
+            .on_change_in(cx, |this, next_checked, _, cx| {
+                this.switch_basic_demo.checked = next_checked;
+                cx.notify();
+            })
+    }
+}
+// #endregion switch-example-basic
+
+impl SwitchBasicDemo {
+    pub(super) fn render(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+        let title = match language {
+            PreviewLang::ZhCn => "基础开关",
+            PreviewLang::EnUs => "Basic switch",
+        };
+
+        div()
+            .id("switch-example-basic")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(16.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(div().text_size(px(18.)).child(title))
+            .child(self.switch(cx))
+            .into_any_element()
+    }
+}
+
 // #region switch-state
 pub(super) struct SwitchDemo {
     notifications: bool,
@@ -34,6 +86,96 @@ impl SwitchDemo {
             instant: false,
             loading: true,
         }
+    }
+
+    pub(super) fn render_focus(
+        &self,
+        language: PreviewLang,
+        focus_status: gpui::SharedString,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+        let label = match language {
+            PreviewLang::ZhCn => "推送通知",
+            PreviewLang::EnUs => "Push notifications",
+        };
+        // #region switch-example-focus
+        let example = Switch::new("focus-switch")
+            .checked(self.notifications)
+            .label(label)
+            .on_change_in(cx, |this, next_checked, _, cx| {
+                this.switch_demo.notifications = next_checked;
+                cx.notify();
+            })
+            .on_focus_in(cx, move |this, _, cx| {
+                this.record_focus(label, true, cx);
+            })
+            .on_blur_in(cx, move |this, _, cx| {
+                this.record_focus(label, false, cx);
+            });
+        // #endregion switch-example-focus
+
+        div()
+            .id("switch-example-focus")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(12.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(example)
+            .child(focus_status)
+            .into_any_element()
+    }
+
+    pub(super) fn render_loading(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+        let (control, pending) = match language {
+            PreviewLang::ZhCn => ("控制 loading", "正在同步"),
+            PreviewLang::EnUs => ("Control loading", "Syncing"),
+        };
+        // #region switch-example-loading
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(12.))
+            .child(
+                Switch::new("loading-control")
+                    .checked(self.loading)
+                    .label(control)
+                    .on_change_in(cx, |this, next_checked, _, cx| {
+                        this.switch_demo.loading = next_checked;
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Switch::new("loading-state")
+                    .checked(true)
+                    .label(pending)
+                    .loading(self.loading),
+            );
+        // #endregion switch-example-loading
+
+        div()
+            .id("switch-example-loading")
+            .size_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(example)
+            .into_any_element()
     }
 }
 // #endregion switch-state

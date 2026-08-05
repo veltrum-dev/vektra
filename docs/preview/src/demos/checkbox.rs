@@ -5,6 +5,58 @@ use gpui::{
 };
 use vektra::{Button, Checkbox, ComponentSize, IconName, IconSource};
 
+// #region checkbox-example-basic
+pub(super) struct CheckboxBasicDemo {
+    checked: bool,
+}
+
+impl CheckboxBasicDemo {
+    pub(super) const fn new() -> Self {
+        Self { checked: false }
+    }
+
+    fn checkbox(&self, cx: &mut Context<PreviewApp>) -> Checkbox {
+        Checkbox::new("accept-terms")
+            .checked(self.checked)
+            .label("接受服务条款")
+            .on_change_in(cx, |this, next_checked, _, cx| {
+                this.checkbox_basic_demo.checked = next_checked;
+                cx.notify();
+            })
+    }
+}
+// #endregion checkbox-example-basic
+
+impl CheckboxBasicDemo {
+    pub(super) fn render(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+        let title = match language {
+            PreviewLang::ZhCn => "基础复选框",
+            PreviewLang::EnUs => "Basic checkbox",
+        };
+
+        div()
+            .id("checkbox-example-basic")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(16.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(div().text_size(px(18.)).child(title))
+            .child(self.checkbox(cx))
+            .into_any_element()
+    }
+}
+
 // #region checkbox-state
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct CheckboxState {
@@ -111,6 +163,122 @@ impl CheckboxDemo {
         self.batch_billing.apply_change(!self.batch_billing.checked);
         self.batch_security
             .apply_change(!self.batch_security.checked);
+    }
+
+    pub(super) fn render_bulk(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, all, product, billing, security) = match language {
+            PreviewLang::ZhCn => ("批量选择", "所有通知", "产品更新", "账单提醒", "安全警报"),
+            PreviewLang::EnUs => (
+                "Bulk selection",
+                "All notifications",
+                "Product updates",
+                "Billing reminders",
+                "Security alerts",
+            ),
+        };
+        // #region checkbox-example-bulk
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .child(
+                Checkbox::new("notifications-all")
+                    .checked(self.batch_all_selected())
+                    .indeterminate(self.batch_indeterminate())
+                    .label(all)
+                    .on_change_in(cx, |this, next_checked, _, cx| {
+                        this.checkbox_demo.set_batch_checked(next_checked);
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Checkbox::new("notifications-product")
+                    .checked(self.batch_product.checked)
+                    .label(product)
+                    .on_change_in(cx, |this, next_checked, _, cx| {
+                        this.checkbox_demo.batch_product.apply_change(next_checked);
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Checkbox::new("notifications-billing")
+                    .checked(self.batch_billing.checked)
+                    .label(billing)
+                    .on_change_in(cx, |this, next_checked, _, cx| {
+                        this.checkbox_demo.batch_billing.apply_change(next_checked);
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Checkbox::new("notifications-security")
+                    .checked(self.batch_security.checked)
+                    .label(security)
+                    .on_change_in(cx, |this, next_checked, _, cx| {
+                        this.checkbox_demo.batch_security.apply_change(next_checked);
+                        cx.notify();
+                    }),
+            );
+        // #endregion checkbox-example-bulk
+
+        self.example_page("checkbox-example-bulk", title, example, window, cx)
+    }
+
+    pub(super) fn render_icon_only(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, favorite) = match language {
+            PreviewLang::ZhCn => ("纯图标状态", "收藏"),
+            PreviewLang::EnUs => ("Icon-only state", "Favorite"),
+        };
+        // #region checkbox-example-icon-only
+        let example = Checkbox::new("favorite")
+            .checked(self.favorite.checked)
+            .indicator_icons(
+                IconSource::asset("components/checkbox/heart.svg"),
+                IconSource::asset("components/checkbox/heart-filled.svg"),
+            )
+            .aria_label(favorite)
+            .on_change_in(cx, |this, next_checked, _, cx| {
+                this.checkbox_demo.favorite.apply_change(next_checked);
+                cx.notify();
+            });
+        // #endregion checkbox-example-icon-only
+
+        self.example_page("checkbox-example-icon-only", title, example, window, cx)
+    }
+
+    fn example_page(
+        &self,
+        id: &'static str,
+        title: &'static str,
+        example: impl IntoElement,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+
+        div()
+            .id(id)
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(16.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(div().text_size(px(18.)).child(title))
+            .child(example)
+            .into_any_element()
     }
 }
 // #endregion checkbox-state

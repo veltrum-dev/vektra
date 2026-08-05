@@ -4,21 +4,25 @@ Button 表达操作，例如保存、确认、切换模式或启动长任务。�
 
 只展示状态的文本、独立进度面板、需要方向键选择的复合列表项，不应使用 Button。没有可见文字的图标操作应使用 `IconButton` 并提供可访问名称。
 
-## 实时预览
-
-<VektraPreview demo="button/basic" title="Button 预览" :height="760" />
-
 ## 基础用法
 
 使用 `.label(...)` 设置文字，通过 `.on_click(...)` 或 `.on_click_in(...)` 处理激活。
 
-<<< ../../preview/src/demos/button.rs#button-basic{rust}
+<VektraExample demo="button/basic" title="Button 基础用法" :height="240">
 
-## 有状态组件
+<<< ../../preview/src/demos/button.rs#button-example-basic{rust}
+
+</VektraExample>
+
+## 受控状态
 
 `Button::on_click_in(cx, ...)` 可以访问宿主 `&mut T`、`ClickEvent`、`Window` 和 `Context<T>`。修改宿主状态后调用 `cx.notify()` 触发渲染。
 
-<<< ../../preview/src/demos/button.rs#button-states{rust}
+<VektraExample demo="button/states" title="Button 受控状态" :height="280">
+
+<<< ../../preview/src/demos/button.rs#button-example-states{rust}
+
+</VektraExample>
 
 ## Loading、selected 与 progress
 
@@ -37,25 +41,41 @@ loading/progress 期间 Button 保留焦点与 `Role::Button`，但会消费鼠�
 Button 提供 6 种 `ButtonVariant` 和 4 种 `ComponentSize`。disabled 会使用当前 variant 的 disabled token。
 预览中的普通 variant 行统一使用默认 `Md` 尺寸；独立尺寸对比区域刻意展示 `Xs`、`Sm`、`Md`、`Lg`，高度差异并非渲染不一致。
 
-<<< ../../preview/src/demos/button.rs#button-variants{rust}
+<VektraExample demo="button/variants" title="Button 视觉变体" :height="280">
+
+<<< ../../preview/src/demos/button.rs#button-example-variants{rust}
+
+</VektraExample>
 
 ## 图标
 
 前置图标、后置图标、双图标、固定宽度和 full-width 使用同一个 `Button` API。
 
-<<< ../../preview/src/demos/button.rs#button-icons{rust}
+<VektraExample demo="button/icons" title="Button 图标插槽" :height="240">
+
+<<< ../../preview/src/demos/button.rs#button-example-icons{rust}
+
+</VektraExample>
 
 ## 中文自动空格
 
 中文自动空格默认开启，也可以显式开启或关闭。长文本、中英文混合文本和数字混合文本不会被强行改写。
 
-<<< ../../preview/src/demos/button.rs#button-auto-space{rust}
+<VektraExample demo="button/auto-space" title="Button 中文自动空格" :height="240">
+
+<<< ../../preview/src/demos/button.rs#button-example-auto-space{rust}
+
+</VektraExample>
 
 ## 宽度
 
 Button 默认按内容收缩。`.width(...)` 设置固定宽度，`.full_width()` 使用父布局提供的完整宽度。两者写入同一个宽度状态，后调用者生效。
 
-<<< ../../preview/src/demos/button.rs#button-width{rust}
+<VektraExample demo="button/width" title="Button 宽度控制" :height="280">
+
+<<< ../../preview/src/demos/button.rs#button-example-width{rust}
+
+</VektraExample>
 
 ## 能力 trait
 
@@ -161,6 +181,8 @@ loading 与 Tooltip 动画使用 GPUI `AnimationExt`；系统或宿主启用 red
 ## 响应式
 
 Button 是叶子组件，默认不负责布局换行。它会保持内容在自身内部居中，文本区域使用 `min_w_0`、`overflow_hidden`、`whitespace_nowrap` 和 `text_ellipsis`，避免窄宽度下撑破父布局。需要整行操作时使用 `.full_width()` 并由父容器控制可用宽度。
+
+Button 在 macOS、Windows、Linux 与 Web 预览中复用同一套 GPUI 组件实现；平台差异只出现在宿主的焦点遍历、字体和系统输入映射中，调用方不需要切换 Vektra API。
 
 ## 当前限制
 

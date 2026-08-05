@@ -24,7 +24,8 @@
 }
 
 .vp-doc table {
-  display: table;
+  display: block;
+  overflow-x: auto;
   width: 100%;
 }
 
@@ -447,6 +448,98 @@
   background: var(--vp-c-bg);
 }
 
+.vektra-preview--embedded {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--vp-c-bg);
+}
+
+.vektra-example {
+  min-width: 0;
+  margin: 24px 0;
+  overflow: hidden;
+  border: 1px solid var(--vektra-preview-border);
+  border-radius: 8px;
+  background: var(--vektra-preview-bg);
+}
+
+.vektra-example__toolbar {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--vektra-preview-border);
+}
+
+.vektra-example__action {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vp-c-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  padding: 7px 9px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.vektra-example__action:hover {
+  background: var(--vp-c-default-soft);
+  color: var(--vp-c-text-1);
+  text-decoration: none;
+}
+
+.vektra-example__action:active {
+  background: var(--vp-c-default-2);
+}
+
+.vektra-example__action:focus-visible {
+  outline: 2px solid var(--vp-c-brand-1);
+  outline-offset: 2px;
+}
+
+.vektra-example__action svg {
+  flex: none;
+}
+
+.vektra-example__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.vektra-example__code {
+  min-width: 0;
+  border-top: 1px solid var(--vektra-preview-border);
+  background: var(--vp-code-block-bg);
+}
+
+.vektra-example__code > div[class*="language-"] {
+  margin: 0;
+  border-radius: 0;
+}
+
+.vektra-example__code pre {
+  max-height: 520px;
+}
+
 @media (max-width: 640px) {
   .vektra-home {
     padding-right: 20px;
@@ -503,6 +596,14 @@
 
   .vektra-preview__link {
     white-space: normal;
+  }
+
+  .vektra-example__toolbar {
+    align-items: stretch;
+  }
+
+  .vektra-example__action {
+    flex: 1 1 auto;
   }
 }
 

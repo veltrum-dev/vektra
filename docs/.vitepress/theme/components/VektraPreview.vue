@@ -7,9 +7,11 @@ const props = withDefaults(
     demo: string;
     title: string;
     height?: string | number;
+    embedded?: boolean;
   }>(),
   {
-    height: 420
+    height: 420,
+    embedded: false
   }
 );
 
@@ -102,8 +104,11 @@ function markError() {
 </script>
 
 <template>
-  <figure class="vektra-preview">
-    <figcaption class="vektra-preview__header">
+  <figure
+    class="vektra-preview"
+    :class="{ 'vektra-preview--embedded': embedded }"
+  >
+    <figcaption v-if="!embedded" class="vektra-preview__header">
       <span class="vektra-preview__title">{{ title }}</span>
       <a
         class="vektra-preview__link"

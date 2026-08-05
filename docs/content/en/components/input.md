@@ -2,17 +2,15 @@
 
 `Input` is a pure-GPUI, IME-capable single-line text input. Editing state lives in an `Entity<InputState>` owned by the caller. The component adds no Root, Provider, or registration step, and `InputState` deliberately excludes required, regex, error messages, dirty, touched, and other form metadata.
 
-<VektraPreview demo="input/basic" title="Input preview" :height="760" />
+## Basic usage
 
-## State ownership
+Create one `Entity<InputState>` and pass that same Entity to a stable Input ID on every render. The basic example contains only a placeholder and the required accessible name.
 
-<<< ../../../preview/src/demos/input.rs#input-state{rust}
+<VektraExample demo="input/basic" title="Input basic usage" :height="240">
 
-Create the state once and pass the same Entity to an Input with a stable ID on every render:
+<<< ../../../preview/src/demos/input.rs#input-example-basic{rust}
 
-<<< ../../../preview/src/demos/input.rs#input-basic{rust}
-
-The leading basic example uses `attached_suffix(Button)` directly: Input and Button share one shell, and both Button activation and editor Enter produce the same search result. The two regular inline-suffix Search forms remain below for comparison.
+</VektraExample>
 
 `InputState::value()` reads the current text. `set_value`, `clear`, and `reset` are programmatic operations: they do not emit `InputEvent::Changed` or call `on_change`. All safely end IME composition and repair selection; `reset` also clears undo/redo history and horizontal scroll. User typing, deletion, cut, paste, undo, redo, IME commit, and built-in clear emit exactly one `Changed` only when the value changes.
 
@@ -20,7 +18,11 @@ The leading basic example uses `attached_suffix(Button)` directly: Input and But
 
 ## Variants and state
 
-<<< ../../../preview/src/demos/input.rs#input-variants{rust}
+<VektraExample demo="input/variants" title="Input visual variants" :height="360">
+
+<<< ../../../preview/src/demos/input.rs#input-example-variants{rust}
+
+</VektraExample>
 
 - `Outline` is the default full border for ordinary forms.
 - `Filled` groups fields with a filled surface and retains a transparent structural border to prevent geometry jumps.
@@ -29,7 +31,11 @@ The leading basic example uses `attached_suffix(Button)` directly: Input and But
 
 Priority is disabled, invalid + focus-visible, invalid, focus-visible, hover, then normal. `invalid(bool)` only consumes validation state supplied by the caller. Input neither knows why validation failed nor runs rules. A future `FormControl<T>` or label/help/error layout can own required, regex, async validation, and touched state without putting them into `InputState`.
 
-<<< ../../../preview/src/demos/input.rs#input-sizes{rust}
+<VektraExample demo="input/sizes" title="Input semantic sizes" :height="360">
+
+<<< ../../../preview/src/demos/input.rs#input-example-sizes{rust}
+
+</VektraExample>
 
 `ComponentSize::{Xs, Sm, Md, Lg}` uses heights of 24, 32, 36, and 40 px. Input fills available parent width by default, its text viewport can shrink and scroll horizontally, and the parent remains responsible for final width.
 
@@ -45,21 +51,27 @@ All three slots accept any `IntoElement` and retain their IDs, roles, focus, Tab
 
 `InputClear::new(aria_label)` requires the icon button's accessible name. It reuses `IconButtonVariant::Ghost` and existing Tooltip/placement support with a 24×24 `ComponentSize::Xs` transparent hit area. At rest it looks like only the icon; IconButton still owns hover, pressed, focus-visible, Enter, and Space. Clear remains visible while the value is non-empty and editable. Activation emits one `Changed("")`, then restores editor focus. Tooltip text is visual help, is never copied automatically into the aria label, and does not replace an accessible name.
 
-### Search composition
+### Input group
 
-Search needs no dedicated component. These five compiled examples reuse `InputClear` and connect the trailing action and editor Enter submission to the same application result:
+Search needs no dedicated component. Place a Button with the same size in `attached_suffix` to create one outer border, a full-height action area, and a themed divider.
 
-<<< ../../../preview/src/demos/input.rs#input-search-actions{rust}
+<VektraExample demo="input/group" title="Input group" :height="240">
 
-- Icon only: keep it in the regular `suffix` and use `IconButton + IconName::Search`; an `aria_label` is required and a Tooltip is recommended.
-- Text only: place a `Button` with a visible Search label in `attached_suffix`, producing one outer frame, a full-height action area, and a vertical divider.
-- Icon and text (inline): keep it in the regular `suffix` and combine `Button::start_icon(IconName::Search)` with the visible label.
-- Icon and text (attached): place that same Button composition in `attached_suffix`, demonstrating that the attached slot does not restrict its content shape.
-- Icon only (attached): place an `IconButton` with an `aria_label` and Tooltip in `attached_suffix`, preserving the full-height segment and complete hit area.
+<<< ../../../preview/src/demos/input.rs#input-example-group{rust}
 
-The two inline examples use `Ghost + ComponentSize::Xs` to stay compact. The three attached examples give Input and Button/IconButton `ComponentSize::Md`. All five retain complete Button/IconButton hover, pressed, focus-visible, disabled, Enter, and Space behavior. `IconName::Search` is available through Vektra's `icons` feature; applications can substitute their own `IntoIconSource` type.
+</VektraExample>
 
-<<< ../../../preview/src/demos/input.rs#input-states{rust}
+Icon-only actions may use either regular `suffix` or `attached_suffix` with `IconButton + IconName::Search`. They require an `aria_label`; Tooltip does not replace the accessible name. `IconName::Search` is available through Vektra's `icons` feature.
+
+### States
+
+The host supplies `invalid`, `read_only`, and `disabled` explicitly, and each keeps its own semantics.
+
+<VektraExample demo="input/states" title="Input states" :height="320">
+
+<<< ../../../preview/src/demos/input.rs#input-example-states{rust}
+
+</VektraExample>
 
 ## Editing, keyboard, and accessibility
 
@@ -83,3 +95,13 @@ Only the actual editor node has `Role::TextInput`; interactive slots remain sepa
 | `on_change`, `on_submit`, `on_focus`, `on_blur` | User semantic events and Entity-bound `_in` forms. |
 
 Input implements [`Changeable<SharedString>`](/en/api/changeable), [`Focusable`](/en/api/focusable), [`Disableable`](/en/api/disableable), and [`Sizable`](/en/api/sizable), but not `Clickable`. Theme paths are `input.border-width`, `input.focus-width`, `input.caret-width` (1px by default), `input.variant.<variant>.<state>.*`, and `input.size.<size>.*`. Existing custom themes with no Input extension fall back to semantic/foundation tokens. Once a theme starts supplying Input state or size extensions, that section must be complete.
+
+## Themes, Responsive Behavior, and Platforms
+
+Light, Dark, and System resolve borders, surfaces, text, placeholder, selection, caret, and state colors through the active Vektra theme. Input shrinks within the available width while editor content scrolls horizontally. Prefix, suffix, and attached suffix widths are caller choices, so too many slots reduce the editor area. macOS, Windows, Linux, and the Web preview share the same GPUI implementation, while command modifiers and system text input follow platform conventions.
+
+## Known Limitations
+
+- Input is single-line plain text only; there is no multiline editing, masking, formatting, or built-in validation message.
+- Prefix, suffix, and attached suffix are composition slots; the host owns their business state, loading, and error handling.
+- The preview requires browser WebGPU and the font asset supplied by the documentation host.

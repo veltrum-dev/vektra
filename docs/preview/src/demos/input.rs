@@ -8,6 +8,56 @@ use vektra::{
     InputClear, InputState, InputVariant, Tooltip, TooltipPlacement,
 };
 
+// #region input-example-basic
+pub(super) struct InputBasicDemo {
+    state: gpui::Entity<InputState>,
+}
+
+impl InputBasicDemo {
+    pub(super) fn new(cx: &mut Context<PreviewApp>) -> Self {
+        Self {
+            state: cx.new(|cx| InputState::new("", cx)),
+        }
+    }
+
+    fn input(&self) -> Input {
+        Input::new("name-input", self.state.clone())
+            .placeholder("请输入名称")
+            .aria_label("名称")
+    }
+}
+// #endregion input-example-basic
+
+impl InputBasicDemo {
+    pub(super) fn render(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+        let title = match language {
+            PreviewLang::ZhCn => "基础输入框",
+            PreviewLang::EnUs => "Basic input",
+        };
+
+        div()
+            .id("input-example-basic")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(16.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(div().text_size(px(18.)).child(title))
+            .child(div().w_full().max_w(px(360.)).child(self.input()))
+            .into_any_element()
+    }
+}
+
 // #region input-state
 pub(super) struct InputDemo {
     primary: gpui::Entity<InputState>,
@@ -54,6 +104,160 @@ impl InputDemo {
                 .new(|cx| InputState::new("窄宽度长文本：双击选词，三击全选，光标保持可见", cx)),
             status: "尚无用户事件".into(),
         }
+    }
+
+    pub(super) fn render_group(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, placeholder, label) = match language {
+            PreviewLang::ZhCn => ("Input Group", "输入搜索内容", "搜索"),
+            PreviewLang::EnUs => ("Input group", "Enter a search query", "Search"),
+        };
+        // #region input-example-group
+        let example = Input::new("search-input", self.search_text.clone())
+            .size(ComponentSize::Md)
+            .placeholder(placeholder)
+            .aria_label(label)
+            .attached_suffix(
+                Button::new("search-button")
+                    .label(label)
+                    .variant(ButtonVariant::Ghost)
+                    .size(ComponentSize::Md)
+                    .on_click(|_, _, _| {
+                        // 执行搜索。
+                    }),
+            );
+        // #endregion input-example-group
+
+        self.example_page("input-example-group", title, example, window, cx)
+    }
+
+    pub(super) fn render_variants(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "外观变体",
+            PreviewLang::EnUs => "Visual variants",
+        };
+        // #region input-example-variants
+        let example = div().flex().flex_col().gap(px(8.)).children(
+            [
+                InputVariant::Outline,
+                InputVariant::Filled,
+                InputVariant::Borderless,
+                InputVariant::Underline,
+            ]
+            .into_iter()
+            .zip(self.variants.iter().cloned())
+            .enumerate()
+            .map(|(index, (variant, state))| {
+                Input::new(("input-variant", index), state)
+                    .variant(variant)
+                    .aria_label(format!("{variant:?} Input"))
+            }),
+        );
+        // #endregion input-example-variants
+
+        self.example_page("input-example-variants", title, example, window, cx)
+    }
+
+    pub(super) fn render_sizes(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "语义尺寸",
+            PreviewLang::EnUs => "Semantic sizes",
+        };
+        // #region input-example-sizes
+        let example = div().flex().flex_col().gap(px(8.)).children(
+            [
+                ComponentSize::Xs,
+                ComponentSize::Sm,
+                ComponentSize::Md,
+                ComponentSize::Lg,
+            ]
+            .into_iter()
+            .zip(self.sizes.iter().cloned())
+            .enumerate()
+            .map(|(index, (size, state))| {
+                Input::new(("input-size", index), state)
+                    .size(size)
+                    .aria_label(format!("{size:?} Input"))
+            }),
+        );
+        // #endregion input-example-sizes
+
+        self.example_page("input-example-sizes", title, example, window, cx)
+    }
+
+    pub(super) fn render_states(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "输入状态",
+            PreviewLang::EnUs => "Input states",
+        };
+        // #region input-example-states
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .child(
+                Input::new("input-invalid", self.invalid.clone())
+                    .invalid(true)
+                    .aria_label("Invalid Input"),
+            )
+            .child(
+                Input::new("input-read-only", self.read_only.clone())
+                    .read_only(true)
+                    .aria_label("Read-only Input"),
+            )
+            .child(
+                Input::new("input-disabled", self.disabled.clone())
+                    .disabled(true)
+                    .aria_label("Disabled Input"),
+            );
+        // #endregion input-example-states
+
+        self.example_page("input-example-states", title, example, window, cx)
+    }
+
+    fn example_page(
+        &self,
+        id: &'static str,
+        title: &'static str,
+        example: impl IntoElement,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+
+        div()
+            .id(id)
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(14.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(div().text_size(px(18.)).child(title))
+            .child(div().w_full().max_w(px(520.)).child(example))
+            .into_any_element()
     }
 }
 // #endregion input-state

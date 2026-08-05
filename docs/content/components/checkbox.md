@@ -2,25 +2,33 @@
 
 Checkbox 是受控复选框组件，适合单项开关、批量选择和父级部分选中状态。它不是表单框架，不保存内部业务状态，也不提供验证或错误消息 API。
 
-<VektraPreview demo="checkbox/basic" title="Checkbox 预览" :height="620" />
-
 ## 基础用法
 
-<<< ../../preview/src/demos/checkbox.rs#checkbox-state{rust}
+<VektraExample demo="checkbox/basic" title="Checkbox 基础用法" :height="220">
 
-<<< ../../preview/src/demos/checkbox.rs#checkbox-basic{rust}
+<<< ../../preview/src/demos/checkbox.rs#checkbox-example-basic{rust}
+
+</VektraExample>
 
 `Checkbox::new(id)` 默认未选中。`.checked(...)` 表示当前受控值，不是初始值；每次激活只计算下一 checked 值并调用 `on_change`，由宿主更新状态并 `cx.notify()`。
 
 ## 批量选择
 
-<<< ../../preview/src/demos/checkbox.rs#checkbox-bulk{rust}
+<VektraExample demo="checkbox/bulk" title="Checkbox 批量选择" :height="340">
+
+<<< ../../preview/src/demos/checkbox.rs#checkbox-example-bulk{rust}
+
+</VektraExample>
 
 父级 Checkbox 可以从子项推导 `checked` 和 `indeterminate`：全部子项选中时父级 checked，部分选中时父级 mixed。父级激活后统一写入所有子项；“反选”等批量操作由宿主状态实现，不需要 Checkbox 增加额外 API。
 
 ## 纯图标状态
 
-<<< ../../preview/src/demos/checkbox.rs#checkbox-icon-only{rust}
+<VektraExample demo="checkbox/icon-only" title="Checkbox 纯图标状态" :height="220">
+
+<<< ../../preview/src/demos/checkbox.rs#checkbox-example-icon-only{rust}
+
+</VektraExample>
 
 `indicator_icons(unchecked, checked)` 使用两张状态图标替代默认方框。纯图标 Checkbox 不设置可见 label，但必须通过 `aria_label(...)` 提供可访问名称；整个命中区域仍可点击，hover 和 pressed 视觉只作用于状态图标。
 
@@ -67,6 +75,10 @@ Checkbox 是受控复选框组件，适合单项开关、批量选择和父级�
 `on_change` 和 `on_change_in` 保持同步。如果需要发起 HTTP 请求或异步校验，请在回调体内使用宿主 Entity 的 `cx.spawn` / `cx.spawn_in`，并按生命周期需要保存返回的 `Task`。
 
 `Checkbox` 实现 [`Changeable<bool>`](/api/changeable)；固有 builder 与 trait 调用委托到同一实现。
+
+## 主题、响应式与跨平台
+
+Checkbox 的 normal、hover、pressed、focus-visible、checked、mixed 与 disabled 状态都来自当前 Light、Dark 或 System 主题 token。组件本身保持紧凑的单行命中区域；窄容器中的换行与列宽由宿主布局控制，纯图标模式仍须提供 `aria_label`。macOS、Windows、Linux 与 Web 预览共用同一 GPUI 实现，平台只影响系统焦点遍历、字体和输入映射。
 
 ## 已知限制
 

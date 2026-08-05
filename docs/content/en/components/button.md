@@ -4,21 +4,25 @@ Button represents an action such as saving, confirming, changing a mode, or star
 
 Do not use Button for status-only text, standalone progress panels, or composite list items that need arrow-key selection. Icon-only actions should use `IconButton` with an accessible name.
 
-## Live Preview
-
-<VektraPreview demo="button/basic" title="Button preview" :height="760" />
-
 ## Basic Usage
 
 Set the label with `.label(...)`. Handle activation with `.on_click(...)` or `.on_click_in(...)`.
 
-<<< ../../../preview/src/demos/button.rs#button-basic{rust}
+<VektraExample demo="button/basic" title="Button basic usage" :height="240">
 
-## Stateful Views
+<<< ../../../preview/src/demos/button.rs#button-example-basic{rust}
+
+</VektraExample>
+
+## Controlled States
 
 `Button::on_click_in(cx, ...)` gives the handler access to the host `&mut T`, `ClickEvent`, `Window`, and `Context<T>`. Call `cx.notify()` after updating host state.
 
-<<< ../../../preview/src/demos/button.rs#button-states{rust}
+<VektraExample demo="button/states" title="Button controlled states" :height="280">
+
+<<< ../../../preview/src/demos/button.rs#button-example-states{rust}
+
+</VektraExample>
 
 ## Loading, Selected, and Progress
 
@@ -37,25 +41,41 @@ During loading/progress, Button keeps focus and `Role::Button`, but consumes mou
 Button provides 6 `ButtonVariant` values and 4 `ComponentSize` values. A disabled button uses the disabled token for its current variant.
 The ordinary variant rows in the preview use the default `Md` size. The separate size comparison area intentionally shows `Xs`, `Sm`, `Md`, and `Lg`; the height differences are not rendering inconsistencies.
 
-<<< ../../../preview/src/demos/button.rs#button-variants{rust}
+<VektraExample demo="button/variants" title="Button visual variants" :height="280">
+
+<<< ../../../preview/src/demos/button.rs#button-example-variants{rust}
+
+</VektraExample>
 
 ## Icons
 
 Start icons, end icons, paired icons, fixed width, and full-width layout use the same `Button` API.
 
-<<< ../../../preview/src/demos/button.rs#button-icons{rust}
+<VektraExample demo="button/icons" title="Button icon slots" :height="240">
+
+<<< ../../../preview/src/demos/button.rs#button-example-icons{rust}
+
+</VektraExample>
 
 ## Chinese Auto Spacing
 
 Chinese auto spacing is enabled by default. It can be enabled or disabled explicitly. Long labels, mixed Chinese/English text, and mixed numeric text are not rewritten.
 
-<<< ../../../preview/src/demos/button.rs#button-auto-space{rust}
+<VektraExample demo="button/auto-space" title="Button automatic CJK spacing" :height="240">
+
+<<< ../../../preview/src/demos/button.rs#button-example-auto-space{rust}
+
+</VektraExample>
 
 ## Width
 
 Button sizes itself to its content by default. `.width(...)` sets a fixed width. `.full_width()` uses the full width offered by the parent layout. Both methods write the same width state, so the later call wins.
 
-<<< ../../../preview/src/demos/button.rs#button-width{rust}
+<VektraExample demo="button/width" title="Button width control" :height="280">
+
+<<< ../../../preview/src/demos/button.rs#button-example-width{rust}
+
+</VektraExample>
 
 ## Capability Traits
 
@@ -161,6 +181,8 @@ Loading and Tooltip motion use GPUI `AnimationExt`. When the system or host enab
 ## Responsive Behavior
 
 Button is a leaf component and does not manage layout wrapping for its parent. Its contents stay centered inside the button. The text area uses `min_w_0`, `overflow_hidden`, `whitespace_nowrap`, and `text_ellipsis` so a narrow button does not force horizontal overflow. Use `.full_width()` for row-level actions and let the parent layout provide the available width.
+
+Button uses the same GPUI component implementation on macOS, Windows, Linux, and the Web preview. Platform differences are limited to host focus traversal, fonts, and system input mapping; callers do not switch Vektra APIs.
 
 ## Current Limits
 

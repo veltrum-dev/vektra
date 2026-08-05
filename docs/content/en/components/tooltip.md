@@ -2,11 +2,29 @@
 
 Tooltip provides short, supplementary plain-text help for Button and IconButton. Information required to finish a task must remain available elsewhere. Do not use Tooltip for errors, complex help, validation, or interactive content.
 
-## Live Preview
+## Basic Usage
 
-<VektraPreview demo="tooltip/basic" title="Tooltip preview" :height="780" />
+<VektraExample demo="tooltip/basic" title="Tooltip basic usage" :height="260">
 
-<<< ../../../preview/src/demos/tooltip.rs{rust}
+<<< ../../../preview/src/demos/tooltip.rs#tooltip-example-basic{rust}
+
+</VektraExample>
+
+## Controlled Visibility
+
+<VektraExample demo="tooltip/controlled" title="Tooltip controlled visibility" :height="280">
+
+<<< ../../../preview/src/demos/tooltip.rs#tooltip-example-controlled{rust}
+
+</VektraExample>
+
+## Preferred Placements
+
+<VektraExample demo="tooltip/placements" title="Tooltip preferred placements" :height="340">
+
+<<< ../../../preview/src/demos/tooltip.rs#tooltip-example-placements{rust}
+
+</VektraExample>
 
 ## API and Semantics
 
@@ -51,6 +69,8 @@ Tooltip anchors to the full union of the trigger's prepaint child bounds; it doe
 | `LeftEnd` / `RightEnd` | Bubble bottom edge aligns to the trigger bottom edge. |
 
 The bubble, arrow, surface background, foreground, border, `radius.md` corners, and light shadow default to Tooltip, semantic, and foundation tokens. Light, Dark, and System use the active theme. Instance `color`/`bg_color` overrides take priority, but fixed colors do not adapt to theme changes; the caller owns contrast. Long Chinese or English text wraps within the maximum width. In an extremely small viewport that cannot fit the trigger, gap, complete bubble, and shadow safety area together, the algorithm prioritizes visible content and uses best-effort placement, so normal spacing may be impossible.
+
+Tooltip uses the same GPUI placement and lifecycle implementation on macOS, Windows, Linux, and the Web preview. Platform differences mainly come from window bounds, system fonts, and host focus traversal; no alternate component API is required.
 
 The default enter animation is about 120ms, fading in with roughly 2px of travel along the final placement direction; exit fades out over about 80ms. Animation does not affect measurement, final placement, or trigger hit testing. `.animated(false)` renders static end states immediately. GPUI `App::reduce_motion` also suppresses decorative frame scheduling. Only configured triggers create a small keyed state; generation guards and owner lifetime cancel stale show-delay, close-grace, and transition tasks, and invisible content is not laid out. Large lists should be virtualized so state exists only for mounted rows.
 

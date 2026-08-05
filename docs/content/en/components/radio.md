@@ -2,11 +2,13 @@
 
 `RadioGroup<T>` selects one value from mutually exclusive options. It is controlled: `selected_value(Option<T>)` supplies the authoritative value and `on_change(T, ...)` only requests the next value. `Radio<T>` can only be added through the group's strongly typed `child(Radio<T>)` and cannot render independently.
 
-<VektraPreview demo="radio/basic" title="RadioGroup preview" :height="430" />
-
 ## Basic controlled usage
 
-<<< ../../../preview/src/demos/radio.rs#radio-basic{rust}
+<VektraExample demo="radio/basic" title="RadioGroup basic usage" :height="280">
+
+<<< ../../../preview/src/demos/radio.rs#radio-example-basic{rust}
+
+</VektraExample>
 
 The host may update `selected_value` immediately or wait for server approval. On failure, keep supplying the old value; the component never changes selected visuals optimistically.
 

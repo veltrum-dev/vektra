@@ -53,6 +53,217 @@ impl ButtonDemo {
         };
     }
 
+    pub(super) fn render_example_basic(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "基础按钮",
+            PreviewLang::EnUs => "Basic button",
+        };
+        // #region button-example-basic
+        let example = Button::new("save-button")
+            .label("保存")
+            .on_click(|_, _, _| {
+                // 执行保存操作。
+            });
+        // #endregion button-example-basic
+
+        self.example_page("button-example-basic", title, example, window, cx)
+    }
+
+    pub(super) fn render_example_states(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "受控状态",
+            PreviewLang::EnUs => "Controlled states",
+        };
+        // #region button-example-states
+        let example = div()
+            .flex()
+            .gap(px(8.))
+            .flex_wrap()
+            .child(
+                Button::new("selected-button")
+                    .label("置顶")
+                    .selected(self.selected)
+                    .on_click_in(cx, |this, _, _, cx| {
+                        this.button_demo.toggle_selected();
+                        cx.notify();
+                    }),
+            )
+            .child(Button::new("loading-button").label("保存中").loading(true))
+            .child(
+                Button::new("progress-button")
+                    .label("上传")
+                    .progress(self.progress),
+            );
+        // #endregion button-example-states
+
+        self.example_page("button-example-states", title, example, window, cx)
+    }
+
+    pub(super) fn render_example_variants(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "视觉变体",
+            PreviewLang::EnUs => "Visual variants",
+        };
+        // #region button-example-variants
+        let example = div().flex().gap(px(8.)).flex_wrap().children(
+            [
+                ButtonVariant::Primary,
+                ButtonVariant::Outline,
+                ButtonVariant::Ghost,
+                ButtonVariant::Destructive,
+                ButtonVariant::Secondary,
+                ButtonVariant::Link,
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(index, variant)| {
+                Button::new(("button-variant", index))
+                    .label(format!("{variant:?}"))
+                    .variant(variant)
+            }),
+        );
+        // #endregion button-example-variants
+
+        self.example_page("button-example-variants", title, example, window, cx)
+    }
+
+    pub(super) fn render_example_icons(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "图标插槽",
+            PreviewLang::EnUs => "Icon slots",
+        };
+        // #region button-example-icons
+        let example = div()
+            .flex()
+            .gap(px(8.))
+            .flex_wrap()
+            .child(
+                Button::new("button-start-icon")
+                    .label("设置")
+                    .start_icon(IconName::Settings),
+            )
+            .child(
+                Button::new("button-end-icon")
+                    .label("下一步")
+                    .end_icon(IconName::Settings),
+            )
+            .child(
+                Button::new("button-both-icons")
+                    .label("同步")
+                    .start_icon(IconName::Settings)
+                    .end_icon(IconSource::asset("icons/settings.svg")),
+            );
+        // #endregion button-example-icons
+
+        self.example_page("button-example-icons", title, example, window, cx)
+    }
+
+    pub(super) fn render_example_auto_space(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "中文自动空格",
+            PreviewLang::EnUs => "Automatic CJK spacing",
+        };
+        // #region button-example-auto-space
+        let example = div()
+            .flex()
+            .gap(px(8.))
+            .flex_wrap()
+            .child(Button::new("spacing-default").label("保存"))
+            .child(
+                Button::new("spacing-disabled")
+                    .label("取消")
+                    .auto_insert_space(false),
+            )
+            .child(Button::new("spacing-long").label("保存设置"));
+        // #endregion button-example-auto-space
+
+        self.example_page("button-example-auto-space", title, example, window, cx)
+    }
+
+    pub(super) fn render_example_width(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "宽度控制",
+            PreviewLang::EnUs => "Width control",
+        };
+        // #region button-example-width
+        let example = div()
+            .w(px(320.))
+            .max_w(relative(1.))
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .child(
+                Button::new("button-fixed")
+                    .label("固定 200px")
+                    .width(px(200.)),
+            )
+            .child(Button::new("button-full").label("填满容器").full_width());
+        // #endregion button-example-width
+
+        self.example_page("button-example-width", title, example, window, cx)
+    }
+
+    fn example_page(
+        &self,
+        id: &'static str,
+        title: &'static str,
+        example: impl IntoElement,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+
+        div()
+            .id(id)
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(16.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(
+                div()
+                    .text_size(px(18.))
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(title),
+            )
+            .child(example)
+            .into_any_element()
+    }
+
     pub(super) fn render_basic(
         &self,
         language: PreviewLang,

@@ -2,25 +2,33 @@
 
 Checkbox is a controlled checkbox component for single toggles, bulk selection, and parent mixed states. It is not a form framework, does not store business state internally, and does not provide validation or error-message APIs.
 
-<VektraPreview demo="checkbox/basic" title="Checkbox preview" :height="620" />
-
 ## Basic Usage
 
-<<< ../../../preview/src/demos/checkbox.rs#checkbox-state{rust}
+<VektraExample demo="checkbox/basic" title="Checkbox basic usage" :height="220">
 
-<<< ../../../preview/src/demos/checkbox.rs#checkbox-basic{rust}
+<<< ../../../preview/src/demos/checkbox.rs#checkbox-example-basic{rust}
+
+</VektraExample>
 
 `Checkbox::new(id)` defaults to unchecked. `.checked(...)` is the current controlled value, not an initial value. Each activation computes the next checked value and calls `on_change`; the host updates state and calls `cx.notify()`.
 
 ## Bulk Selection
 
-<<< ../../../preview/src/demos/checkbox.rs#checkbox-bulk{rust}
+<VektraExample demo="checkbox/bulk" title="Checkbox bulk selection" :height="340">
+
+<<< ../../../preview/src/demos/checkbox.rs#checkbox-example-bulk{rust}
+
+</VektraExample>
 
 A parent Checkbox can derive `checked` and `indeterminate` from child items: checked when every item is selected, mixed when only some items are selected. Activating the parent writes one value to every child item; bulk actions such as invert selection live in host state and do not need extra Checkbox API.
 
 ## Icon-only State
 
-<<< ../../../preview/src/demos/checkbox.rs#checkbox-icon-only{rust}
+<VektraExample demo="checkbox/icon-only" title="Checkbox icon-only state" :height="220">
+
+<<< ../../../preview/src/demos/checkbox.rs#checkbox-example-icon-only{rust}
+
+</VektraExample>
 
 `indicator_icons(unchecked, checked)` replaces the default box with two state icons. An icon-only Checkbox omits the visible label but must provide an accessible name through `aria_label(...)`. The full hit area remains clickable, while hover and pressed visuals apply only to the state icon.
 
@@ -67,6 +75,10 @@ Enabled Checkbox can be focused with Tab. Space activates; Enter does not. The l
 `on_change` and `on_change_in` are synchronous. For HTTP requests or async validation, start work inside the callback with the host Entity's `cx.spawn` / `cx.spawn_in`, and store the returned `Task` when lifecycle management needs it.
 
 `Checkbox` implements [`Changeable<bool>`](/en/api/changeable); its inherent builders and trait calls delegate to the same implementation.
+
+## Themes, Responsive Behavior, and Platforms
+
+Checkbox normal, hover, pressed, focus-visible, checked, mixed, and disabled states come from the active Light, Dark, or System theme tokens. The component keeps a compact single-row hit target; the host layout controls wrapping and column width in narrow containers, and icon-only mode still requires an `aria_label`. macOS, Windows, Linux, and the Web preview share the same GPUI implementation, with platform differences limited to system focus traversal, fonts, and input mapping.
 
 ## Known Limits
 

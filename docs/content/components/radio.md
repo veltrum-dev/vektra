@@ -2,11 +2,13 @@
 
 `RadioGroup<T>` 用于从互斥选项中选择一个值。它是受控组件：`selected_value(Option<T>)` 输入当前权威值，`on_change(T, ...)` 只请求下一值。`Radio<T>` 只能通过组的强类型 `child(Radio<T>)` 添加，不能独立渲染。
 
-<VektraPreview demo="radio/basic" title="RadioGroup 预览" :height="430" />
-
 ## 基础与受控用法
 
-<<< ../../preview/src/demos/radio.rs#radio-basic{rust}
+<VektraExample demo="radio/basic" title="RadioGroup 基础用法" :height="280">
+
+<<< ../../preview/src/demos/radio.rs#radio-example-basic{rust}
+
+</VektraExample>
 
 宿主可以立即更新 `selected_value`，也可以先保存待审批值，接口成功后再提交。请求失败时继续传入旧值，已选视觉不会被组件提前改变。
 

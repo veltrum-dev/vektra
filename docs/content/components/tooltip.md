@@ -2,11 +2,29 @@
 
 Tooltip 为 Button/IconButton 提供简短、补充性的纯文本说明。完成任务所必需的信息必须在其他位置可见；错误信息、复杂帮助、表单校验和交互内容不应放进 Tooltip。
 
-## 实时预览
+## 基础用法
 
-<VektraPreview demo="tooltip/basic" title="Tooltip 预览" :height="780" />
+<VektraExample demo="tooltip/basic" title="Tooltip 基础用法" :height="260">
 
-<<< ../../preview/src/demos/tooltip.rs{rust}
+<<< ../../preview/src/demos/tooltip.rs#tooltip-example-basic{rust}
+
+</VektraExample>
+
+## 受控显示
+
+<VektraExample demo="tooltip/controlled" title="Tooltip 受控显示" :height="280">
+
+<<< ../../preview/src/demos/tooltip.rs#tooltip-example-controlled{rust}
+
+</VektraExample>
+
+## 优先位置
+
+<VektraExample demo="tooltip/placements" title="Tooltip 优先位置" :height="340">
+
+<<< ../../preview/src/demos/tooltip.rs#tooltip-example-placements{rust}
+
+</VektraExample>
 
 ## API 与语义
 
@@ -51,6 +69,8 @@ Tooltip 使用 trigger 实际 prepaint 子边界作为完整矩形锚点，不�
 | `LeftEnd` / `RightEnd` | 气泡底部与 trigger 底部对齐。 |
 
 气泡、箭头、surface 背景、foreground、边框、`radius.md` 圆角和轻量阴影默认由 Tooltip/语义/foundation token 管理。Light、Dark、System 使用当前主题；实例 `color`/`bg_color` 的优先级高于主题，但固定颜色不会自动适配主题，对比度由调用方负责。长中文/英文会在最大宽度内换行。极小视口无法同时容纳 trigger、间距、完整气泡和阴影安全区时，算法优先让内容保持可见，并采用 best-effort 定位，此时可能无法维持正常间距。
+
+Tooltip 在 macOS、Windows、Linux 与 Web 预览中复用同一 GPUI 定位与生命周期实现；平台差异主要来自窗口边界、系统字体与宿主焦点遍历，不需要不同的组件 API。
 
 默认进入动画约 120ms：淡入并沿最终 placement 方向移动约 2px；退出约 80ms 淡出。动画不改变测量、最终定位或 trigger 命中区域。`.animated(false)` 直接呈现终态；GPUI `App::reduce_motion` 开启时同样不请求装饰动画帧。只有配置 Tooltip 的 trigger 才创建小型 keyed state，显示延迟、关闭宽限期与过渡任务均有代次防护并随 owner 卸载取消；不可见时不布局 Tooltip。大量列表应配合虚拟化，只为实际挂载项创建状态。
 

@@ -2,13 +2,31 @@
 
 IconButton 是固定正方形、只显示图标的操作控件，适合工具栏、紧凑标题栏和已有清晰上下文的常用操作。需要可见文字、复杂内容或导航链接时应使用其他组件。
 
-## 实时预览
+## 基础用法
 
-<VektraPreview demo="icon-button/basic" title="IconButton 预览" :height="360" />
+<VektraExample demo="icon-button/basic" title="IconButton 基础用法" :height="220">
 
-预览源码实际编译进共享 GPUI WASM runtime：
+<<< ../../preview/src/demos/icon_button.rs#icon-button-example-basic{rust}
 
-<<< ../../preview/src/demos/icon_button.rs{rust}
+</VektraExample>
+
+纯图标按钮必须通过 `aria_label(...)` 提供名称；Tooltip 只是视觉补充。
+
+## 变体
+
+<VektraExample demo="icon-button/variants" title="IconButton 视觉变体" :height="240">
+
+<<< ../../preview/src/demos/icon_button.rs#icon-button-example-variants{rust}
+
+</VektraExample>
+
+## 尺寸
+
+<VektraExample demo="icon-button/sizes" title="IconButton 语义尺寸" :height="240">
+
+<<< ../../preview/src/demos/icon_button.rs#icon-button-example-sizes{rust}
+
+</VektraExample>
 
 ## Anatomy 与 API
 

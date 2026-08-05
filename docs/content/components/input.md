@@ -2,17 +2,15 @@
 
 `Input` 是纯 GPUI、支持 IME 的单行文本输入。编辑状态由调用方持有的 `Entity<InputState>` 保存；组件不引入 Root、Provider 或注册流程，也不保存 required、regex、错误消息、dirty、touched 等表单元数据。
 
-<VektraPreview demo="input/basic" title="Input 预览" :height="760" />
+## 基础用法
 
-## 状态所有权
+创建一个 `Entity<InputState>`，并在每次 render 时把同一个 Entity 传给稳定 ID 的 Input。基础示例只包含占位文字和必需的可访问名称。
 
-<<< ../../preview/src/demos/input.rs#input-state{rust}
+<VektraExample demo="input/basic" title="Input 基础用法" :height="240">
 
-创建状态后，每次 render 都把同一个 Entity 传给稳定 ID 的 Input：
+<<< ../../preview/src/demos/input.rs#input-example-basic{rust}
 
-<<< ../../preview/src/demos/input.rs#input-basic{rust}
-
-顶部基础示例直接使用 `attached_suffix(Button)`：Input 与按钮共用外框，按钮点击和 editor Enter 都产生同一个搜索结果。普通内嵌 `suffix` 的两种 Search 形式仍在下方对照展示。
+</VektraExample>
 
 `InputState::value()` 读取当前文本。`set_value`、`clear` 与 `reset` 是程序化操作，不发送 `InputEvent::Changed`，也不调用 `on_change`；它们会安全结束 IME 并校正选区，其中 `reset` 还会清空撤销/重做历史和水平滚动。用户输入、删除、cut、paste、undo、redo、IME commit 和内置 clear 仅在值实际改变时发送一次 `Changed`。
 
@@ -20,7 +18,11 @@
 
 ## 外观与状态
 
-<<< ../../preview/src/demos/input.rs#input-variants{rust}
+<VektraExample demo="input/variants" title="Input 外观变体" :height="360">
+
+<<< ../../preview/src/demos/input.rs#input-example-variants{rust}
+
+</VektraExample>
 
 - `Outline` 是默认完整边框，适合普通表单。
 - `Filled` 用填充背景建立分组感，并保留透明结构边框避免状态跳动。
@@ -29,7 +31,11 @@
 
 状态优先级是 disabled、invalid + focus-visible、invalid、focus-visible、hover、normal。`invalid(bool)` 只消费外围校验结果：Input 不知道错误原因，也不运行规则。未来的 `FormControl<T>` 或 label/help/error 布局可以持有 required、regex、异步校验和 touched 等状态，不需要把它们塞进 `InputState`。
 
-<<< ../../preview/src/demos/input.rs#input-sizes{rust}
+<VektraExample demo="input/sizes" title="Input 语义尺寸" :height="360">
+
+<<< ../../preview/src/demos/input.rs#input-example-sizes{rust}
+
+</VektraExample>
 
 `ComponentSize::{Xs, Sm, Md, Lg}` 的高度分别为 24、32、36、40 px。Input 默认填满父容器宽度，文本 viewport 使用可收缩布局并水平滚动；最终宽度始终由父容器控制。
 
@@ -45,21 +51,27 @@
 
 `InputClear::new(aria_label)` 强制提供纯图标按钮的可访问名称。它内部复用 `IconButtonVariant::Ghost` 及其 `Tooltip`/placement 能力，使用 24×24 的 `ComponentSize::Xs` 透明命中区；静止时只有图标，hover、pressed、focus-visible、Enter 与 Space 仍完全由 IconButton 负责。clear 在值非空且可编辑时持续显示；激活只发送一次 `Changed("")`，随后焦点回到编辑器。Tooltip 是视觉帮助，不会自动复制成 aria label，也不能替代可访问名称。
 
-### Search 组合
+### Input Group
 
-Search 不需要新的专用组件。以下五个可编译示例复用 `InputClear`，并把尾部操作点击和 editor Enter 连接到同一个业务搜索结果：
+Search 不需要新的专用组件。把相同尺寸的 Button 放入 `attached_suffix`，即可得到共用外框、全高操作区和主题分隔线的聚焦组合。
 
-<<< ../../preview/src/demos/input.rs#input-search-actions{rust}
+<VektraExample demo="input/group" title="Input Group" :height="240">
 
-- 纯图标：继续放在普通 `suffix` 中，使用 `IconButton + IconName::Search`；必须提供 `aria_label`，建议同时显示 Tooltip。
-- 纯文字：放在 `attached_suffix` 中，使用带可见“搜索”label 的 `Button`，形成单一外框、全高操作区和竖向分隔线。
-- 图标加文字（内嵌）：继续放在普通 `suffix` 中，使用 `Button::start_icon(IconName::Search)` 与可见 label。
-- 图标加文字（拼接）：把同一个 Button 组合放入 `attached_suffix`，证明 attached suffix 不限制内容形态。
-- 纯图标（拼接）：把带 `aria_label` 与 Tooltip 的 `IconButton` 放入 `attached_suffix`，保持全高分段区域和完整命中区。
+<<< ../../preview/src/demos/input.rs#input-example-group{rust}
 
-两个内嵌示例使用 `Ghost + ComponentSize::Xs` 保持紧凑；三个拼接示例让 Input 与 Button/IconButton 同时使用 `ComponentSize::Md`。五者都保留 Button/IconButton 完整的 hover、pressed、focus-visible、disabled、Enter 与 Space 行为。`IconName::Search` 随 `vektra` 的 `icons` feature 提供；宿主也可以通过自己的 `IntoIconSource` 类型替换图标来源。
+</VektraExample>
 
-<<< ../../preview/src/demos/input.rs#input-states{rust}
+纯图标操作可以放在普通 `suffix` 或 `attached_suffix` 中，并使用 `IconButton + IconName::Search`；必须提供 `aria_label`，Tooltip 不能替代可访问名称。`IconName::Search` 随 `vektra` 的 `icons` feature 提供。
+
+### 状态
+
+`invalid`、`read_only` 与 `disabled` 都由宿主显式传入，彼此保持独立语义。
+
+<VektraExample demo="input/states" title="Input 状态" :height="320">
+
+<<< ../../preview/src/demos/input.rs#input-example-states{rust}
+
+</VektraExample>
 
 ## 编辑、键盘与无障碍
 
@@ -83,3 +95,13 @@ disabled editor 离开普通 Tab 顺序，拒绝输入、选区和 AccessKit Set
 | `on_change`, `on_submit`, `on_focus`, `on_blur` | 用户语义事件及 Entity 绑定 `_in` 版本。 |
 
 Input 实现 [`Changeable<SharedString>`](/api/changeable)、[`Focusable`](/api/focusable)、[`Disableable`](/api/disableable) 和 [`Sizable`](/api/sizable)，不实现 `Clickable`。主题 token 位于 `input.border-width`、`input.focus-width`、`input.caret-width`（默认 1px）、`input.variant.<variant>.<state>.*` 与 `input.size.<size>.*`。旧自定义主题完全没有 Input 扩展时会回退到 semantic/foundation token；一旦开始提供 Input state 或 size 扩展，就必须完整提供对应配置。
+
+## 主题、响应式与跨平台
+
+Light、Dark 与 System 模式通过当前 Vektra 主题解析边框、表面、文字、placeholder、selection、caret 与状态颜色。Input 会在可用宽度内收缩并让编辑内容水平滚动；prefix、suffix 和 attached suffix 的占用宽度由宿主选择，过多插槽会压缩编辑区。macOS、Windows、Linux 与 Web 预览共用同一 GPUI 实现，命令修饰键和系统文本输入遵循各平台约定。
+
+## 已知限制
+
+- Input 仅支持单行纯文本，不提供多行编辑、掩码、格式化或内建校验消息。
+- prefix、suffix 与 attached suffix 是组合插槽；其业务状态、加载和错误处理由宿主负责。
+- 预览运行依赖浏览器 WebGPU 与文档宿主提供的字体资源。

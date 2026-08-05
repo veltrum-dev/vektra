@@ -2,13 +2,31 @@
 
 IconButton is a fixed square, icon-only action for toolbars, compact title bars, and familiar actions with clear surrounding context. Use another component when visible text, complex content, or link navigation is required.
 
-## Live Preview
+## Basic Usage
 
-<VektraPreview demo="icon-button/basic" title="IconButton preview" :height="360" />
+<VektraExample demo="icon-button/basic" title="IconButton basic usage" :height="220">
 
-The source below is compiled into the shared GPUI WASM runtime:
+<<< ../../../preview/src/demos/icon_button.rs#icon-button-example-basic{rust}
 
-<<< ../../../preview/src/demos/icon_button.rs{rust}
+</VektraExample>
+
+Every icon-only button must supply a name through `aria_label(...)`; Tooltip is only visual help.
+
+## Variants
+
+<VektraExample demo="icon-button/variants" title="IconButton visual variants" :height="240">
+
+<<< ../../../preview/src/demos/icon_button.rs#icon-button-example-variants{rust}
+
+</VektraExample>
+
+## Sizes
+
+<VektraExample demo="icon-button/sizes" title="IconButton semantic sizes" :height="240">
+
+<<< ../../../preview/src/demos/icon_button.rs#icon-button-example-sizes{rust}
+
+</VektraExample>
 
 ## Anatomy and API
 

@@ -17,37 +17,140 @@ actions!(vektra_docs_preview, [Tab, TabPrev]);
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum DemoSelection {
     ButtonBasic,
+    ButtonStates,
+    ButtonVariants,
+    ButtonIcons,
+    ButtonAutoSpace,
+    ButtonWidth,
     ButtonShowcase,
+    ButtonComprehensive,
     CheckboxBasic,
+    CheckboxBulk,
+    CheckboxIconOnly,
+    CheckboxComprehensive,
     RadioBasic,
+    RadioComprehensive,
     SwitchBasic,
+    SwitchFocus,
+    SwitchLoading,
+    SwitchComprehensive,
     IconButtonBasic,
+    IconButtonVariants,
+    IconButtonSizes,
+    IconButtonComprehensive,
     InputBasic,
+    InputGroup,
+    InputVariants,
+    InputSizes,
+    InputStates,
+    InputComprehensive,
     TooltipBasic,
+    TooltipPlacements,
+    TooltipControlled,
+    TooltipComprehensive,
     Unknown(String),
 }
 
 impl DemoSelection {
     pub(crate) const DEFAULT_ID: &'static str = "button/basic";
     pub(crate) const SHOWCASE_ID: &'static str = "button/showcase";
-    pub(crate) const CHECKBOX_ID: &'static str = "checkbox/basic";
-    pub(crate) const RADIO_ID: &'static str = "radio/basic";
-    pub(crate) const SWITCH_ID: &'static str = "switch/basic";
-    pub(crate) const ICON_BUTTON_ID: &'static str = "icon-button/basic";
-    pub(crate) const INPUT_ID: &'static str = "input/basic";
-    pub(crate) const TOOLTIP_ID: &'static str = "tooltip/basic";
+    #[cfg(test)]
+    pub(crate) const DOCUMENTED_IDS: &'static [&'static str] = &[
+        "button/basic",
+        "button/states",
+        "button/variants",
+        "button/icons",
+        "button/auto-space",
+        "button/width",
+        "checkbox/basic",
+        "checkbox/bulk",
+        "checkbox/icon-only",
+        "radio/basic",
+        "switch/basic",
+        "switch/focus",
+        "switch/loading",
+        "icon-button/basic",
+        "icon-button/variants",
+        "icon-button/sizes",
+        "input/basic",
+        "input/group",
+        "input/variants",
+        "input/sizes",
+        "input/states",
+        "tooltip/basic",
+        "tooltip/placements",
+        "tooltip/controlled",
+    ];
+    pub(crate) const ALL_IDS: &'static [&'static str] = &[
+        "button/basic",
+        "button/states",
+        "button/variants",
+        "button/icons",
+        "button/auto-space",
+        "button/width",
+        "button/showcase",
+        "button/comprehensive",
+        "checkbox/basic",
+        "checkbox/bulk",
+        "checkbox/icon-only",
+        "checkbox/comprehensive",
+        "radio/basic",
+        "radio/comprehensive",
+        "switch/basic",
+        "switch/focus",
+        "switch/loading",
+        "switch/comprehensive",
+        "icon-button/basic",
+        "icon-button/variants",
+        "icon-button/sizes",
+        "icon-button/comprehensive",
+        "input/basic",
+        "input/group",
+        "input/variants",
+        "input/sizes",
+        "input/states",
+        "input/comprehensive",
+        "tooltip/basic",
+        "tooltip/placements",
+        "tooltip/controlled",
+        "tooltip/comprehensive",
+    ];
 
     fn from_demo_id(demo_id: Option<&str>) -> Self {
         match demo_id {
             None => Self::ButtonBasic,
             Some(Self::DEFAULT_ID) => Self::ButtonBasic,
+            Some("button/states") => Self::ButtonStates,
+            Some("button/variants") => Self::ButtonVariants,
+            Some("button/icons") => Self::ButtonIcons,
+            Some("button/auto-space") => Self::ButtonAutoSpace,
+            Some("button/width") => Self::ButtonWidth,
             Some(Self::SHOWCASE_ID) => Self::ButtonShowcase,
-            Some(Self::CHECKBOX_ID) => Self::CheckboxBasic,
-            Some(Self::RADIO_ID) => Self::RadioBasic,
-            Some(Self::SWITCH_ID) => Self::SwitchBasic,
-            Some(Self::ICON_BUTTON_ID) => Self::IconButtonBasic,
-            Some(Self::INPUT_ID) => Self::InputBasic,
-            Some(Self::TOOLTIP_ID) => Self::TooltipBasic,
+            Some("button/comprehensive") => Self::ButtonComprehensive,
+            Some("checkbox/basic") => Self::CheckboxBasic,
+            Some("checkbox/bulk") => Self::CheckboxBulk,
+            Some("checkbox/icon-only") => Self::CheckboxIconOnly,
+            Some("checkbox/comprehensive") => Self::CheckboxComprehensive,
+            Some("radio/basic") => Self::RadioBasic,
+            Some("radio/comprehensive") => Self::RadioComprehensive,
+            Some("switch/basic") => Self::SwitchBasic,
+            Some("switch/focus") => Self::SwitchFocus,
+            Some("switch/loading") => Self::SwitchLoading,
+            Some("switch/comprehensive") => Self::SwitchComprehensive,
+            Some("icon-button/basic") => Self::IconButtonBasic,
+            Some("icon-button/variants") => Self::IconButtonVariants,
+            Some("icon-button/sizes") => Self::IconButtonSizes,
+            Some("icon-button/comprehensive") => Self::IconButtonComprehensive,
+            Some("input/basic") => Self::InputBasic,
+            Some("input/group") => Self::InputGroup,
+            Some("input/variants") => Self::InputVariants,
+            Some("input/sizes") => Self::InputSizes,
+            Some("input/states") => Self::InputStates,
+            Some("input/comprehensive") => Self::InputComprehensive,
+            Some("tooltip/basic") => Self::TooltipBasic,
+            Some("tooltip/placements") => Self::TooltipPlacements,
+            Some("tooltip/controlled") => Self::TooltipControlled,
+            Some("tooltip/comprehensive") => Self::TooltipComprehensive,
             Some(value) => Self::Unknown(value.to_owned()),
         }
     }
@@ -55,28 +158,46 @@ impl DemoSelection {
     fn id(&self) -> &str {
         match self {
             Self::ButtonBasic => Self::DEFAULT_ID,
+            Self::ButtonStates => "button/states",
+            Self::ButtonVariants => "button/variants",
+            Self::ButtonIcons => "button/icons",
+            Self::ButtonAutoSpace => "button/auto-space",
+            Self::ButtonWidth => "button/width",
             Self::ButtonShowcase => Self::SHOWCASE_ID,
-            Self::CheckboxBasic => Self::CHECKBOX_ID,
-            Self::RadioBasic => Self::RADIO_ID,
-            Self::SwitchBasic => Self::SWITCH_ID,
-            Self::IconButtonBasic => Self::ICON_BUTTON_ID,
-            Self::InputBasic => Self::INPUT_ID,
-            Self::TooltipBasic => Self::TOOLTIP_ID,
+            Self::ButtonComprehensive => "button/comprehensive",
+            Self::CheckboxBasic => "checkbox/basic",
+            Self::CheckboxBulk => "checkbox/bulk",
+            Self::CheckboxIconOnly => "checkbox/icon-only",
+            Self::CheckboxComprehensive => "checkbox/comprehensive",
+            Self::RadioBasic => "radio/basic",
+            Self::RadioComprehensive => "radio/comprehensive",
+            Self::SwitchBasic => "switch/basic",
+            Self::SwitchFocus => "switch/focus",
+            Self::SwitchLoading => "switch/loading",
+            Self::SwitchComprehensive => "switch/comprehensive",
+            Self::IconButtonBasic => "icon-button/basic",
+            Self::IconButtonVariants => "icon-button/variants",
+            Self::IconButtonSizes => "icon-button/sizes",
+            Self::IconButtonComprehensive => "icon-button/comprehensive",
+            Self::InputBasic => "input/basic",
+            Self::InputGroup => "input/group",
+            Self::InputVariants => "input/variants",
+            Self::InputSizes => "input/sizes",
+            Self::InputStates => "input/states",
+            Self::InputComprehensive => "input/comprehensive",
+            Self::TooltipBasic => "tooltip/basic",
+            Self::TooltipPlacements => "tooltip/placements",
+            Self::TooltipControlled => "tooltip/controlled",
+            Self::TooltipComprehensive => "tooltip/comprehensive",
             Self::Unknown(value) => value,
         }
     }
 
     fn status(&self) -> &'static str {
-        match self {
-            Self::ButtonBasic
-            | Self::ButtonShowcase
-            | Self::CheckboxBasic
-            | Self::RadioBasic
-            | Self::SwitchBasic
-            | Self::IconButtonBasic
-            | Self::InputBasic
-            | Self::TooltipBasic => "ready",
-            Self::Unknown(_) => "unknown-demo",
+        if matches!(self, Self::Unknown(_)) {
+            "unknown-demo"
+        } else {
+            "ready"
         }
     }
 }
@@ -117,29 +238,16 @@ impl PreviewLang {
     }
 
     fn unknown_body(self, demo_id: &str) -> String {
+        let separator = match self {
+            Self::ZhCn => "、",
+            Self::EnUs => ", ",
+        };
+        let supported = DemoSelection::ALL_IDS.join(separator);
         match self {
-            Self::ZhCn => format!(
-                "不支持 demo_id `{demo_id}`。当前支持的预览：`{}`、`{}`、`{}`、`{}`、`{}`、`{}`、`{}`、`{}`。",
-                DemoSelection::DEFAULT_ID,
-                DemoSelection::SHOWCASE_ID,
-                DemoSelection::CHECKBOX_ID,
-                DemoSelection::RADIO_ID,
-                DemoSelection::SWITCH_ID,
-                DemoSelection::ICON_BUTTON_ID,
-                DemoSelection::INPUT_ID,
-                DemoSelection::TOOLTIP_ID
-            ),
-            Self::EnUs => format!(
-                "Unsupported demo_id `{demo_id}`. Supported previews: `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, `{}`, and `{}`.",
-                DemoSelection::DEFAULT_ID,
-                DemoSelection::SHOWCASE_ID,
-                DemoSelection::CHECKBOX_ID,
-                DemoSelection::RADIO_ID,
-                DemoSelection::SWITCH_ID,
-                DemoSelection::ICON_BUTTON_ID,
-                DemoSelection::INPUT_ID,
-                DemoSelection::TOOLTIP_ID
-            ),
+            Self::ZhCn => format!("不支持 demo_id `{demo_id}`。当前支持的预览：{supported}。"),
+            Self::EnUs => {
+                format!("Unsupported demo_id `{demo_id}`. Supported previews: {supported}.")
+            }
         }
     }
 }
@@ -149,9 +257,13 @@ pub(crate) struct PreviewApp {
     language: PreviewLang,
     font_family: &'static str,
     button_demo: button::ButtonDemo,
+    checkbox_basic_demo: checkbox::CheckboxBasicDemo,
     checkbox_demo: checkbox::CheckboxDemo,
+    radio_basic_demo: radio::RadioBasicDemo,
     radio_demo: radio::RadioDemo,
+    switch_basic_demo: switch::SwitchBasicDemo,
     switch_demo: switch::SwitchDemo,
+    input_basic_demo: input::InputBasicDemo,
     input_demo: input::InputDemo,
     focus_status: gpui::SharedString,
     focus_handle: FocusHandle,
@@ -180,9 +292,13 @@ impl PreviewApp {
             language,
             font_family,
             button_demo: button::ButtonDemo::new(language),
+            checkbox_basic_demo: checkbox::CheckboxBasicDemo::new(),
             checkbox_demo: checkbox::CheckboxDemo::new(),
+            radio_basic_demo: radio::RadioBasicDemo::new(),
             radio_demo: radio::RadioDemo::new(),
+            switch_basic_demo: switch::SwitchBasicDemo::new(),
             switch_demo: switch::SwitchDemo::new(),
+            input_basic_demo: input::InputBasicDemo::new(cx),
             input_demo: input::InputDemo::new(cx),
             focus_status: language.no_recent_focus().into(),
             focus_handle,
@@ -237,32 +353,122 @@ impl Render for PreviewApp {
         let child = match &self.selection {
             DemoSelection::ButtonBasic => self
                 .button_demo
-                .render_basic(self.language, focus_status, window, cx)
+                .render_example_basic(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::ButtonStates => self
+                .button_demo
+                .render_example_states(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::ButtonVariants => self
+                .button_demo
+                .render_example_variants(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::ButtonIcons => self
+                .button_demo
+                .render_example_icons(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::ButtonAutoSpace => self
+                .button_demo
+                .render_example_auto_space(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::ButtonWidth => self
+                .button_demo
+                .render_example_width(self.language, window, cx)
                 .into_any_element(),
             DemoSelection::ButtonShowcase => self
                 .button_demo
                 .render_showcase(self.language, window, cx)
                 .into_any_element(),
+            DemoSelection::ButtonComprehensive => self
+                .button_demo
+                .render_basic(self.language, focus_status, window, cx)
+                .into_any_element(),
             DemoSelection::CheckboxBasic => self
+                .checkbox_basic_demo
+                .render(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::CheckboxBulk => self
+                .checkbox_demo
+                .render_bulk(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::CheckboxIconOnly => self
+                .checkbox_demo
+                .render_icon_only(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::CheckboxComprehensive => self
                 .checkbox_demo
                 .render(self.language, focus_status, window, cx)
                 .into_any_element(),
             DemoSelection::RadioBasic => self
+                .radio_basic_demo
+                .render(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::RadioComprehensive => self
                 .radio_demo
                 .render(self.language, window, cx)
                 .into_any_element(),
             DemoSelection::SwitchBasic => self
+                .switch_basic_demo
+                .render(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SwitchFocus => self
+                .switch_demo
+                .render_focus(self.language, focus_status, window, cx)
+                .into_any_element(),
+            DemoSelection::SwitchLoading => self
+                .switch_demo
+                .render_loading(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SwitchComprehensive => self
                 .switch_demo
                 .render(self.language, focus_status, window, cx)
                 .into_any_element(),
             DemoSelection::IconButtonBasic => {
+                icon_button::render_basic(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::IconButtonVariants => {
+                icon_button::render_variants(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::IconButtonSizes => {
+                icon_button::render_sizes(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::IconButtonComprehensive => {
                 icon_button::render(self.language, focus_status, window, cx).into_any_element()
             }
             DemoSelection::InputBasic => self
+                .input_basic_demo
+                .render(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputGroup => self
+                .input_demo
+                .render_group(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputVariants => self
+                .input_demo
+                .render_variants(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputSizes => self
+                .input_demo
+                .render_sizes(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputStates => self
+                .input_demo
+                .render_states(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputComprehensive => self
                 .input_demo
                 .render(self.language, window, cx)
                 .into_any_element(),
             DemoSelection::TooltipBasic => {
+                tooltip::render_basic(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::TooltipPlacements => {
+                tooltip::render_placements(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::TooltipControlled => {
+                tooltip::render_controlled(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::TooltipComprehensive => {
                 tooltip::render(self.language, window, cx).into_any_element()
             }
             DemoSelection::Unknown(demo_id) => {
@@ -486,17 +692,7 @@ fn hex_value(byte: u8) -> Option<u8> {
 #[cfg(target_family = "wasm")]
 fn current_demo_id() -> Option<String> {
     let query = web_sys::window()?.location().search().ok()?;
-    match parse_demo_query(&query) {
-        DemoSelection::ButtonBasic => Some(DemoSelection::DEFAULT_ID.to_owned()),
-        DemoSelection::ButtonShowcase => Some(DemoSelection::SHOWCASE_ID.to_owned()),
-        DemoSelection::CheckboxBasic => Some(DemoSelection::CHECKBOX_ID.to_owned()),
-        DemoSelection::RadioBasic => Some(DemoSelection::RADIO_ID.to_owned()),
-        DemoSelection::SwitchBasic => Some(DemoSelection::SWITCH_ID.to_owned()),
-        DemoSelection::IconButtonBasic => Some(DemoSelection::ICON_BUTTON_ID.to_owned()),
-        DemoSelection::InputBasic => Some(DemoSelection::INPUT_ID.to_owned()),
-        DemoSelection::TooltipBasic => Some(DemoSelection::TOOLTIP_ID.to_owned()),
-        DemoSelection::Unknown(value) => Some(value),
-    }
+    Some(parse_demo_query(&query).id().to_owned())
 }
 
 struct PreviewBrowserState<'a> {

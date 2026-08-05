@@ -2,13 +2,13 @@
 
 `Switch` 表达会立即生效的开启/关闭设置，例如推送通知或使用分析。批量选择、选择列表与部分选中状态请使用 [`Checkbox`](./checkbox)。它是受控组件，不保存内部业务状态，也不是表单框架。
 
-<VektraPreview demo="switch/basic" title="Switch 预览" :height="500" />
-
 ## 基础用法
 
-<<< ../../preview/src/demos/switch.rs#switch-state{rust}
+<VektraExample demo="switch/basic" title="Switch 基础用法" :height="220">
 
-<<< ../../preview/src/demos/switch.rs#switch-basic{rust}
+<<< ../../preview/src/demos/switch.rs#switch-example-basic{rust}
+
+</VektraExample>
 
 `.checked(...)` 是当前受控值而非初始值。一次有效激活只将 `!checked` 传给 `on_change`；宿主在回调中更新状态并调用 `cx.notify()`，下一次 render 再传回新值。回调是同步本地 callback，不是运行时事件总线；异步工作由宿主在回调中启动和管理。`.loading(...)` 同样是受控输入，不会自行启动任务或改变 checked。
 
@@ -62,13 +62,21 @@ track、thumb 与 label 只有一个交互目标、一个 Tab stop 和一个可�
 
 轨道状态内容只补充视觉状态：图标是装饰性的，不创建新的可访问节点或 Tab stop；“开启/关闭”也不会替代业务名称。`.label("通知")` 或 `.aria_label("通知")` 仍负责提供 Switch 的可访问名称。
 
-<<< ../../preview/src/demos/switch.rs#switch-focus{rust}
+<VektraExample demo="switch/focus" title="Switch 焦点生命周期" :height="260">
+
+<<< ../../preview/src/demos/switch.rs#switch-example-focus{rust}
+
+</VektraExample>
 
 checked 状态和焦点生命周期彼此独立：重绘、builder 值变化和焦点转换都不会自行触发 `on_change`；checked 改变也不会伪造 focus/blur。`_in` 表示 `Context::listener` 的 Entity 绑定，Entity 销毁后会安全 no-op。
 
 ## Loading 与受控任务
 
-<<< ../../preview/src/demos/switch.rs#switch-motion-loading{rust}
+<VektraExample demo="switch/loading" title="Switch 受控 loading" :height="280">
+
+<<< ../../preview/src/demos/switch.rs#switch-example-loading{rust}
+
+</VektraExample>
 
 loading spinner 固定在 thumb 内，不改变 thumb 或 track 尺寸；thumb 仍位于当前 checked 对应的位置，轨道内容继续表达该状态。spinner 使用独立的稳定动画 ID 和固定循环周期，因此 `.transition_duration(...)` 不会改变或重启它。reduced-motion 下显示静态帧，不持续请求动画帧。
 
@@ -79,6 +87,8 @@ loading spinner 固定在 thumb 内，不改变 thumb 或 track 尺寸；thumb �
 ## 主题、尺寸与限制
 
 四种语义尺寸保留各自的紧凑 track、命中区域、图标、内容宽度、spinner、间距和排版 token；进入内容模式后统一为 24px track 与 20px thumb。紧凑模式尺寸不变。Light、Dark 与 System 模式通过 Vektra 主题解析；normal、hover、pressed、focus-visible 和 disabled 均使用主题 token。loading 不显示误导性的 hover/pressed 反馈。旧主题未提供新增内容或 loading token 时使用语义 fallback；一旦开始提供其中一组新增 token，就必须完整覆盖该组的两种视觉状态或四种尺寸。
+
+Switch 在 macOS、Windows、Linux 与 Web 预览中复用同一 GPUI 实现。窄容器的换行和可用宽度由宿主布局负责；状态文字会保持单行并按主题上限截断，平台差异仅来自系统字体、焦点遍历与输入映射。
 
 受控 checked 值变化时，thumb 与内容默认使用 180ms、固定 ease-out cubic；旧内容在前半程淡出，新内容在后半程淡入，避免与移动中的 thumb 明显重叠。`.transition_duration(...)` 接受调用方传入的非零时长且不静默夹取，建议 100–400ms；`Duration::ZERO` 不创建状态切换动画。初次 render 不播放入场动画，只改变 duration 不会增加 motion generation 或重启动画，同一次 render 同时改变 checked 与 duration 时使用新时长。GPUI reduced-motion 的优先级更高，会让 thumb、内容与 spinner 直接显示静态终态。
 

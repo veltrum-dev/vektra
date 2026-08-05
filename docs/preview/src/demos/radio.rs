@@ -9,6 +9,65 @@ enum Plan {
     Enterprise,
 }
 
+// #region radio-example-basic
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BasicPlan {
+    Free,
+    Pro,
+}
+
+pub(super) struct RadioBasicDemo {
+    selected: Option<BasicPlan>,
+}
+
+impl RadioBasicDemo {
+    pub(super) const fn new() -> Self {
+        Self { selected: None }
+    }
+
+    fn group(&self, cx: &mut Context<PreviewApp>) -> RadioGroup<BasicPlan> {
+        RadioGroup::new("plan-group")
+            .selected_value(self.selected)
+            .aria_label("订阅方案")
+            .on_change_in(cx, |this, next_plan, _, cx| {
+                this.radio_basic_demo.selected = Some(next_plan);
+                cx.notify();
+            })
+            .child(Radio::new("plan-free", BasicPlan::Free).label("免费版"))
+            .child(Radio::new("plan-pro", BasicPlan::Pro).label("专业版"))
+    }
+}
+// #endregion radio-example-basic
+
+impl RadioBasicDemo {
+    pub(super) fn render(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> impl IntoElement {
+        let theme = vektra::current_theme(window, cx);
+        let title = match language {
+            PreviewLang::ZhCn => "选择订阅方案",
+            PreviewLang::EnUs => "Choose a subscription plan",
+        };
+
+        div()
+            .id("radio-example-basic")
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(16.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(div().text_size(px(18.)).child(title))
+            .child(self.group(cx))
+    }
+}
+
 pub(crate) struct RadioDemo {
     plan: Option<Plan>,
     pending_plan: Option<Plan>,

@@ -5,6 +5,100 @@ use gpui::{
 };
 use vektra::{Button, ButtonVariant, IconButton, IconName, Tooltip, TooltipPlacement};
 
+pub(super) fn render_basic(
+    language: PreviewLang,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let title = match language {
+        PreviewLang::ZhCn => "悬停或聚焦按钮",
+        PreviewLang::EnUs => "Hover or focus the button",
+    };
+    // #region tooltip-example-basic
+    let example = Button::new("save-button")
+        .label("保存")
+        .tooltip("保存当前更改");
+    // #endregion tooltip-example-basic
+
+    example_page("tooltip-example-basic", title, example, window, cx)
+}
+
+pub(super) fn render_placements(
+    language: PreviewLang,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let title = match language {
+        PreviewLang::ZhCn => "优先位置",
+        PreviewLang::EnUs => "Preferred placements",
+    };
+    // #region tooltip-example-placements
+    let example = div().flex().gap(px(8.)).flex_wrap().children(
+        [
+            ("Top", TooltipPlacement::Top),
+            ("Right", TooltipPlacement::Right),
+            ("Bottom", TooltipPlacement::Bottom),
+            ("Left", TooltipPlacement::Left),
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(index, (label, placement))| {
+            Button::new(("tooltip-placement", index))
+                .label(label)
+                .variant(ButtonVariant::Outline)
+                .tooltip(label)
+                .tooltip_placement(placement)
+        }),
+    );
+    // #endregion tooltip-example-placements
+
+    example_page("tooltip-example-placements", title, example, window, cx)
+}
+
+pub(super) fn render_controlled(
+    language: PreviewLang,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let title = match language {
+        PreviewLang::ZhCn => "受控显示",
+        PreviewLang::EnUs => "Controlled visibility",
+    };
+    // #region tooltip-example-controlled
+    let example = Button::new("controlled-tooltip")
+        .label("始终显示")
+        .variant(ButtonVariant::Outline)
+        .tooltip(Tooltip::new("受控 Tooltip").open(true));
+    // #endregion tooltip-example-controlled
+
+    example_page("tooltip-example-controlled", title, example, window, cx)
+}
+
+fn example_page(
+    id: &'static str,
+    title: &'static str,
+    example: impl IntoElement,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let theme = vektra::current_theme(window, cx);
+
+    div()
+        .id(id)
+        .size_full()
+        .flex()
+        .flex_col()
+        .items_center()
+        .justify_center()
+        .gap(px(16.))
+        .p(px(28.))
+        .bg(theme.semantic.background)
+        .text_color(theme.semantic.foreground)
+        .child(div().text_size(px(18.)).child(title))
+        .child(example)
+        .into_any_element()
+}
+
 pub(super) fn render(
     language: PreviewLang,
     window: &mut Window,
