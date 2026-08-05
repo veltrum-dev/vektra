@@ -46,7 +46,7 @@ fn every_registered_demo_id_round_trips_through_query_parsing() {
 }
 
 #[test]
-fn input_demo_covers_search_actions_variants_sizes_slots_clear_and_states() {
+fn input_demo_covers_types_password_security_events_and_existing_composition() {
     let source = include_str!("../../src/demos/input.rs");
 
     for variant in ["Outline", "Filled", "Borderless", "Underline"] {
@@ -75,6 +75,56 @@ fn input_demo_covers_search_actions_variants_sizes_slots_clear_and_states() {
     assert!(source.contains("IconButton::new(\"submit-search-attached-icon\", IconName::Search)"));
     assert!(source.contains(".start_icon(IconName::Search)"));
     assert!(source.contains("中文 IME"));
+
+    let search = source
+        .split("// #region input-example-search")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion input-example-search")
+        .next()
+        .unwrap();
+    assert!(search.contains(".input_type(InputType::Search)"));
+    assert!(search.contains(".prefix(Icon::new(IconName::Search))"));
+    assert!(search.contains(".clearable("));
+    assert!(search.contains(".on_submit_in("));
+
+    let password = source
+        .split("// #region input-example-password")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion input-example-password")
+        .next()
+        .unwrap();
+    assert!(password.contains(".input_type(InputType::Password)"));
+    assert!(password.contains(".password_revealed(revealed)"));
+    assert!(password.contains("IconName::Eye"));
+    assert!(password.contains("IconName::EyeOff"));
+    assert!(password.contains(".selected(revealed)"));
+    assert!(password.contains(".aria_label(action_label)"));
+    assert!(password.contains(".tooltip(action_label)"));
+    assert!(password.contains("window.focus(&focus, cx)"));
+
+    let types = source
+        .split("// #region input-example-types")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion input-example-types")
+        .next()
+        .unwrap();
+    for input_type in ["Email", "Phone", "Url"] {
+        assert!(types.contains(&format!(".input_type(InputType::{input_type})")));
+    }
+
+    let events = source
+        .split("// #region input-example-events")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion input-example-events")
+        .next()
+        .unwrap();
+    for callback in ["on_change_in", "on_submit_in", "on_focus_in", "on_blur_in"] {
+        assert!(events.contains(&format!(".{callback}(")));
+    }
 
     let basic = source
         .split("// #region input-example-basic")
@@ -196,6 +246,56 @@ fn controlled_basic_examples_keep_only_their_required_state() {
 }
 
 #[test]
+fn focused_examples_cover_component_states_keyboard_sizes_and_tooltips() {
+    let checkbox = include_str!("../../src/demos/checkbox.rs");
+    for region in ["checkbox-example-states", "checkbox-example-sizes"] {
+        assert!(checkbox.contains(&format!("// #region {region}")));
+        assert!(checkbox.contains(&format!("// #endregion {region}")));
+    }
+    assert!(checkbox.contains(".indeterminate("));
+    assert!(checkbox.contains(".disabled(true)"));
+
+    let radio = include_str!("../../src/demos/radio.rs");
+    for region in [
+        "radio-example-disabled",
+        "radio-example-keyboard",
+        "radio-example-orientation",
+    ] {
+        assert!(radio.contains(&format!("// #region {region}")));
+        assert!(radio.contains(&format!("// #endregion {region}")));
+    }
+    assert!(radio.contains(".orientation(Orientation::Horizontal)"));
+    assert!(radio.contains(".disabled(true)"));
+
+    let switch = include_str!("../../src/demos/switch.rs");
+    for region in [
+        "switch-example-states",
+        "switch-example-sizes",
+        "switch-example-content",
+    ] {
+        assert!(switch.contains(&format!("// #region {region}")));
+        assert!(switch.contains(&format!("// #endregion {region}")));
+    }
+    assert!(switch.contains("SwitchContent::text"));
+    assert!(switch.contains("SwitchContent::icon("));
+    assert!(switch.contains("SwitchContent::icon_text("));
+
+    let icon_button = include_str!("../../src/demos/icon_button.rs");
+    assert!(icon_button.contains("// #region icon-button-example-states"));
+    assert!(icon_button.contains(".selected(true)"));
+    assert!(icon_button.contains("// #region icon-button-example-tooltip"));
+    assert!(icon_button.contains(".aria_label(label)"));
+    assert!(icon_button.contains(".tooltip(label)"));
+
+    let tooltip = include_str!("../../src/demos/tooltip.rs");
+    assert!(tooltip.contains("// #region tooltip-example-appearance"));
+    assert!(tooltip.contains(".arrow(false)"));
+    assert!(tooltip.contains(".bg_color("));
+    assert!(tooltip.contains("// #region tooltip-example-lifecycle"));
+    assert!(tooltip.contains("Escape dismisses without moving focus"));
+}
+
+#[test]
 fn component_pages_pair_every_preview_with_compiled_source_and_registered_id() {
     let docs_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../content");
     let components = [
@@ -217,6 +317,7 @@ fn component_pages_pair_every_preview_with_compiled_source_and_registered_id() {
 
         for source in [&chinese, &english] {
             assert!(!source.contains("<VektraPreview"));
+            assert!(!source.contains("/comprehensive\""));
             assert_eq!(
                 source.matches("<VektraExample").count(),
                 source.matches("</VektraExample>").count()

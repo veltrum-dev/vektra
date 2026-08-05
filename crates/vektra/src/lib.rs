@@ -27,7 +27,7 @@ pub use checkbox::Checkbox;
 pub use icon::IconName;
 pub use icon::{Icon, IconSource, IntoIconSource};
 pub use icon_button::{IconButton, IconButtonVariant};
-pub use input::{Input, InputClear, InputEvent, InputState, InputVariant};
+pub use input::{Input, InputClear, InputEvent, InputState, InputType, InputVariant};
 pub use radio::{Radio, RadioGroup};
 pub use size::{ComponentSize, component_size, set_component_size};
 pub use switch::{Switch, SwitchContent};
@@ -43,9 +43,9 @@ pub use vektra_theme::{
 /// Vektra 自带资源。
 ///
 /// 传给 GPUI 原生 `with_assets` 后即可加载 Vektra 默认主题资源和 Button loading
-/// 指示器。启用 `icons` feature 时，还可加载 `icons/settings.svg` 等内置 SVG 图标。
-/// 应用有自己的资源源时，可使用 `Assets::with_overrides(AppAssets)` 组合为单个 GPUI
-/// 资源源。
+/// 指示器。启用 `icons` feature 时，还可加载 Eye、EyeOff、Search、Settings 等内置 SVG
+/// 图标。应用有自己的资源源时，可使用 `Assets::with_overrides(AppAssets)` 组合为单个
+/// GPUI 资源源。
 pub mod assets {
     pub use vektra_assets::{Assets, AssetsWithOverrides};
 }

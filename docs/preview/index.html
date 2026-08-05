@@ -115,10 +115,13 @@
                     const loading = document.getElementById("loading");
                     if (loading) loading.textContent = copy.loading;
 
+                    const body = document.body;
+                    if (!body) return;
+
                     const observer = new MutationObserver(() => {
                         window.__vektraPublishPreviewState();
                     });
-                    observer.observe(document.body, {
+                    observer.observe(body, {
                         attributes: true,
                         attributeFilter: [
                             "data-vektra-preview-demo-id",

@@ -12,6 +12,16 @@ Checkbox 是受控复选框组件，适合单项开关、批量选择和父级�
 
 `Checkbox::new(id)` 默认未选中。`.checked(...)` 表示当前受控值，不是初始值；每次激活只计算下一 checked 值并调用 `on_change`，由宿主更新状态并 `cx.notify()`。
 
+## 常用状态
+
+<VektraExample demo="checkbox/states" title="Checkbox 常用状态" :height="300">
+
+<<< ../../preview/src/demos/checkbox.rs#checkbox-example-states{rust}
+
+</VektraExample>
+
+checked、indeterminate 与 disabled 都是显式状态；indeterminate 的视觉和无障碍语义优先于 checked。
+
 ## 批量选择
 
 <VektraExample demo="checkbox/bulk" title="Checkbox 批量选择" :height="340">
@@ -31,6 +41,14 @@ Checkbox 是受控复选框组件，适合单项开关、批量选择和父级�
 </VektraExample>
 
 `indicator_icons(unchecked, checked)` 使用两张状态图标替代默认方框。纯图标 Checkbox 不设置可见 label，但必须通过 `aria_label(...)` 提供可访问名称；整个命中区域仍可点击，hover 和 pressed 视觉只作用于状态图标。
+
+## 尺寸
+
+<VektraExample demo="checkbox/sizes" title="Checkbox 语义尺寸" :height="240">
+
+<<< ../../preview/src/demos/checkbox.rs#checkbox-example-sizes{rust}
+
+</VektraExample>
 
 ## API
 
@@ -65,8 +83,6 @@ Checkbox 是受控复选框组件，适合单项开关、批量选择和父级�
 可用 Checkbox 可通过 Tab 聚焦。Space 激活；Enter 不激活。label 和方框共享同一个点击目标，单次激活只触发一次回调。disabled 状态不进入正常 Tab 顺序，不触发回调，并使用 disabled 视觉和光标。
 
 `on_change` 与焦点生命周期相互独立：checked/indeterminate 变化不产生 focus/blur，焦点转换也不调用 `on_change`。同一 `ElementId` 重绘使用最新焦点 handler；`_in` 只表示 Entity 绑定，不是 DOM `focusin`。完整契约见 [`Focusable`](/api/focusable)。当前带 `on_change` 的鼠标激活会阻止 GPUI 默认鼠标焦点转移；Tab 与 GPUI 实际程序化焦点转换仍会触发回调。本次不新增 `focus()` 或 `focus_handle()`。
-
-## 尺寸
 
 `ComponentSize::{Xs, Sm, Md, Lg}` 是所有组件共享的语义尺寸。`component_size(cx)` 读取全局默认值，`set_component_size(size, cx)` 修改全局默认值并刷新窗口。显式 `.size(...)` 优先于全局默认值。
 

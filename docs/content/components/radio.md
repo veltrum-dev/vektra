@@ -12,6 +12,32 @@
 
 宿主可以立即更新 `selected_value`，也可以先保存待审批值，接口成功后再提交。请求失败时继续传入旧值，已选视觉不会被组件提前改变。
 
+## 禁用项与禁用组
+
+<VektraExample demo="radio/disabled" title="Radio 禁用能力" :height="360">
+
+<<< ../../preview/src/demos/radio.rs#radio-example-disabled{rust}
+
+</VektraExample>
+
+单项 disabled 会被方向导航跳过；组级 disabled 优先于所有单项状态，并让整组退出普通 Tab 顺序。
+
+## 键盘导航
+
+<VektraExample demo="radio/keyboard" title="RadioGroup 键盘导航" :height="320">
+
+<<< ../../preview/src/demos/radio.rs#radio-example-keyboard{rust}
+
+</VektraExample>
+
+## 布局方向
+
+<VektraExample demo="radio/orientation" title="RadioGroup 水平布局" :height="260">
+
+<<< ../../preview/src/demos/radio.rs#radio-example-orientation{rust}
+
+</VektraExample>
+
 ## Anatomy
 
 ```text

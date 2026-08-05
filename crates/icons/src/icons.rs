@@ -9,6 +9,12 @@
 /// 不应尝试扩展该 enum，而是用自己的类型实现 `IntoIconSource`。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IconName {
+    /// 显示内容图标，对应 `icons/eye.svg`。
+    Eye,
+
+    /// 隐藏内容图标，对应 `icons/eye_off.svg`。
+    EyeOff,
+
     /// 搜索图标，对应 `icons/search.svg`。
     Search,
 
@@ -18,11 +24,13 @@ pub enum IconName {
 
 impl IconName {
     /// 所有 Vektra 内置图标名称。
-    pub const ALL: &'static [Self] = &[Self::Search, Self::Settings];
+    pub const ALL: &'static [Self] = &[Self::Eye, Self::EyeOff, Self::Search, Self::Settings];
 
     /// 返回图标在 GPUI `AssetSource` 中使用的稳定相对路径。
     pub const fn path(self) -> &'static str {
         match self {
+            Self::Eye => "icons/eye.svg",
+            Self::EyeOff => "icons/eye_off.svg",
             Self::Search => "icons/search.svg",
             Self::Settings => "icons/settings.svg",
         }

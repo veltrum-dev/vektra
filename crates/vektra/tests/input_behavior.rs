@@ -6,8 +6,8 @@ use gpui::{
 };
 use vektra::{
     Button, ButtonVariant, Changeable, ComponentSize, Disableable, Focusable, Icon, IconButton,
-    IconButtonVariant, IconSource, Input, InputClear, InputEvent, InputState, InputVariant,
-    Sizable, Tooltip, TooltipPlacement,
+    IconButtonVariant, IconSource, Input, InputClear, InputEvent, InputState, InputType,
+    InputVariant, Sizable, Tooltip, TooltipPlacement,
 };
 
 #[test]
@@ -30,6 +30,8 @@ fn input_is_a_root_export_with_standard_capabilities_and_builders() {
             Input::new("public-input", state)
                 .placeholder("用户名")
                 .variant(InputVariant::Filled)
+                .input_type(InputType::Email)
+                .password_revealed(false)
                 .disabled(false)
                 .read_only(false)
                 .invalid(false)
@@ -62,6 +64,8 @@ struct InputView {
     suffix_clicks: usize,
     attached_clicks: usize,
     variant: InputVariant,
+    input_type: InputType,
+    password_revealed: bool,
     size: ComponentSize,
     width: Pixels,
     disabled: bool,
@@ -70,6 +74,7 @@ struct InputView {
     clearable: bool,
     slots: bool,
     attached: bool,
+    password_toggle: bool,
     _subscription: Subscription,
 }
 
@@ -87,6 +92,8 @@ impl InputView {
             suffix_clicks: 0,
             attached_clicks: 0,
             variant: InputVariant::Outline,
+            input_type: InputType::Text,
+            password_revealed: false,
             size: ComponentSize::Md,
             width: px(320.),
             disabled: false,
@@ -95,6 +102,7 @@ impl InputView {
             clearable: false,
             slots: false,
             attached: false,
+            password_toggle: false,
             _subscription: subscription,
         }
     }
@@ -105,6 +113,8 @@ impl Render for InputView {
         let mut input = Input::new("target-input", self.state.clone())
             .placeholder("输入中文、emoji 或文字")
             .variant(self.variant)
+            .input_type(self.input_type)
+            .password_revealed(self.password_revealed)
             .size(self.size)
             .disabled(self.disabled)
             .read_only(self.read_only)
@@ -138,6 +148,33 @@ impl Render for InputView {
                         .on_click_in(cx, |this, _, _, _| this.suffix_clicks += 1),
                     ),
                 );
+        }
+        if self.password_toggle {
+            let revealed = self.password_revealed;
+            input = input.suffix(
+                div()
+                    .debug_selector(|| "input-test-password-toggle".into())
+                    .child(
+                        IconButton::new(
+                            "password-toggle",
+                            IconSource::asset("components/input/invalid.svg"),
+                        )
+                        .variant(IconButtonVariant::Ghost)
+                        .size(ComponentSize::Xs)
+                        .selected(revealed)
+                        .aria_label(if revealed {
+                            "隐藏密码"
+                        } else {
+                            "显示密码"
+                        })
+                        .on_click_in(cx, |this, _, window, cx| {
+                            this.password_revealed = !this.password_revealed;
+                            let handle = this.state.read(cx).focus_handle().clone();
+                            window.focus(&handle, cx);
+                            cx.notify();
+                        }),
+                    ),
+            );
         }
         if self.attached {
             input = input.attached_suffix(
@@ -300,6 +337,211 @@ fn text_input_selection_clipboard_history_and_grapheme_deletion_are_single_line(
             .count()
     });
     assert_eq!(callback_changes, emitted_changes);
+}
+
+#[gpui::test]
+fn hidden_password_blocks_copy_and_cut_but_allows_paste_then_reveal_restores_clipboard(
+    cx: &mut TestAppContext,
+) {
+    let (view, cx) = cx.add_window_view(|_, cx| {
+        let mut view = InputView::new("机密👩🏽‍💻", cx);
+        view.input_type = InputType::Password;
+        view
+    });
+    draw(cx);
+    focus_editor(&view, cx);
+    cx.simulate_keystrokes(&command("a"));
+
+    cx.write_to_clipboard(ClipboardItem::new_string("保留剪贴板".into()));
+    cx.simulate_keystrokes(&command("c"));
+    assert_eq!(
+        cx.read_from_clipboard().unwrap().text().unwrap(),
+        "保留剪贴板"
+    );
+    cx.simulate_keystrokes(&command("x"));
+    assert_eq!(value(&view, cx), "机密👩🏽‍💻");
+    assert_eq!(
+        cx.read_from_clipboard().unwrap().text().unwrap(),
+        "保留剪贴板"
+    );
+
+    cx.write_to_clipboard(ClipboardItem::new_string("粘贴值e\u{301}".into()));
+    cx.simulate_keystrokes(&command("v"));
+    assert_eq!(value(&view, cx), "粘贴值e\u{301}");
+    assert!(view.read_with(cx, |view, _| {
+        view.emitted
+            .contains(&InputEvent::Changed("粘贴值e\u{301}".into()))
+            && view
+                .callbacks
+                .contains(&InputEvent::Changed("粘贴值e\u{301}".into()))
+    }));
+
+    key_down("enter", cx);
+    assert!(view.read_with(cx, |view, _| {
+        view.emitted
+            .contains(&InputEvent::Submitted("粘贴值e\u{301}".into()))
+            && view
+                .callbacks
+                .contains(&InputEvent::Submitted("粘贴值e\u{301}".into()))
+    }));
+
+    view.update(cx, |view, cx| {
+        view.password_revealed = true;
+        cx.notify();
+    });
+    draw(cx);
+    cx.simulate_keystrokes(&command("a"));
+    cx.simulate_keystrokes(&command("c"));
+    assert_eq!(
+        cx.read_from_clipboard().unwrap().text().unwrap(),
+        "粘贴值e\u{301}"
+    );
+    cx.simulate_keystrokes(&command("x"));
+    assert_eq!(value(&view, cx), "");
+}
+
+#[gpui::test]
+fn hidden_read_only_password_never_copies_or_cuts(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, cx| {
+        let mut view = InputView::new("只读机密", cx);
+        view.input_type = InputType::Password;
+        view.read_only = true;
+        view.invalid = true;
+        view
+    });
+    draw(cx);
+    assert!(cx.debug_bounds("vektra-input-invalid").is_some());
+    focus_editor(&view, cx);
+    cx.simulate_keystrokes(&command("a"));
+    cx.write_to_clipboard(ClipboardItem::new_string("原剪贴板".into()));
+    cx.simulate_keystrokes(&command("c"));
+    cx.simulate_keystrokes(&command("x"));
+
+    assert_eq!(value(&view, cx), "只读机密");
+    assert_eq!(
+        cx.read_from_clipboard().unwrap().text().unwrap(),
+        "原剪贴板"
+    );
+}
+
+#[gpui::test]
+fn hidden_disabled_password_rejects_edit_and_selection_and_retains_invalid_state(
+    cx: &mut TestAppContext,
+) {
+    let (view, cx) = cx.add_window_view(|_, cx| {
+        let mut view = InputView::new("禁用机密", cx);
+        view.input_type = InputType::Password;
+        view.disabled = true;
+        view.invalid = true;
+        view
+    });
+    draw(cx);
+
+    assert!(cx.debug_bounds("vektra-input-invalid").is_some());
+    let editor = cx.debug_bounds("vektra-input-editor").unwrap();
+    cx.simulate_click(editor.center(), Modifiers::none());
+    cx.simulate_input("不应写入");
+
+    assert_eq!(value(&view, cx), "禁用机密");
+    let input_state = state(&view, cx);
+    assert!(cx.update(|window, cx| {
+        input_state.update(cx, |state, cx| {
+            EntityInputHandler::selected_text_range(state, false, window, cx).is_none()
+        })
+    }));
+}
+
+#[gpui::test]
+fn password_toggle_restores_editor_focus_without_changing_value_selection_or_events(
+    cx: &mut TestAppContext,
+) {
+    let (view, cx) = cx.add_window_view(|_, cx| {
+        let mut view = InputView::new("中👨‍👩‍👧‍👦e\u{301}", cx);
+        view.input_type = InputType::Password;
+        view.password_toggle = true;
+        view
+    });
+    draw(cx);
+    focus_editor(&view, cx);
+    key_down("left", cx);
+    let input_state = state(&view, cx);
+    let selection_before = cx.update(|window, cx| {
+        input_state.update(cx, |state, cx| {
+            EntityInputHandler::selected_text_range(state, true, window, cx).unwrap()
+        })
+    });
+    let events_before = view.read_with(cx, |view, _| view.emitted.clone());
+
+    let toggle = cx.debug_bounds("input-test-password-toggle").unwrap();
+    cx.simulate_click(toggle.center(), Modifiers::none());
+    draw(cx);
+
+    assert!(view.read_with(cx, |view, _| view.password_revealed));
+    assert_eq!(value(&view, cx), "中👨‍👩‍👧‍👦e\u{301}");
+    let selection_after = cx.update(|window, cx| {
+        input_state.update(cx, |state, cx| {
+            EntityInputHandler::selected_text_range(state, true, window, cx).unwrap()
+        })
+    });
+    assert_eq!(selection_after.range, selection_before.range);
+    assert_eq!(selection_after.reversed, selection_before.reversed);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.emitted.clone()),
+        events_before
+    );
+    let handle = input_state.read_with(cx, |state, _| state.focus_handle().clone());
+    assert!(cx.update(|window, _| handle.is_focused(window)));
+}
+
+#[gpui::test]
+fn hidden_password_mouse_keyboard_delete_and_history_use_real_grapheme_boundaries(
+    cx: &mut TestAppContext,
+) {
+    let original = "A中👨‍👩‍👧‍👦e\u{301}";
+    let (view, cx) = cx.add_window_view(|_, cx| {
+        let mut view = InputView::new(original, cx);
+        view.input_type = InputType::Password;
+        view
+    });
+    draw(cx);
+    focus_editor(&view, cx);
+
+    key_down("left", cx);
+    key_down("backspace", cx);
+    assert_eq!(value(&view, cx), "A中e\u{301}");
+    cx.simulate_keystrokes(&command("z"));
+    assert_eq!(value(&view, cx), original);
+    cx.simulate_keystrokes(&command("shift-z"));
+    assert_eq!(value(&view, cx), "A中e\u{301}");
+    cx.simulate_keystrokes(&command("z"));
+
+    let editor = cx.debug_bounds("vektra-input-editor").unwrap();
+    let start = point(editor.left() + px(1.), editor.center().y);
+    let end = point(editor.right() - px(1.), editor.center().y);
+    cx.simulate_event(MouseDownEvent {
+        button: MouseButton::Left,
+        position: start,
+        modifiers: Modifiers::none(),
+        click_count: 1,
+        first_mouse: false,
+    });
+    cx.simulate_mouse_move(end, None, Modifiers::none());
+    cx.simulate_event(MouseUpEvent {
+        button: MouseButton::Left,
+        position: end,
+        modifiers: Modifiers::none(),
+        click_count: 1,
+    });
+    let input_state = state(&view, cx);
+    let selected = cx.update(|window, cx| {
+        input_state.update(cx, |state, cx| {
+            EntityInputHandler::selected_text_range(state, true, window, cx)
+                .unwrap()
+                .range
+        })
+    });
+    assert_eq!(selected, 0..original.encode_utf16().count());
+    assert_eq!(value(&view, cx), original);
 }
 
 #[gpui::test]

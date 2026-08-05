@@ -26,6 +26,22 @@ Tooltip 为 Button/IconButton 提供简短、补充性的纯文本说明。完�
 
 </VektraExample>
 
+## 箭头与颜色
+
+<VektraExample demo="tooltip/appearance" title="Tooltip 箭头与颜色" :height="300">
+
+<<< ../../preview/src/demos/tooltip.rs#tooltip-example-appearance{rust}
+
+</VektraExample>
+
+## 生命周期与 Escape
+
+<VektraExample demo="tooltip/lifecycle" title="Tooltip 显示生命周期" :height="280">
+
+<<< ../../preview/src/demos/tooltip.rs#tooltip-example-lifecycle{rust}
+
+</VektraExample>
+
 ## API 与语义
 
 `Tooltip::new("设置")` 创建配置对象；`Tooltip::text("设置", cx)` 生成使用默认配置的 GPUI `AnyView` factory。Button/IconButton 的 `.tooltip(...)` 同时接受 `&str`、`String`、`SharedString` 和 `Tooltip`，所以已有 `.tooltip("设置")` 无需迁移。`.tooltip_placement(TooltipPlacement::TopStart)` 指定优先位置；默认是 `Bottom` 居中，视口碰撞处理仍可能翻转或平移。

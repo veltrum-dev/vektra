@@ -12,6 +12,32 @@
 
 The host may update `selected_value` immediately or wait for server approval. On failure, keep supplying the old value; the component never changes selected visuals optimistically.
 
+## Disabled items and groups
+
+<VektraExample demo="radio/disabled" title="Radio disabled behavior" :height="360">
+
+<<< ../../../preview/src/demos/radio.rs#radio-example-disabled{rust}
+
+</VektraExample>
+
+Arrow navigation skips disabled items. Group-level disabled state overrides every item and removes the group from normal Tab order.
+
+## Keyboard navigation
+
+<VektraExample demo="radio/keyboard" title="RadioGroup keyboard navigation" :height="320">
+
+<<< ../../../preview/src/demos/radio.rs#radio-example-keyboard{rust}
+
+</VektraExample>
+
+## Layout orientation
+
+<VektraExample demo="radio/orientation" title="RadioGroup horizontal layout" :height="260">
+
+<<< ../../../preview/src/demos/radio.rs#radio-example-orientation{rust}
+
+</VektraExample>
+
 ## Anatomy
 
 ```text

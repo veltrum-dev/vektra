@@ -25,28 +25,45 @@ pub(crate) enum DemoSelection {
     ButtonShowcase,
     ButtonComprehensive,
     CheckboxBasic,
+    CheckboxStates,
     CheckboxBulk,
     CheckboxIconOnly,
+    CheckboxSizes,
     CheckboxComprehensive,
     RadioBasic,
+    RadioDisabled,
+    RadioKeyboard,
+    RadioOrientation,
     RadioComprehensive,
     SwitchBasic,
+    SwitchStates,
     SwitchFocus,
     SwitchLoading,
+    SwitchSizes,
+    SwitchContent,
     SwitchComprehensive,
     IconButtonBasic,
     IconButtonVariants,
     IconButtonSizes,
+    IconButtonStates,
+    IconButtonTooltip,
     IconButtonComprehensive,
     InputBasic,
+    InputSearch,
+    InputPassword,
+    InputTypes,
+    InputAffixes,
     InputGroup,
     InputVariants,
     InputSizes,
     InputStates,
+    InputEvents,
     InputComprehensive,
     TooltipBasic,
     TooltipPlacements,
     TooltipControlled,
+    TooltipAppearance,
+    TooltipLifecycle,
     TooltipComprehensive,
     Unknown(String),
 }
@@ -63,23 +80,40 @@ impl DemoSelection {
         "button/auto-space",
         "button/width",
         "checkbox/basic",
+        "checkbox/states",
         "checkbox/bulk",
         "checkbox/icon-only",
+        "checkbox/sizes",
         "radio/basic",
+        "radio/disabled",
+        "radio/keyboard",
+        "radio/orientation",
         "switch/basic",
+        "switch/states",
         "switch/focus",
         "switch/loading",
+        "switch/sizes",
+        "switch/content",
         "icon-button/basic",
         "icon-button/variants",
         "icon-button/sizes",
+        "icon-button/states",
+        "icon-button/tooltip",
         "input/basic",
+        "input/search",
+        "input/password",
+        "input/types",
+        "input/affixes",
         "input/group",
         "input/variants",
         "input/sizes",
         "input/states",
+        "input/events",
         "tooltip/basic",
         "tooltip/placements",
         "tooltip/controlled",
+        "tooltip/appearance",
+        "tooltip/lifecycle",
     ];
     pub(crate) const ALL_IDS: &'static [&'static str] = &[
         "button/basic",
@@ -91,28 +125,45 @@ impl DemoSelection {
         "button/showcase",
         "button/comprehensive",
         "checkbox/basic",
+        "checkbox/states",
         "checkbox/bulk",
         "checkbox/icon-only",
+        "checkbox/sizes",
         "checkbox/comprehensive",
         "radio/basic",
+        "radio/disabled",
+        "radio/keyboard",
+        "radio/orientation",
         "radio/comprehensive",
         "switch/basic",
+        "switch/states",
         "switch/focus",
         "switch/loading",
+        "switch/sizes",
+        "switch/content",
         "switch/comprehensive",
         "icon-button/basic",
         "icon-button/variants",
         "icon-button/sizes",
+        "icon-button/states",
+        "icon-button/tooltip",
         "icon-button/comprehensive",
         "input/basic",
+        "input/search",
+        "input/password",
+        "input/types",
+        "input/affixes",
         "input/group",
         "input/variants",
         "input/sizes",
         "input/states",
+        "input/events",
         "input/comprehensive",
         "tooltip/basic",
         "tooltip/placements",
         "tooltip/controlled",
+        "tooltip/appearance",
+        "tooltip/lifecycle",
         "tooltip/comprehensive",
     ];
 
@@ -128,28 +179,45 @@ impl DemoSelection {
             Some(Self::SHOWCASE_ID) => Self::ButtonShowcase,
             Some("button/comprehensive") => Self::ButtonComprehensive,
             Some("checkbox/basic") => Self::CheckboxBasic,
+            Some("checkbox/states") => Self::CheckboxStates,
             Some("checkbox/bulk") => Self::CheckboxBulk,
             Some("checkbox/icon-only") => Self::CheckboxIconOnly,
+            Some("checkbox/sizes") => Self::CheckboxSizes,
             Some("checkbox/comprehensive") => Self::CheckboxComprehensive,
             Some("radio/basic") => Self::RadioBasic,
+            Some("radio/disabled") => Self::RadioDisabled,
+            Some("radio/keyboard") => Self::RadioKeyboard,
+            Some("radio/orientation") => Self::RadioOrientation,
             Some("radio/comprehensive") => Self::RadioComprehensive,
             Some("switch/basic") => Self::SwitchBasic,
+            Some("switch/states") => Self::SwitchStates,
             Some("switch/focus") => Self::SwitchFocus,
             Some("switch/loading") => Self::SwitchLoading,
+            Some("switch/sizes") => Self::SwitchSizes,
+            Some("switch/content") => Self::SwitchContent,
             Some("switch/comprehensive") => Self::SwitchComprehensive,
             Some("icon-button/basic") => Self::IconButtonBasic,
             Some("icon-button/variants") => Self::IconButtonVariants,
             Some("icon-button/sizes") => Self::IconButtonSizes,
+            Some("icon-button/states") => Self::IconButtonStates,
+            Some("icon-button/tooltip") => Self::IconButtonTooltip,
             Some("icon-button/comprehensive") => Self::IconButtonComprehensive,
             Some("input/basic") => Self::InputBasic,
+            Some("input/search") => Self::InputSearch,
+            Some("input/password") => Self::InputPassword,
+            Some("input/types") => Self::InputTypes,
+            Some("input/affixes") => Self::InputAffixes,
             Some("input/group") => Self::InputGroup,
             Some("input/variants") => Self::InputVariants,
             Some("input/sizes") => Self::InputSizes,
             Some("input/states") => Self::InputStates,
+            Some("input/events") => Self::InputEvents,
             Some("input/comprehensive") => Self::InputComprehensive,
             Some("tooltip/basic") => Self::TooltipBasic,
             Some("tooltip/placements") => Self::TooltipPlacements,
             Some("tooltip/controlled") => Self::TooltipControlled,
+            Some("tooltip/appearance") => Self::TooltipAppearance,
+            Some("tooltip/lifecycle") => Self::TooltipLifecycle,
             Some("tooltip/comprehensive") => Self::TooltipComprehensive,
             Some(value) => Self::Unknown(value.to_owned()),
         }
@@ -166,28 +234,45 @@ impl DemoSelection {
             Self::ButtonShowcase => Self::SHOWCASE_ID,
             Self::ButtonComprehensive => "button/comprehensive",
             Self::CheckboxBasic => "checkbox/basic",
+            Self::CheckboxStates => "checkbox/states",
             Self::CheckboxBulk => "checkbox/bulk",
             Self::CheckboxIconOnly => "checkbox/icon-only",
+            Self::CheckboxSizes => "checkbox/sizes",
             Self::CheckboxComprehensive => "checkbox/comprehensive",
             Self::RadioBasic => "radio/basic",
+            Self::RadioDisabled => "radio/disabled",
+            Self::RadioKeyboard => "radio/keyboard",
+            Self::RadioOrientation => "radio/orientation",
             Self::RadioComprehensive => "radio/comprehensive",
             Self::SwitchBasic => "switch/basic",
+            Self::SwitchStates => "switch/states",
             Self::SwitchFocus => "switch/focus",
             Self::SwitchLoading => "switch/loading",
+            Self::SwitchSizes => "switch/sizes",
+            Self::SwitchContent => "switch/content",
             Self::SwitchComprehensive => "switch/comprehensive",
             Self::IconButtonBasic => "icon-button/basic",
             Self::IconButtonVariants => "icon-button/variants",
             Self::IconButtonSizes => "icon-button/sizes",
+            Self::IconButtonStates => "icon-button/states",
+            Self::IconButtonTooltip => "icon-button/tooltip",
             Self::IconButtonComprehensive => "icon-button/comprehensive",
             Self::InputBasic => "input/basic",
+            Self::InputSearch => "input/search",
+            Self::InputPassword => "input/password",
+            Self::InputTypes => "input/types",
+            Self::InputAffixes => "input/affixes",
             Self::InputGroup => "input/group",
             Self::InputVariants => "input/variants",
             Self::InputSizes => "input/sizes",
             Self::InputStates => "input/states",
+            Self::InputEvents => "input/events",
             Self::InputComprehensive => "input/comprehensive",
             Self::TooltipBasic => "tooltip/basic",
             Self::TooltipPlacements => "tooltip/placements",
             Self::TooltipControlled => "tooltip/controlled",
+            Self::TooltipAppearance => "tooltip/appearance",
+            Self::TooltipLifecycle => "tooltip/lifecycle",
             Self::TooltipComprehensive => "tooltip/comprehensive",
             Self::Unknown(value) => value,
         }
@@ -387,6 +472,10 @@ impl Render for PreviewApp {
                 .checkbox_basic_demo
                 .render(self.language, window, cx)
                 .into_any_element(),
+            DemoSelection::CheckboxStates => self
+                .checkbox_demo
+                .render_states(self.language, window, cx)
+                .into_any_element(),
             DemoSelection::CheckboxBulk => self
                 .checkbox_demo
                 .render_bulk(self.language, window, cx)
@@ -394,6 +483,10 @@ impl Render for PreviewApp {
             DemoSelection::CheckboxIconOnly => self
                 .checkbox_demo
                 .render_icon_only(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::CheckboxSizes => self
+                .checkbox_demo
+                .render_sizes(self.language, window, cx)
                 .into_any_element(),
             DemoSelection::CheckboxComprehensive => self
                 .checkbox_demo
@@ -403,6 +496,18 @@ impl Render for PreviewApp {
                 .radio_basic_demo
                 .render(self.language, window, cx)
                 .into_any_element(),
+            DemoSelection::RadioDisabled => self
+                .radio_demo
+                .render_disabled(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::RadioKeyboard => self
+                .radio_demo
+                .render_keyboard(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::RadioOrientation => self
+                .radio_demo
+                .render_orientation(self.language, window, cx)
+                .into_any_element(),
             DemoSelection::RadioComprehensive => self
                 .radio_demo
                 .render(self.language, window, cx)
@@ -411,6 +516,10 @@ impl Render for PreviewApp {
                 .switch_basic_demo
                 .render(self.language, window, cx)
                 .into_any_element(),
+            DemoSelection::SwitchStates => self
+                .switch_demo
+                .render_states(self.language, window, cx)
+                .into_any_element(),
             DemoSelection::SwitchFocus => self
                 .switch_demo
                 .render_focus(self.language, focus_status, window, cx)
@@ -418,6 +527,14 @@ impl Render for PreviewApp {
             DemoSelection::SwitchLoading => self
                 .switch_demo
                 .render_loading(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SwitchSizes => self
+                .switch_demo
+                .render_sizes(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SwitchContent => self
+                .switch_demo
+                .render_content(self.language, window, cx)
                 .into_any_element(),
             DemoSelection::SwitchComprehensive => self
                 .switch_demo
@@ -432,12 +549,35 @@ impl Render for PreviewApp {
             DemoSelection::IconButtonSizes => {
                 icon_button::render_sizes(self.language, window, cx).into_any_element()
             }
+            DemoSelection::IconButtonStates => {
+                icon_button::render_states(self.language, focus_status, window, cx)
+                    .into_any_element()
+            }
+            DemoSelection::IconButtonTooltip => {
+                icon_button::render_tooltip(self.language, window, cx).into_any_element()
+            }
             DemoSelection::IconButtonComprehensive => {
                 icon_button::render(self.language, focus_status, window, cx).into_any_element()
             }
             DemoSelection::InputBasic => self
                 .input_basic_demo
                 .render(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputSearch => self
+                .input_demo
+                .render_search(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputPassword => self
+                .input_demo
+                .render_password(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputTypes => self
+                .input_demo
+                .render_types(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::InputAffixes => self
+                .input_demo
+                .render_affixes(self.language, window, cx)
                 .into_any_element(),
             DemoSelection::InputGroup => self
                 .input_demo
@@ -455,6 +595,10 @@ impl Render for PreviewApp {
                 .input_demo
                 .render_states(self.language, window, cx)
                 .into_any_element(),
+            DemoSelection::InputEvents => self
+                .input_demo
+                .render_events(self.language, window, cx)
+                .into_any_element(),
             DemoSelection::InputComprehensive => self
                 .input_demo
                 .render(self.language, window, cx)
@@ -467,6 +611,12 @@ impl Render for PreviewApp {
             }
             DemoSelection::TooltipControlled => {
                 tooltip::render_controlled(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::TooltipAppearance => {
+                tooltip::render_appearance(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::TooltipLifecycle => {
+                tooltip::render_lifecycle(self.language, window, cx).into_any_element()
             }
             DemoSelection::TooltipComprehensive => {
                 tooltip::render(self.language, window, cx).into_any_element()

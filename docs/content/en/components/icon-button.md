@@ -28,6 +28,24 @@ Every icon-only button must supply a name through `aria_label(...)`; Tooltip is 
 
 </VektraExample>
 
+## State and focus
+
+<VektraExample demo="icon-button/states" title="IconButton states" :height="280">
+
+<<< ../../../preview/src/demos/icon_button.rs#icon-button-example-states{rust}
+
+</VektraExample>
+
+`selected(bool)` is a controlled toggle state. It uses the same selected tokens as Button and exposes accessibility toggled semantics; the component never flips it internally.
+
+## Tooltip and accessible name
+
+<VektraExample demo="icon-button/tooltip" title="IconButton Tooltip" :height="240">
+
+<<< ../../../preview/src/demos/icon_button.rs#icon-button-example-tooltip{rust}
+
+</VektraExample>
+
 ## Anatomy and API
 
 The root supplies Button role, a square hit area, themed states, and one Tab stop. The inner `Icon` is decorative and does not create another name or focus target.
@@ -43,6 +61,7 @@ The root supplies Button role, a square hit area, themed states, and one Tab sto
 | `.size(...)` | `Xs` 24px, `Sm` 32px, `Md` 36px (default), or `Lg` 40px. |
 | `.icon_color(color)` | Overrides enabled icon color only; disabled tokens still win. |
 | `.disabled(bool)` | Blocks mouse/keyboard activation and leaves the Tab order. |
+| `.selected(bool)` | Sets controlled selected/toggled state without flipping it internally. |
 | `.on_click(...)` / `.on_click_in(...)` | Registers the shared mouse, Enter, and Space activation contract. |
 | `.on_focus(...)` / `.on_blur(...)` | Registers callbacks for real focus and blur transitions. |
 | `.on_focus_in(...)` / `.on_blur_in(...)` | Uses a host Entity listener so handlers can mutate state and call `cx.notify()`. |

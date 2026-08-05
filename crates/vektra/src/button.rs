@@ -669,7 +669,7 @@ impl ResolvedButtonStates {
         }
     }
 
-    fn selected(theme: &ResolvedTheme, variant: &str) -> Self {
+    pub(crate) fn selected(theme: &ResolvedTheme, variant: &str) -> Self {
         let base = Self::new(theme, variant);
         Self {
             normal: selected_state(theme, variant, "normal").unwrap_or(base.pressed),
@@ -892,7 +892,7 @@ fn normalize_progress(progress: f32) -> f32 {
     }
 }
 
-fn toggled_state(selected: Option<bool>) -> Option<Toggled> {
+pub(crate) fn toggled_state(selected: Option<bool>) -> Option<Toggled> {
     selected.map(|selected| {
         if selected {
             Toggled::True

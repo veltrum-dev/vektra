@@ -26,6 +26,22 @@ Tooltip provides short, supplementary plain-text help for Button and IconButton.
 
 </VektraExample>
 
+## Arrow and colors
+
+<VektraExample demo="tooltip/appearance" title="Tooltip arrow and colors" :height="300">
+
+<<< ../../../preview/src/demos/tooltip.rs#tooltip-example-appearance{rust}
+
+</VektraExample>
+
+## Lifecycle and Escape
+
+<VektraExample demo="tooltip/lifecycle" title="Tooltip visibility lifecycle" :height="280">
+
+<<< ../../../preview/src/demos/tooltip.rs#tooltip-example-lifecycle{rust}
+
+</VektraExample>
+
 ## API and Semantics
 
 `Tooltip::new("Settings")` creates a configuration object, while `Tooltip::text("Settings", cx)` creates a GPUI `AnyView` with defaults. Button/IconButton `.tooltip(...)` accepts `&str`, `String`, `SharedString`, and `Tooltip`, so existing `.tooltip("Settings")` calls need no migration. `.tooltip_placement(TooltipPlacement::TopStart)` sets the preferred placement. The default is centered `Bottom`; collision handling may still flip or shift it.

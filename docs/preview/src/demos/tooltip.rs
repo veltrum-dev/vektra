@@ -74,6 +74,63 @@ pub(super) fn render_controlled(
     example_page("tooltip-example-controlled", title, example, window, cx)
 }
 
+pub(super) fn render_appearance(
+    language: PreviewLang,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let (title, themed, plain) = match language {
+        PreviewLang::ZhCn => ("箭头与颜色", "自定义颜色", "无箭头"),
+        PreviewLang::EnUs => ("Arrow and colors", "Custom colors", "No arrow"),
+    };
+    // #region tooltip-example-appearance
+    let example = div().flex().gap(px(10.)).flex_wrap().children([
+        Button::new("tooltip-custom-color")
+            .label(themed)
+            .variant(ButtonVariant::Outline)
+            .tooltip(
+                Tooltip::new(themed)
+                    .open(true)
+                    .color(rgb(0xffffff))
+                    .bg_color(rgb(0x2457d6)),
+            ),
+        Button::new("tooltip-no-arrow")
+            .label(plain)
+            .variant(ButtonVariant::Outline)
+            .tooltip(Tooltip::new(plain).open(true).arrow(false)),
+    ]);
+    // #endregion tooltip-example-appearance
+
+    example_page("tooltip-example-appearance", title, example, window, cx)
+}
+
+pub(super) fn render_lifecycle(
+    language: PreviewLang,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let (title, label, tip) = match language {
+        PreviewLang::ZhCn => (
+            "显示生命周期",
+            "Tab 聚焦或悬停，然后按 Escape",
+            "Escape 关闭且不移动焦点",
+        ),
+        PreviewLang::EnUs => (
+            "Visibility lifecycle",
+            "Focus with Tab or hover, then press Escape",
+            "Escape dismisses without moving focus",
+        ),
+    };
+    // #region tooltip-example-lifecycle
+    let example = Button::new("tooltip-lifecycle")
+        .label(label)
+        .variant(ButtonVariant::Outline)
+        .tooltip(Tooltip::new(tip).animated(true));
+    // #endregion tooltip-example-lifecycle
+
+    example_page("tooltip-example-lifecycle", title, example, window, cx)
+}
+
 fn example_page(
     id: &'static str,
     title: &'static str,

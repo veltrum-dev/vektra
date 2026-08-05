@@ -12,6 +12,14 @@
 
 `.checked(...)` 是当前受控值而非初始值。一次有效激活只将 `!checked` 传给 `on_change`；宿主在回调中更新状态并调用 `cx.notify()`，下一次 render 再传回新值。回调是同步本地 callback，不是运行时事件总线；异步工作由宿主在回调中启动和管理。`.loading(...)` 同样是受控输入，不会自行启动任务或改变 checked。
 
+## 常用状态
+
+<VektraExample demo="switch/states" title="Switch 启用与禁用" :height="260">
+
+<<< ../../preview/src/demos/switch.rs#switch-example-states{rust}
+
+</VektraExample>
+
 ## Anatomy
 
 ```text
@@ -75,6 +83,20 @@ checked 状态和焦点生命周期彼此独立：重绘、builder 值变化和�
 <VektraExample demo="switch/loading" title="Switch 受控 loading" :height="280">
 
 <<< ../../preview/src/demos/switch.rs#switch-example-loading{rust}
+
+</VektraExample>
+
+## 尺寸与状态内容
+
+<VektraExample demo="switch/sizes" title="Switch 语义尺寸" :height="260">
+
+<<< ../../preview/src/demos/switch.rs#switch-example-sizes{rust}
+
+</VektraExample>
+
+<VektraExample demo="switch/content" title="Switch 文字与图标内容" :height="340">
+
+<<< ../../preview/src/demos/switch.rs#switch-example-content{rust}
 
 </VektraExample>
 

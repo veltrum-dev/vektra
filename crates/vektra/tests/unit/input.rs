@@ -5,6 +5,8 @@ struct CaretTestView {
     state: Entity<InputState>,
     read_only: bool,
     disabled: bool,
+    input_type: InputType,
+    password_revealed: bool,
 }
 
 struct AttachedLayoutTestView {
@@ -71,6 +73,8 @@ impl CaretTestView {
             state: cx.new(|cx| InputState::new("abc", cx)),
             read_only: false,
             disabled: false,
+            input_type: InputType::Text,
+            password_revealed: false,
         }
     }
 }
@@ -78,6 +82,8 @@ impl CaretTestView {
 impl Render for CaretTestView {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         Input::new("caret-test-input", self.state.clone())
+            .input_type(self.input_type)
+            .password_revealed(self.password_revealed)
             .read_only(self.read_only)
             .disabled(self.disabled)
     }
@@ -120,6 +126,167 @@ fn grapheme_boundaries_keep_zwj_and_combining_sequences_intact() {
         nearest_grapheme_boundary(text, family_start + 4),
         family_start
     );
+}
+
+#[test]
+fn input_types_default_to_text_and_map_to_accesskit_roles() {
+    assert_eq!(InputType::default(), InputType::Text);
+    assert_eq!(InputType::Text.role(), Role::TextInput);
+    assert_eq!(InputType::Search.role(), Role::SearchInput);
+    assert_eq!(InputType::Password.role(), Role::PasswordInput);
+    assert_eq!(InputType::Email.role(), Role::EmailInput);
+    assert_eq!(InputType::Phone.role(), Role::PhoneNumberInput);
+    assert_eq!(InputType::Url.role(), Role::UrlInput);
+}
+
+#[gpui::test]
+fn input_type_and_password_revealed_are_controlled_builders(cx: &mut TestAppContext) {
+    let state = cx.new(|cx| InputState::new("secret", cx));
+    let password = Input::new("password", state.clone())
+        .input_type(InputType::Password)
+        .password_revealed(true);
+    let text = Input::new("text", state).password_revealed(true);
+
+    assert_eq!(password.input_type, InputType::Password);
+    assert!(password.password_revealed);
+    assert_eq!(text.input_type, InputType::Text);
+    assert!(text.password_revealed);
+    assert!(
+        !InputRuntime {
+            input_type: InputType::Text,
+            password_revealed: true,
+            ..InputRuntime::default()
+        }
+        .password_hidden()
+    );
+}
+
+#[test]
+fn password_display_masks_each_grapheme_and_maps_real_offsets_explicitly() {
+    let value = "A中👨‍👩‍👧‍👦e\u{301}";
+    let display = DisplayText::new(value, true);
+    let real_boundaries = value
+        .grapheme_indices(true)
+        .map(|(offset, _)| offset)
+        .chain(std::iter::once(value.len()))
+        .collect::<Vec<_>>();
+
+    assert_eq!(display.text, "••••");
+    assert!(!display.text.contains(value));
+    for (index, real) in real_boundaries.into_iter().enumerate() {
+        let masked = index * PASSWORD_MASK.len_utf8();
+        assert_eq!(display.display_offset(real), masked);
+        assert_eq!(display.real_offset(masked), real);
+    }
+    assert_eq!(display.real_offset(4), "A".len());
+
+    let revealed = DisplayText::new(value, false);
+    let combining_mark_start = value.len() - '\u{301}'.len_utf8();
+    assert_eq!(
+        revealed.display_offset(combining_mark_start),
+        combining_mark_start
+    );
+    assert_eq!(
+        revealed.real_offset(combining_mark_start),
+        combining_mark_start
+    );
+}
+
+#[test]
+fn password_accessibility_runs_only_contain_masked_text() {
+    let value = "机密👩🏽‍💻e\u{301}";
+    let display = DisplayText::new(value, true);
+    let selection = display.display_range(0..value.len());
+    let (runs, _) = build_a11y_text_runs(
+        &display.text,
+        selection.start,
+        selection.end,
+        accesskit::NodeId,
+    );
+    let exposed = runs
+        .iter()
+        .filter_map(|(_, node)| node.value())
+        .collect::<String>();
+
+    assert_eq!(exposed, "••••");
+    assert!(!exposed.contains("机密"));
+    assert!(!exposed.contains("👩🏽‍💻"));
+    assert!(!exposed.contains("e\u{301}"));
+    assert_eq!(DisplayText::new(value, false).text, value);
+}
+
+#[gpui::test]
+fn password_prepaint_masks_ime_and_reveal_preserves_editor_state(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, cx| CaretTestView::new(cx));
+    let state = view.read_with(cx, |view, _| view.state.clone());
+    view.update(cx, |view, cx| {
+        view.input_type = InputType::Password;
+        view.state.update(cx, |state, cx| {
+            state.reset("中👨‍👩‍👧‍👦e\u{301}", cx);
+        });
+        cx.notify();
+    });
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+
+    state.read_with(cx, |state, _| {
+        let display = state.last_display.as_ref().unwrap();
+        assert_eq!(display.text, "•••");
+        assert!(!display.text.contains(state.value()));
+    });
+
+    let handle = state.read_with(cx, |state, _| state.focus_handle.clone());
+    cx.update(|window, cx| {
+        cx.activate(true);
+        window.activate_window();
+        window.focus(&handle, cx);
+        state.update(cx, |state, cx| {
+            EntityInputHandler::replace_and_mark_text_in_range(
+                state,
+                None,
+                "组合👩🏽‍💻",
+                Some("组合👩🏽‍💻".encode_utf16().count().."组合👩🏽‍💻".encode_utf16().count()),
+                window,
+                cx,
+            );
+        });
+        window.draw(cx).clear(cx);
+    });
+    let before = state.read_with(cx, |state, _| {
+        let display = state.last_display.as_ref().unwrap();
+        assert_eq!(
+            display.text.chars().count(),
+            state.value().graphemes(true).count()
+        );
+        assert!(!display.text.contains("组合"));
+        assert!(!display.text.contains("👩🏽‍💻"));
+        (
+            state.value.clone(),
+            state.selection.clone(),
+            state.marked_range.clone(),
+            state.undo_stack.len(),
+            state.redo_stack.len(),
+        )
+    });
+
+    view.update(cx, |view, cx| {
+        view.password_revealed = true;
+        cx.notify();
+    });
+    cx.update(|window, cx| window.draw(cx).clear(cx));
+    state.read_with(cx, |state, _| {
+        assert_eq!(
+            (
+                state.value.clone(),
+                state.selection.clone(),
+                state.marked_range.clone(),
+                state.undo_stack.len(),
+                state.redo_stack.len(),
+            ),
+            before
+        );
+        assert_eq!(state.last_display.as_ref().unwrap().text, state.value());
+    });
+    assert!(cx.update(|window, _| handle.is_focused(window)));
 }
 
 #[test]

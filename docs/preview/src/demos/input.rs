@@ -5,7 +5,7 @@ use gpui::{
 };
 use vektra::{
     Button, ButtonVariant, ComponentSize, Icon, IconButton, IconButtonVariant, IconName, Input,
-    InputClear, InputState, InputVariant, Tooltip, TooltipPlacement,
+    InputClear, InputState, InputType, InputVariant, Tooltip, TooltipPlacement,
 };
 
 // #region input-example-basic
@@ -61,6 +61,14 @@ impl InputBasicDemo {
 // #region input-state
 pub(super) struct InputDemo {
     primary: gpui::Entity<InputState>,
+    observable: gpui::Entity<InputState>,
+    search: gpui::Entity<InputState>,
+    password: gpui::Entity<InputState>,
+    password_revealed: bool,
+    email: gpui::Entity<InputState>,
+    phone: gpui::Entity<InputState>,
+    url: gpui::Entity<InputState>,
+    affixes: gpui::Entity<InputState>,
     search_icon: gpui::Entity<InputState>,
     search_text: gpui::Entity<InputState>,
     search_icon_text: gpui::Entity<InputState>,
@@ -73,6 +81,8 @@ pub(super) struct InputDemo {
     disabled: gpui::Entity<InputState>,
     narrow: gpui::Entity<InputState>,
     status: gpui::SharedString,
+    search_status: gpui::SharedString,
+    observable_status: gpui::SharedString,
 }
 
 impl InputDemo {
@@ -80,6 +90,14 @@ impl InputDemo {
         Self {
             primary: cx
                 .new(|cx| InputState::new("双击 English/中文选词，三击全选 👩🏽‍💻 e\u{301}", cx)),
+            observable: cx.new(|cx| InputState::new("", cx)),
+            search: cx.new(|cx| InputState::new("Vektra Input", cx)),
+            password: cx.new(|cx| InputState::new("机密👩🏽‍💻e\u{301}", cx)),
+            password_revealed: false,
+            email: cx.new(|cx| InputState::new("hello@example.com", cx)),
+            phone: cx.new(|cx| InputState::new("+86 138 0000 0000", cx)),
+            url: cx.new(|cx| InputState::new("https://vektra.dev", cx)),
+            affixes: cx.new(|cx| InputState::new("可组合内容", cx)),
             search_icon: cx.new(|cx| InputState::new("Vektra", cx)),
             search_text: cx.new(|cx| InputState::new("GPUI", cx)),
             search_icon_text: cx.new(|cx| InputState::new("组件库", cx)),
@@ -103,7 +121,205 @@ impl InputDemo {
             narrow: cx
                 .new(|cx| InputState::new("窄宽度长文本：双击选词，三击全选，光标保持可见", cx)),
             status: "尚无用户事件".into(),
+            search_status: "尚未提交搜索".into(),
+            observable_status: "尝试输入、IME 或按 Enter".into(),
         }
+    }
+
+    pub(super) fn render_search(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, placeholder, label, clear) = match language {
+            PreviewLang::ZhCn => ("搜索输入", "输入搜索内容", "搜索", "清空搜索内容"),
+            PreviewLang::EnUs => (
+                "Search input",
+                "Enter a search query",
+                "Search",
+                "Clear search",
+            ),
+        };
+        let status = self.search_status.clone();
+        // #region input-example-search
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .child(
+                Input::new("typed-search-input", self.search.clone())
+                    .input_type(InputType::Search)
+                    .placeholder(placeholder)
+                    .aria_label(label)
+                    .prefix(Icon::new(IconName::Search))
+                    .clearable(InputClear::new(clear))
+                    .on_submit_in(cx, move |this, value, _, cx| {
+                        this.input_demo.search_status = match language {
+                            PreviewLang::ZhCn => format!("已搜索：{value}"),
+                            PreviewLang::EnUs => format!("Searched: {value}"),
+                        }
+                        .into();
+                        cx.notify();
+                    }),
+            )
+            .child(status);
+        // #endregion input-example-search
+
+        self.example_page("input-example-search", title, example, window, cx)
+    }
+
+    pub(super) fn render_password(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, input_label, show, hide) = match language {
+            PreviewLang::ZhCn => ("密码显隐", "密码", "显示密码", "隐藏密码"),
+            PreviewLang::EnUs => (
+                "Password reveal",
+                "Password",
+                "Show password",
+                "Hide password",
+            ),
+        };
+        // #region input-example-password
+        let revealed = self.password_revealed;
+        let action_label = if revealed { hide } else { show };
+        let action_icon = if revealed {
+            IconName::EyeOff
+        } else {
+            IconName::Eye
+        };
+        let example = Input::new("password-input", self.password.clone())
+            .input_type(InputType::Password)
+            .password_revealed(revealed)
+            .aria_label(input_label)
+            .suffix(
+                IconButton::new("password-reveal", action_icon)
+                    .variant(IconButtonVariant::Ghost)
+                    .size(ComponentSize::Xs)
+                    .selected(revealed)
+                    .aria_label(action_label)
+                    .tooltip(action_label)
+                    .on_click_in(cx, |this, _, window, cx| {
+                        this.input_demo.password_revealed = !this.input_demo.password_revealed;
+                        let focus = this.input_demo.password.read(cx).focus_handle().clone();
+                        window.focus(&focus, cx);
+                        cx.notify();
+                    }),
+            );
+        // #endregion input-example-password
+
+        self.example_page("input-example-password", title, example, window, cx)
+    }
+
+    pub(super) fn render_types(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, email, phone, url) = match language {
+            PreviewLang::ZhCn => ("常用输入语义", "电子邮箱", "电话号码", "网址"),
+            PreviewLang::EnUs => ("Common input semantics", "Email", "Phone number", "URL"),
+        };
+        // #region input-example-types
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .child(
+                Input::new("email-input", self.email.clone())
+                    .input_type(InputType::Email)
+                    .aria_label(email),
+            )
+            .child(
+                Input::new("phone-input", self.phone.clone())
+                    .input_type(InputType::Phone)
+                    .aria_label(phone),
+            )
+            .child(
+                Input::new("url-input", self.url.clone())
+                    .input_type(InputType::Url)
+                    .aria_label(url),
+            );
+        // #endregion input-example-types
+
+        self.example_page("input-example-types", title, example, window, cx)
+    }
+
+    pub(super) fn render_affixes(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, label, clear) = match language {
+            PreviewLang::ZhCn => ("前后缀与清除", "组合输入", "清空组合输入"),
+            PreviewLang::EnUs => (
+                "Prefix, suffix, and clear",
+                "Composed input",
+                "Clear composed input",
+            ),
+        };
+        // #region input-example-affixes
+        let example = Input::new("affix-input", self.affixes.clone())
+            .aria_label(label)
+            .prefix(Icon::new(IconName::Search))
+            .clearable(InputClear::new(clear).tooltip(clear))
+            .suffix(div().text_size(px(12.)).child("⌘ K"));
+        // #endregion input-example-affixes
+
+        self.example_page("input-example-affixes", title, example, window, cx)
+    }
+
+    pub(super) fn render_events(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, label, placeholder) = match language {
+            PreviewLang::ZhCn => ("可观察交互", "事件输入", "尝试中文 IME 并按 Enter"),
+            PreviewLang::EnUs => (
+                "Observable interactions",
+                "Event input",
+                "Try an IME and press Enter",
+            ),
+        };
+        let status = self.observable_status.clone();
+        // #region input-example-events
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .child(
+                Input::new("observable-input", self.observable.clone())
+                    .aria_label(label)
+                    .placeholder(placeholder)
+                    .on_change_in(cx, |this, value, _, cx| {
+                        this.input_demo.observable_status = format!("Changed: {value}").into();
+                        cx.notify();
+                    })
+                    .on_submit_in(cx, |this, value, _, cx| {
+                        this.input_demo.observable_status = format!("Submitted: {value}").into();
+                        cx.notify();
+                    })
+                    .on_focus_in(cx, |this, _, cx| {
+                        this.input_demo.observable_status = "Focused".into();
+                        cx.notify();
+                    })
+                    .on_blur_in(cx, |this, _, cx| {
+                        this.input_demo.observable_status = "Blurred".into();
+                        cx.notify();
+                    }),
+            )
+            .child(status);
+        // #endregion input-example-events
+
+        self.example_page("input-example-events", title, example, window, cx)
     }
 
     pub(super) fn render_group(

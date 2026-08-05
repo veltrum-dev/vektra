@@ -60,6 +60,7 @@ pub struct IconButton {
     size: Option<ComponentSize>,
     icon_color: Option<Hsla>,
     disabled: bool,
+    selected: Option<bool>,
     on_click: Option<ClickHandler>,
     on_focus: Option<FocusHandler>,
     on_blur: Option<FocusHandler>,
@@ -82,6 +83,7 @@ impl IconButton {
             size: None,
             icon_color: None,
             disabled: false,
+            selected: None,
             on_click: None,
             on_focus: None,
             on_blur: None,
@@ -155,6 +157,15 @@ impl IconButton {
     /// disabled 时鼠标和键盘激活都不会触发回调。
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
+        self
+    }
+
+    /// 设置受控 selected/toggle 状态。
+    ///
+    /// 传入值后，IconButton 会使用与 Button 一致的选中视觉状态，并通过无障碍
+    /// toggled 属性表达按下状态；点击不会自行翻转该值，宿主应在回调中更新状态。
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.selected = Some(selected);
         self
     }
 
@@ -245,6 +256,11 @@ impl IconButton {
     #[cfg(test)]
     pub(crate) fn is_disabled(&self) -> bool {
         self.disabled
+    }
+
+    #[cfg(test)]
+    pub(crate) fn selected_state(&self) -> Option<bool> {
+        self.selected
     }
 
     #[cfg(test)]
@@ -345,7 +361,12 @@ impl RenderOnce for IconButton {
         let size = theme
             .button_size(self.resolved_size(cx).token_key())
             .expect("Vektra 默认 Button size token 必须通过测试保持有效");
-        let states = button::ResolvedButtonStates::new(&theme, variant);
+        let selected = self.selected;
+        let states = if selected == Some(true) {
+            button::ResolvedButtonStates::selected(&theme, variant)
+        } else {
+            button::ResolvedButtonStates::new(&theme, variant)
+        };
         let visible = if self.disabled {
             states.disabled
         } else {
@@ -359,6 +380,9 @@ impl RenderOnce for IconButton {
             div()
                 .id(self.id.clone())
                 .role(Role::Button)
+                .when_some(button::toggled_state(selected), |this, toggled| {
+                    this.aria_toggled(toggled)
+                })
                 .flex()
                 .items_center()
                 .justify_center()

@@ -1,10 +1,10 @@
 # Input
 
-`Input` 是纯 GPUI、支持 IME 的单行文本输入。编辑状态由调用方持有的 `Entity<InputState>` 保存；组件不引入 Root、Provider 或注册流程，也不保存 required、regex、错误消息、dirty、touched 等表单元数据。
+`Input` 是纯 GPUI、支持 IME 的单行文本输入。编辑状态由调用方持有的 `Entity<InputState>` 保存；组件不引入 Root、Provider 或注册流程。
 
 ## 基础用法
 
-创建一个 `Entity<InputState>`，并在每次 render 时把同一个 Entity 传给稳定 ID 的 Input。基础示例只包含占位文字和必需的可访问名称。
+Basic 只包含稳定 ID、状态、placeholder 与可访问名称。
 
 <VektraExample demo="input/basic" title="Input 基础用法" :height="240">
 
@@ -12,9 +12,70 @@
 
 </VektraExample>
 
-`InputState::value()` 读取当前文本。`set_value`、`clear` 与 `reset` 是程序化操作，不发送 `InputEvent::Changed`，也不调用 `on_change`；它们会安全结束 IME 并校正选区，其中 `reset` 还会清空撤销/重做历史和水平滚动。用户输入、删除、cut、paste、undo、redo、IME commit 和内置 clear 仅在值实际改变时发送一次 `Changed`。
+## 输入类型
 
-`InputState` 实现 `EventEmitter<InputEvent>`；`on_change`、`on_submit`、`on_focus`、`on_blur` 及 `_in` 版本都从同一语义路径触发。IME preedit 更新不发送 `Changed`，组合期间 Enter 不提交，commit 后发送一次变化；非组合状态 Enter 发送 `Submitted(value)`。
+### Search
+
+`InputType::Search` 提供搜索语义；搜索图标、clear 与 Enter 提交由现有组合能力显式组成。
+
+<VektraExample demo="input/search" title="Search Input" :height="280">
+
+<<< ../../preview/src/demos/input.rs#input-example-search{rust}
+
+</VektraExample>
+
+### Password
+
+Password 默认按 grapheme 使用固定字符掩码。示例由宿主控制显隐状态，并用 Eye/EyeOff IconButton 提供随状态变化的可访问名称、Tooltip 与 selected/toggled 语义。
+
+<VektraExample demo="input/password" title="Password 显隐" :height="260">
+
+<<< ../../preview/src/demos/input.rs#input-example-password{rust}
+
+</VektraExample>
+
+隐藏态允许粘贴，但禁止复制和剪切；显示态恢复普通复制和剪切。显隐切换不会改变真实 value、选区、IME 或撤销历史，也不会发送 `Changed`。隐藏与显示都保持 `PasswordInput` 角色。
+
+### Email、Phone 与 Url
+
+<VektraExample demo="input/types" title="常用输入语义" :height="340">
+
+<<< ../../preview/src/demos/input.rs#input-example-types{rust}
+
+</VektraExample>
+
+这些类型只提供正确语义，不会自动验证、格式化或过滤字符；业务校验仍由宿主负责。
+
+| `InputType` | AccessKit 角色 | 额外行为 |
+| --- | --- | --- |
+| `Text` | `TextInput` | 默认普通单行文本。 |
+| `Search` | `SearchInput` | 不自动添加图标、clear 或提交逻辑。 |
+| `Password` | `PasswordInput` | 默认安全掩码；可受控显示。 |
+| `Email` | `EmailInput` | 无自动邮箱校验。 |
+| `Phone` | `PhoneNumberInput` | 无自动格式化或字符过滤。 |
+| `Url` | `UrlInput` | 无自动 URL 校验。 |
+
+## 组合能力
+
+### Prefix、suffix 与 clear
+
+三个能力保持独立：slot 子组件拥有自己的角色、焦点与事件；`InputClear` 复用 IconButton，并强制调用方提供可访问名称。
+
+<VektraExample demo="input/affixes" title="Prefix、suffix 与 clear" :height="260">
+
+<<< ../../preview/src/demos/input.rs#input-example-affixes{rust}
+
+</VektraExample>
+
+### Input Group
+
+把相同尺寸的 Button 放入 `attached_suffix`，即可得到共用外框、全高操作区与主题分隔线。
+
+<VektraExample demo="input/group" title="Input Group" :height="240">
+
+<<< ../../preview/src/demos/input.rs#input-example-group{rust}
+
+</VektraExample>
 
 ## 外观与状态
 
@@ -24,12 +85,7 @@
 
 </VektraExample>
 
-- `Outline` 是默认完整边框，适合普通表单。
-- `Filled` 用填充背景建立分组感，并保留透明结构边框避免状态跳动。
-- `Borderless` 适合工具栏和紧凑表面；normal/hover 没有明显边框，鼠标或键盘实际聚焦后使用强调色结构边框，键盘 focus-visible 会进一步使用更宽的焦点边框。invalid 图标始终保留。
-- `Underline` 适合低密度表单，以更明显的焦点/错误底线反馈状态；外壳圆角固定为 0，底线两端保持笔直。
-
-状态优先级是 disabled、invalid + focus-visible、invalid、focus-visible、hover、normal。`invalid(bool)` 只消费外围校验结果：Input 不知道错误原因，也不运行规则。未来的 `FormControl<T>` 或 label/help/error 布局可以持有 required、regex、异步校验和 touched 等状态，不需要把它们塞进 `InputState`。
+`Outline` 是默认完整边框；`Filled` 使用填充表面；`Borderless` 保留焦点与错误反馈；`Underline` 只显示底线。
 
 <VektraExample demo="input/sizes" title="Input 语义尺寸" :height="360">
 
@@ -37,35 +93,7 @@
 
 </VektraExample>
 
-`ComponentSize::{Xs, Sm, Md, Lg}` 的高度分别为 24、32、36、40 px。Input 默认填满父容器宽度，文本 viewport 使用可收缩布局并水平滚动；最终宽度始终由父容器控制。
-
-聚焦、可编辑且选区为空时，插入光标每 500ms 在完整可见与完整隐藏之间离散切换；它只在相位切换时请求重绘，不注册连续动画帧。输入、删除、移动、鼠标定位、clear、undo/redo、IME 更新/提交和重新聚焦都会从完整可见阶段重启。IME preedit 与 reduced-motion 下光标保持常亮；失焦、有选区、disabled 或 read-only 时不绘制且不保留闪烁任务。光标高度来自 shaped text 的 `ascent + descent` 并在 line-height 内居中，默认宽度为 1px。`caret_color(Hsla)` 可覆盖当前实例在 normal/invalid 等可编辑状态下的主题 caret 颜色，不影响其他 token。
-
-## Prefix、suffix、attached suffix 与 clear
-
-布局顺序固定为 `prefix | editor | status | clear | suffix | divider | attached suffix`；没有 invalid 状态图标时可省略 status。clear 属于编辑器的内建操作并保持在普通 suffix 内侧。`suffix(...)` 仍表示位于 Input 水平 padding 内的紧凑尾部内容；`attached_suffix(...)` 表示与 Input 共用唯一外壳、贴合右边缘的分段操作，其左侧使用主题边框色分隔并占满 Input 高度。编辑区域会优先收缩，attached suffix 保持自身宽度。
-
-三种槽位都接受任意 `IntoElement`，保持自己的 ID、role、焦点、Tab 顺序、Tooltip、aria 与事件；文本的鼠标处理只覆盖 editor viewport，因此激活槽位不会移动 caret 或产生 Input 的 `Changed`/`Submitted`。同时存在 clear、交互式 suffix 与 attached suffix 时，普通 Tab 顺序是 editor、clear、suffix、attached suffix。外壳只在使用 attached suffix 时裁切到自身边框内；Button 的 focus-visible 边框位于按钮内部，仍清晰可见。
-
-`disabled(true)` 与 `read_only(true)` 只约束文本编辑器和内置 clear。Input 无法可靠修改任意传入子组件的状态；若整个组合都需要禁用或只读，调用方应把同一状态传给交互式 prefix、suffix 与 attached suffix。普通槽位宜保持紧凑；attached suffix 应使用与 Input 相同的 `ComponentSize`，以保持全高分段区域对齐。
-
-`InputClear::new(aria_label)` 强制提供纯图标按钮的可访问名称。它内部复用 `IconButtonVariant::Ghost` 及其 `Tooltip`/placement 能力，使用 24×24 的 `ComponentSize::Xs` 透明命中区；静止时只有图标，hover、pressed、focus-visible、Enter 与 Space 仍完全由 IconButton 负责。clear 在值非空且可编辑时持续显示；激活只发送一次 `Changed("")`，随后焦点回到编辑器。Tooltip 是视觉帮助，不会自动复制成 aria label，也不能替代可访问名称。
-
-### Input Group
-
-Search 不需要新的专用组件。把相同尺寸的 Button 放入 `attached_suffix`，即可得到共用外框、全高操作区和主题分隔线的聚焦组合。
-
-<VektraExample demo="input/group" title="Input Group" :height="240">
-
-<<< ../../preview/src/demos/input.rs#input-example-group{rust}
-
-</VektraExample>
-
-纯图标操作可以放在普通 `suffix` 或 `attached_suffix` 中，并使用 `IconButton + IconName::Search`；必须提供 `aria_label`，Tooltip 不能替代可访问名称。`IconName::Search` 随 `vektra` 的 `icons` feature 提供。
-
-### 状态
-
-`invalid`、`read_only` 与 `disabled` 都由宿主显式传入，彼此保持独立语义。
+`ComponentSize::{Xs, Sm, Md, Lg}` 的高度分别为 24、32、36、40 px。Input 默认填满父容器宽度，文本 viewport 可收缩并水平滚动。
 
 <VektraExample demo="input/states" title="Input 状态" :height="320">
 
@@ -73,35 +101,47 @@ Search 不需要新的专用组件。把相同尺寸的 Button 放入 `attached_
 
 </VektraExample>
 
-## 编辑、键盘与无障碍
+`invalid`、`read_only` 与 `disabled` 均由宿主显式传入。disabled 离开普通 Tab 顺序并拒绝输入、选区和 SetValue；read-only 仍可聚焦、选择和复制普通文本，但拒绝修改。
 
-Input 支持 grapheme 安全的左右移动、Shift 扩选、Home/End、平台单词移动与删除、单击定位、Shift + 单击、拖选、双击选词、三击及以上全选、Select All、Copy/Cut/Paste、Undo/Redo 和长文本水平滚动。Select All、Copy/Cut/Paste、Undo/Redo 使用 macOS 的 Cmd 或 Windows/Linux 的 Ctrl；Windows 键与 Linux Super 不会被当作通用命令键。方向与删除只处理明确支持的修饰键组合，其他组合继续向宿主或系统冒泡；macOS 额外支持 Fn + Left/Right 跳到行首/行尾。双击/三击只改变选区，不发送 `Changed`；中文、emoji、ZWJ 与 combining mark 不会产生非法 UTF-8 边界。粘贴中的 CR/LF 会转换为空格，不会 trim。Tab 使用 GPUI 正常焦点导航；Escape 不被 Input 吞掉。
+## IME 与语义事件
 
-disabled editor 离开普通 Tab 顺序，拒绝输入、选区和 AccessKit SetValue。read-only editor 仍可聚焦、选择和复制，但拒绝修改与 SetValue。
+<VektraExample demo="input/events" title="IME、Changed 与 Submitted" :height="300">
 
-只有实际 editor 节点使用 `Role::TextInput`；交互式槽位仍是独立无障碍子树。节点提供 value、placeholder、description、文本 runs、UTF-16 selection、invalid、read-only 和 SetValue。业务侧必须调用 `aria_label(...)` 或通过外围语义提供明确可访问名称；placeholder 只是提示，不会自动成为 accessible name。
+<<< ../../preview/src/demos/input.rs#input-example-events{rust}
 
-## API 摘要
+</VektraExample>
+
+`InputState::value()` 始终返回真实值。用户输入、删除、显示态 cut、paste、undo、redo、IME commit 与内置 clear 仅在值实际变化时发送一次 `Changed`；IME preedit 保持静默。非组合状态下按 Enter 发送 `Submitted`。`set_value`、`clear` 与 `reset` 是程序化操作，不发送用户语义事件。
+
+## 键盘与无障碍
+
+- 左右方向键按 grapheme 移动；平台单词修饰键按词移动。Home/End、Shift 选择、Backspace/Delete、Select All 与 Undo/Redo 均可用。
+- 只接受明确支持的修饰键组合；未识别组合继续冒泡。
+- 实际 editor 节点使用对应 `InputType` 角色；prefix、suffix 与 attached suffix 保持独立无障碍子树。
+- Password 隐藏态的绘制文本、无障碍 value 与 synthetic text runs 只包含掩码，不包含明文。
+
+## API
 
 | API | 说明 |
 | --- | --- |
-| `Input::new(id, state)` | 绑定稳定 `ElementId` 与调用方持有的 `Entity<InputState>`。 |
-| `placeholder`, `aria_label`, `aria_description` | 文本提示与无障碍语义；三者互不替代。 |
-| `variant`, `size`, `disabled`, `read_only`, `invalid` | 外观、共享尺寸和外部驱动状态。 |
-| `caret_color(Hsla)` | 覆盖当前实例的插入光标颜色；未设置时使用主题 caret token。 |
-| `prefix`, `suffix` | 在 Input 水平 padding 内插入独立的任意元素。 |
-| `attached_suffix` | 添加贴合右边缘、全高且带主题分隔线的分段尾部元素。 |
-| `clearable(InputClear)` | 添加基于 IconButton + Tooltip 的语义清除操作。 |
+| `Input::new(id, Entity<InputState>)` | 创建绑定稳定 ID 与调用方状态的 Input。 |
+| `input_type(InputType)` | 设置 Text、Search、Password、Email、Phone 或 Url 语义。 |
+| `password_revealed(bool)` | 受控 Password 显示状态；默认 `false`，其他类型忽略。 |
+| `placeholder`, `aria_label`, `aria_description` | 文本与无障碍元数据。 |
+| `variant`, `size`, `caret_color` | 视觉配置。 |
+| `disabled`, `read_only`, `invalid` | 外部状态。 |
+| `prefix`, `suffix`, `attached_suffix`, `clearable` | 可组合 slot 与内置清除。 |
 | `on_change`, `on_submit`, `on_focus`, `on_blur` | 用户语义事件及 Entity 绑定 `_in` 版本。 |
 
-Input 实现 [`Changeable<SharedString>`](/api/changeable)、[`Focusable`](/api/focusable)、[`Disableable`](/api/disableable) 和 [`Sizable`](/api/sizable)，不实现 `Clickable`。主题 token 位于 `input.border-width`、`input.focus-width`、`input.caret-width`（默认 1px）、`input.variant.<variant>.<state>.*` 与 `input.size.<size>.*`。旧自定义主题完全没有 Input 扩展时会回退到 semantic/foundation token；一旦开始提供 Input state 或 size 扩展，就必须完整提供对应配置。
+Input 实现 [`Changeable<SharedString>`](/api/changeable)、[`Focusable`](/api/focusable)、[`Disableable`](/api/disableable) 和 [`Sizable`](/api/sizable)，不实现 `Clickable`。
 
 ## 主题、响应式与跨平台
 
-Light、Dark 与 System 模式通过当前 Vektra 主题解析边框、表面、文字、placeholder、selection、caret 与状态颜色。Input 会在可用宽度内收缩并让编辑内容水平滚动；prefix、suffix 和 attached suffix 的占用宽度由宿主选择，过多插槽会压缩编辑区。macOS、Windows、Linux 与 Web 预览共用同一 GPUI 实现，命令修饰键和系统文本输入遵循各平台约定。
+Light、Dark 与 System 通过当前主题解析边框、表面、文字、placeholder、selection、caret 与状态颜色。Input 在可用宽度内收缩，slot 过多时编辑区会被压缩。组件使用 GPUI 跨平台文本与输入法接口；平台快捷键遵循 macOS 与 Windows/Linux 的各自约定。
 
 ## 已知限制
 
-- Input 仅支持单行纯文本，不提供多行编辑、掩码、格式化或内建校验消息。
-- prefix、suffix 与 attached suffix 是组合插槽；其业务状态、加载和错误处理由宿主负责。
-- 预览运行依赖浏览器 WebGPU 与文档宿主提供的字体资源。
+- 仅支持单行纯文本，不提供多行、Number、Date、Time、格式化模板或内建校验消息。
+- Email、Phone 与 Url 不承诺自动验证；Password 不提供自定义 mask 字符。
+- slot 的业务状态、加载与错误处理由宿主负责。
+- Web 预览依赖浏览器 WebGPU 与文档宿主提供的字体资源。

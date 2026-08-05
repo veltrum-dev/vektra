@@ -228,6 +228,112 @@ impl CheckboxDemo {
         self.example_page("checkbox-example-bulk", title, example, window, cx)
     }
 
+    pub(super) fn render_states(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, unchecked, checked, mixed, disabled) = match language {
+            PreviewLang::ZhCn => ("常用状态", "未选中", "已选中", "部分选中", "禁用"),
+            PreviewLang::EnUs => (
+                "Common states",
+                "Unchecked",
+                "Checked",
+                "Indeterminate",
+                "Disabled",
+            ),
+        };
+        // #region checkbox-example-states
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(8.))
+            .child(
+                Checkbox::new("checkbox-unchecked")
+                    .checked(self.terms.checked)
+                    .label(unchecked)
+                    .on_change_in(cx, |this, next, _, cx| {
+                        this.checkbox_demo.terms.apply_change(next);
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Checkbox::new("checkbox-checked")
+                    .checked(self.sm.checked)
+                    .label(checked)
+                    .on_change_in(cx, |this, next, _, cx| {
+                        this.checkbox_demo.sm.apply_change(next);
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Checkbox::new("checkbox-indeterminate")
+                    .checked(self.mixed.checked)
+                    .indeterminate(self.mixed.indeterminate)
+                    .label(mixed)
+                    .on_change_in(cx, |this, next, _, cx| {
+                        this.checkbox_demo.mixed.apply_change(next);
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Checkbox::new("checkbox-disabled")
+                    .checked(true)
+                    .label(disabled)
+                    .disabled(true),
+            );
+        // #endregion checkbox-example-states
+
+        self.example_page("checkbox-example-states", title, example, window, cx)
+    }
+
+    pub(super) fn render_sizes(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "语义尺寸",
+            PreviewLang::EnUs => "Semantic sizes",
+        };
+        // #region checkbox-example-sizes
+        let example = div()
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .flex_wrap()
+            .children(
+                [
+                    (ComponentSize::Xs, self.xs.checked),
+                    (ComponentSize::Sm, self.sm.checked),
+                    (ComponentSize::Md, self.md.checked),
+                    (ComponentSize::Lg, self.lg.checked),
+                ]
+                .into_iter()
+                .enumerate()
+                .map(|(index, (size, checked))| {
+                    Checkbox::new(("checkbox-size", index))
+                        .checked(checked)
+                        .label(format!("{size:?}"))
+                        .size(size)
+                        .on_change_in(cx, move |this, next, _, cx| {
+                            match index {
+                                0 => this.checkbox_demo.xs.apply_change(next),
+                                1 => this.checkbox_demo.sm.apply_change(next),
+                                2 => this.checkbox_demo.md.apply_change(next),
+                                _ => this.checkbox_demo.lg.apply_change(next),
+                            }
+                            cx.notify();
+                        })
+                }),
+            );
+        // #endregion checkbox-example-sizes
+
+        self.example_page("checkbox-example-sizes", title, example, window, cx)
+    }
+
     pub(super) fn render_icon_only(
         &self,
         language: PreviewLang,

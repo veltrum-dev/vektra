@@ -28,6 +28,24 @@ IconButton 是固定正方形、只显示图标的操作控件，适合工具栏
 
 </VektraExample>
 
+## 状态与焦点
+
+<VektraExample demo="icon-button/states" title="IconButton 状态" :height="280">
+
+<<< ../../preview/src/demos/icon_button.rs#icon-button-example-states{rust}
+
+</VektraExample>
+
+`selected(bool)` 是受控 toggle 状态：使用与 Button 一致的选中 token，并输出无障碍 toggled 语义；组件不会自行翻转。
+
+## Tooltip 与可访问名称
+
+<VektraExample demo="icon-button/tooltip" title="IconButton Tooltip" :height="240">
+
+<<< ../../preview/src/demos/icon_button.rs#icon-button-example-tooltip{rust}
+
+</VektraExample>
+
 ## Anatomy 与 API
 
 根节点提供 Button role、正方形命中区域、主题状态和唯一 Tab stop；内部 `Icon` 是装饰图形，不产生第二个名称或焦点目标。
@@ -43,6 +61,7 @@ IconButton 是固定正方形、只显示图标的操作控件，适合工具栏
 | `.size(...)` | `Xs` 24px、`Sm` 32px、`Md` 36px（默认）、`Lg` 40px。 |
 | `.icon_color(color)` | 只覆盖 enabled 图标颜色；disabled token 仍优先。 |
 | `.disabled(bool)` | 阻止鼠标/键盘激活并退出 Tab 顺序。 |
+| `.selected(bool)` | 设置受控 selected/toggled 状态；不会自行翻转。 |
 | `.on_click(...)` / `.on_click_in(...)` | 注册鼠标、Enter 和 Space 共用的激活契约。 |
 | `.on_focus(...)` / `.on_blur(...)` | 注册真实聚焦与失焦转换回调。 |
 | `.on_focus_in(...)` / `.on_blur_in(...)` | 通过宿主 Entity listener 修改状态并调用 `cx.notify()`。 |

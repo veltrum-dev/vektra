@@ -2,8 +2,8 @@
 //!
 //! 该 crate 负责把 Vektra 框架资源嵌入二进制，并通过 GPUI 原生资源接口提供给
 //! `Application::with_assets`。默认包含主题（含 Input 与 Tooltip token）、Input 状态图标和
-//! Button loading 指示器；启用 `icons` feature 后才包含 Search、Settings 等其余 Vektra
-//! 内置 SVG 图标。
+//! Button loading 指示器；启用 `icons` feature 后才包含 Eye、EyeOff、Search、Settings 等
+//! 其余 Vektra 内置 SVG 图标。
 
 use gpui::{AssetSource, Result, SharedString};
 use rust_embed::RustEmbed;

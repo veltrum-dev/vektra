@@ -1,5 +1,16 @@
 # Vektra Icon Sources
 
+## Vektra Eye Icons
+
+- Source project: Vektra
+- Design: Original 16×16 outlined eye and eye-off icons
+- Stroke: `currentColor`, 1.2px, round caps and joins
+- Created on: 2026-08-05
+- Vektra file paths: `assets/icons/eye.svg`, `assets/icons/eye_off.svg`
+
+These icons were designed directly for Vektra's internal 12×12 optical boundary and are not
+copied from a third-party icon set.
+
 ## Vektra Search Icon
 
 - Source project: Vektra

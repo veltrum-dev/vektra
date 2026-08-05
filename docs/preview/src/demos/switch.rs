@@ -177,6 +177,186 @@ impl SwitchDemo {
             .child(example)
             .into_any_element()
     }
+
+    pub(super) fn render_states(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, enabled, disabled) = match language {
+            PreviewLang::ZhCn => ("启用与禁用", "可交互开关", "禁用开关"),
+            PreviewLang::EnUs => (
+                "Enabled and disabled",
+                "Interactive switch",
+                "Disabled switch",
+            ),
+        };
+        // #region switch-example-states
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .child(
+                Switch::new("switch-enabled")
+                    .checked(self.notifications)
+                    .label(enabled)
+                    .on_change_in(cx, |this, next, _, cx| {
+                        this.switch_demo.notifications = next;
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Switch::new("switch-disabled-example")
+                    .checked(true)
+                    .label(disabled)
+                    .disabled(true),
+            );
+        // #endregion switch-example-states
+
+        self.example_page("switch-example-states", title, example, window, cx)
+    }
+
+    pub(super) fn render_sizes(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let title = match language {
+            PreviewLang::ZhCn => "语义尺寸",
+            PreviewLang::EnUs => "Semantic sizes",
+        };
+        // #region switch-example-sizes
+        let example = div()
+            .flex()
+            .items_center()
+            .gap(px(12.))
+            .flex_wrap()
+            .children(
+                [
+                    (ComponentSize::Xs, self.xs),
+                    (ComponentSize::Sm, self.sm),
+                    (ComponentSize::Md, self.md),
+                    (ComponentSize::Lg, self.lg),
+                ]
+                .into_iter()
+                .enumerate()
+                .map(|(index, (size, checked))| {
+                    Switch::new(("switch-size", index))
+                        .checked(checked)
+                        .label(format!("{size:?}"))
+                        .size(size)
+                        .on_change_in(cx, move |this, next, _, cx| {
+                            match index {
+                                0 => this.switch_demo.xs = next,
+                                1 => this.switch_demo.sm = next,
+                                2 => this.switch_demo.md = next,
+                                _ => this.switch_demo.lg = next,
+                            }
+                            cx.notify();
+                        })
+                }),
+            );
+        // #endregion switch-example-sizes
+
+        self.example_page("switch-example-sizes", title, example, window, cx)
+    }
+
+    pub(super) fn render_content(
+        &self,
+        language: PreviewLang,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let (title, text, icon, combined, on, off) = match language {
+            PreviewLang::ZhCn => ("文字与图标内容", "文字", "图标", "图标加文字", "开", "关"),
+            PreviewLang::EnUs => (
+                "Text and icon content",
+                "Text",
+                "Icon",
+                "Icon and text",
+                "On",
+                "Off",
+            ),
+        };
+        // #region switch-example-content
+        let example = div()
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .child(
+                Switch::new("switch-text-content")
+                    .checked(self.sm)
+                    .label(text)
+                    .checked_content(SwitchContent::text(on))
+                    .unchecked_content(SwitchContent::text(off))
+                    .on_change_in(cx, |this, next, _, cx| {
+                        this.switch_demo.sm = next;
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Switch::new("switch-icon-content")
+                    .checked(self.md)
+                    .label(icon)
+                    .checked_content(SwitchContent::icon(IconSource::asset(
+                        "components/checkbox/check.svg",
+                    )))
+                    .unchecked_content(SwitchContent::icon(IconSource::asset(
+                        "components/checkbox/minus.svg",
+                    )))
+                    .on_change_in(cx, |this, next, _, cx| {
+                        this.switch_demo.md = next;
+                        cx.notify();
+                    }),
+            )
+            .child(
+                Switch::new("switch-icon-text-content")
+                    .checked(self.lg)
+                    .label(combined)
+                    .checked_content(SwitchContent::icon_text(
+                        IconSource::asset("components/checkbox/check.svg"),
+                        on,
+                    ))
+                    .unchecked_content(SwitchContent::icon_text(
+                        IconSource::asset("components/checkbox/minus.svg"),
+                        off,
+                    ))
+                    .on_change_in(cx, |this, next, _, cx| {
+                        this.switch_demo.lg = next;
+                        cx.notify();
+                    }),
+            );
+        // #endregion switch-example-content
+
+        self.example_page("switch-example-content", title, example, window, cx)
+    }
+
+    fn example_page(
+        &self,
+        id: &'static str,
+        title: &'static str,
+        example: impl IntoElement,
+        window: &mut Window,
+        cx: &mut Context<PreviewApp>,
+    ) -> AnyElement {
+        let theme = vektra::current_theme(window, cx);
+        div()
+            .id(id)
+            .size_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(16.))
+            .p(px(20.))
+            .bg(theme.semantic.background)
+            .text_color(theme.semantic.foreground)
+            .child(div().text_size(px(18.)).child(title))
+            .child(example)
+            .into_any_element()
+    }
 }
 // #endregion switch-state
 

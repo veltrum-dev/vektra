@@ -25,6 +25,7 @@ use vektra_theme::{InputSizeTokens, InputStateTokens, ResolvedTheme};
 const MAX_HISTORY_ENTRIES: usize = 100;
 const MAX_CHARS_PER_TEXT_RUN: usize = 255;
 const CARET_BLINK_INTERVAL: Duration = Duration::from_millis(500);
+const PASSWORD_MASK: char = '•';
 
 type ChangeHandler = Rc<dyn Fn(SharedString, &mut Window, &mut App) + 'static>;
 type SubmitHandler = Rc<dyn Fn(SharedString, &mut Window, &mut App) + 'static>;
@@ -51,6 +52,40 @@ impl InputVariant {
             Self::Filled => "filled",
             Self::Borderless => "borderless",
             Self::Underline => "underline",
+        }
+    }
+}
+
+/// Input 的单行文本输入语义。
+///
+/// 该类型只决定无障碍角色和 Password 的安全显示行为，不会自动添加图标、清除操作、
+/// 格式化、字符过滤或业务校验。Email、Phone 与 Url 的合法性仍由宿主应用负责。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum InputType {
+    /// 普通单行文本输入。
+    #[default]
+    Text,
+    /// 搜索条件输入。
+    Search,
+    /// 密码输入；默认按 grapheme 使用固定字符掩码显示。
+    Password,
+    /// 电子邮箱输入，仅提供语义角色，不执行自动校验。
+    Email,
+    /// 电话号码输入，仅提供语义角色，不执行格式化或字符过滤。
+    Phone,
+    /// URL 输入，仅提供语义角色，不执行自动校验。
+    Url,
+}
+
+impl InputType {
+    const fn role(self) -> Role {
+        match self {
+            Self::Text => Role::TextInput,
+            Self::Search => Role::SearchInput,
+            Self::Password => Role::PasswordInput,
+            Self::Email => Role::EmailInput,
+            Self::Phone => Role::PhoneNumberInput,
+            Self::Url => Role::UrlInput,
         }
     }
 }
@@ -114,6 +149,8 @@ struct InputRuntime {
     id: ElementId,
     placeholder: SharedString,
     variant: InputVariant,
+    input_type: InputType,
+    password_revealed: bool,
     size: ComponentSize,
     disabled: bool,
     read_only: bool,
@@ -133,6 +170,8 @@ impl Default for InputRuntime {
             id: ElementId::from("input"),
             placeholder: SharedString::default(),
             variant: InputVariant::default(),
+            input_type: InputType::default(),
+            password_revealed: false,
             size: ComponentSize::default(),
             disabled: false,
             read_only: false,
@@ -145,6 +184,71 @@ impl Default for InputRuntime {
             on_focus: None,
             on_blur: None,
         }
+    }
+}
+
+impl InputRuntime {
+    fn password_hidden(&self) -> bool {
+        self.input_type == InputType::Password && !self.password_revealed
+    }
+}
+
+#[derive(Clone)]
+struct DisplayText {
+    text: String,
+    masked: bool,
+    real_boundaries: Vec<usize>,
+    display_boundaries: Vec<usize>,
+}
+
+impl DisplayText {
+    fn new(value: &str, password_hidden: bool) -> Self {
+        let real_boundaries = value
+            .grapheme_indices(true)
+            .map(|(offset, _)| offset)
+            .chain(std::iter::once(value.len()))
+            .collect::<Vec<_>>();
+        if !password_hidden {
+            return Self {
+                text: value.to_owned(),
+                masked: false,
+                display_boundaries: real_boundaries.clone(),
+                real_boundaries,
+            };
+        }
+
+        let grapheme_count = real_boundaries.len().saturating_sub(1);
+        let text = std::iter::repeat_n(PASSWORD_MASK, grapheme_count).collect::<String>();
+        let mask_len = PASSWORD_MASK.len_utf8();
+        let display_boundaries = (0..=grapheme_count).map(|index| index * mask_len).collect();
+        Self {
+            text,
+            masked: true,
+            real_boundaries,
+            display_boundaries,
+        }
+    }
+
+    fn display_offset(&self, real_offset: usize) -> usize {
+        if !self.masked {
+            return real_offset.min(self.text.len());
+        }
+        nearest_paired_boundary(real_offset, &self.real_boundaries, &self.display_boundaries)
+    }
+
+    fn real_offset(&self, display_offset: usize) -> usize {
+        if !self.masked {
+            return display_offset.min(self.text.len());
+        }
+        nearest_paired_boundary(
+            display_offset,
+            &self.display_boundaries,
+            &self.real_boundaries,
+        )
+    }
+
+    fn display_range(&self, range: Range<usize>) -> Range<usize> {
+        self.display_offset(range.start)..self.display_offset(range.end)
     }
 }
 
@@ -165,6 +269,7 @@ pub struct InputState {
     focus_subscription: Option<Subscription>,
     blur_subscription: Option<Subscription>,
     last_layout: Option<ShapedLine>,
+    last_display: Option<DisplayText>,
     last_bounds: Option<Bounds<Pixels>>,
     scroll_x: Pixels,
     is_selecting: bool,
@@ -196,6 +301,7 @@ impl InputState {
             focus_subscription: None,
             blur_subscription: None,
             last_layout: None,
+            last_display: None,
             last_bounds: None,
             scroll_x: Pixels::ZERO,
             is_selecting: false,
@@ -263,6 +369,7 @@ impl InputState {
         self.redo_stack.clear();
         self.scroll_x = Pixels::ZERO;
         self.last_layout = None;
+        self.last_display = None;
         self.last_bounds = None;
         self.is_selecting = false;
         self.restart_caret_blink(cx);
@@ -289,7 +396,14 @@ impl InputState {
         let became_disabled = !self.runtime.disabled && runtime.disabled;
         let caret_mode_changed = self.runtime.disabled != runtime.disabled
             || self.runtime.read_only != runtime.read_only;
+        let input_type_changed = self.runtime.input_type != runtime.input_type;
+        let password_display_changed = self.runtime.password_hidden() != runtime.password_hidden();
         self.runtime = runtime;
+        if input_type_changed || password_display_changed {
+            self.last_layout = None;
+            self.last_display = None;
+            cx.notify();
+        }
         if caret_mode_changed {
             self.restart_caret_blink(cx);
         }
@@ -383,6 +497,10 @@ impl InputState {
 
     fn can_edit(&self) -> bool {
         !self.runtime.disabled && !self.runtime.read_only
+    }
+
+    fn display_text(&self) -> DisplayText {
+        DisplayText::new(&self.value, self.runtime.password_hidden())
     }
 
     fn end_composition(&mut self) {
@@ -575,17 +693,21 @@ impl InputState {
         if self.value.is_empty() {
             return 0;
         }
-        let (Some(bounds), Some(line)) = (self.last_bounds, self.last_layout.as_ref()) else {
+        let (Some(bounds), Some(line), Some(display)) = (
+            self.last_bounds,
+            self.last_layout.as_ref(),
+            self.last_display.as_ref(),
+        ) else {
             return 0;
         };
-        let index = if position.x <= bounds.left() {
+        let display_index = if position.x <= bounds.left() {
             0
         } else if position.x >= bounds.right() {
-            self.value.len()
+            display.text.len()
         } else {
             line.closest_index_for_x(position.x - bounds.left() + self.scroll_x)
         };
-        nearest_grapheme_boundary(&self.value, index)
+        display.real_offset(display_index)
     }
 
     fn select_word_at(&mut self, offset: usize, cx: &mut Context<Self>) {
@@ -647,9 +769,13 @@ impl InputState {
             stop_key_event(window, cx);
             return;
         }
-        if secondary && key == "x" && self.can_edit() {
-            self.cut_selection(window, cx);
-            stop_key_event(window, cx);
+        if secondary && key == "x" {
+            if self.runtime.password_hidden() {
+                stop_key_event(window, cx);
+            } else if self.can_edit() {
+                self.cut_selection(window, cx);
+                stop_key_event(window, cx);
+            }
             return;
         }
         if secondary && key == "v" && self.can_edit() {
@@ -783,7 +909,7 @@ impl InputState {
     }
 
     fn copy_selection(&self, cx: &mut Context<Self>) {
-        if !self.selection.is_empty() {
+        if !self.runtime.password_hidden() && !self.selection.is_empty() {
             cx.write_to_clipboard(ClipboardItem::new_string(
                 self.value[self.selection.clone()].to_owned(),
             ));
@@ -791,7 +917,7 @@ impl InputState {
     }
 
     fn cut_selection(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.selection.is_empty() || !self.can_edit() {
+        if self.runtime.password_hidden() || self.selection.is_empty() || !self.can_edit() {
             return;
         }
         self.copy_selection(cx);
@@ -811,16 +937,23 @@ impl InputState {
         cx: &mut Context<Self>,
     ) -> (String, impl FnOnce(&mut A11ySubtreeBuilder) + 'static) {
         let state = window.is_a11y_active().then(|| {
-            let text = self.value.clone();
-            let selection = self.selection.clone();
+            let display = self.display_text();
+            let selection = display.display_range(self.selection.clone());
+            let text = display.text;
             let selection_reversed = self.selection_reversed;
             let focused = self.focus_handle.is_focused(window);
+            let password_hidden = self.runtime.password_hidden();
+            let value_state_key = if password_hidden {
+                "input-a11y-password-value"
+            } else {
+                "input-a11y-value"
+            };
             let value_state =
-                window.use_keyed_state((self.runtime.id.clone(), "input-a11y-value"), cx, {
+                window.use_keyed_state((self.runtime.id.clone(), value_state_key), cx, {
                     let text = text.clone();
                     move |_, _| text
                 });
-            if !focused && *value_state.read(cx) != text {
+            if (password_hidden || !focused) && *value_state.read(cx) != text {
                 *value_state.as_mut(cx) = text.clone();
             }
             let frozen_value = value_state.read(cx).clone();
@@ -1028,7 +1161,8 @@ impl EntityInputHandler for InputState {
         _: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
         let line = self.last_layout.as_ref()?;
-        let range = range_from_utf16(&self.value, range_utf16);
+        let display = self.last_display.as_ref()?;
+        let range = display.display_range(range_from_utf16(&self.value, range_utf16));
         Some(Bounds::from_corners(
             point(
                 bounds.left() + line.x_for_index(range.start) - self.scroll_x,
@@ -1142,7 +1276,7 @@ impl Render for InputState {
         div()
             .id("editor")
             .debug_selector(|| "vektra-input-editor".into())
-            .role(Role::TextInput)
+            .role(self.runtime.input_type.role())
             .track_focus(&focus_handle)
             .w_full()
             .h_full()
@@ -1248,19 +1382,24 @@ impl Element for InputTextElement {
         window: &mut Window,
         cx: &mut App,
     ) -> Self::PrepaintState {
-        let (content, selection, cursor, marked_range, old_scroll, focused, disabled, read_only) = {
+        let (display, selection, cursor, marked_range, old_scroll, focused, disabled, read_only) = {
             let state = self.state.read(cx);
+            let display = state.display_text();
             (
-                SharedString::from(state.value.clone()),
-                state.selection.clone(),
-                state.cursor_offset(),
-                state.marked_range.clone(),
+                display.clone(),
+                display.display_range(state.selection.clone()),
+                display.display_offset(state.cursor_offset()),
+                state
+                    .marked_range
+                    .clone()
+                    .map(|range| display.display_range(range)),
                 state.scroll_x,
                 state.focus_handle.is_focused(window),
                 state.runtime.disabled,
                 state.runtime.read_only,
             )
         };
+        let content = SharedString::from(display.text.clone());
         let is_placeholder = content.is_empty();
         let display_text = if is_placeholder {
             self.placeholder.clone()
@@ -1319,6 +1458,7 @@ impl Element for InputTextElement {
         self.state.update(cx, |state, _| {
             state.scroll_x = scroll_x;
             state.last_layout = Some(line.clone());
+            state.last_display = Some(display);
             state.last_bounds = Some(bounds);
         });
 
@@ -1414,6 +1554,8 @@ pub struct Input {
     state: Entity<InputState>,
     placeholder: SharedString,
     variant: InputVariant,
+    input_type: InputType,
+    password_revealed: bool,
     size: Option<ComponentSize>,
     disabled: bool,
     read_only: bool,
@@ -1439,6 +1581,8 @@ impl Input {
             state,
             placeholder: SharedString::default(),
             variant: InputVariant::default(),
+            input_type: InputType::default(),
+            password_revealed: false,
             size: None,
             disabled: false,
             read_only: false,
@@ -1471,6 +1615,25 @@ impl Input {
         self
     }
 
+    /// 设置单行文本输入语义。
+    ///
+    /// Search、Email、Phone 与 Url 只改变无障碍角色；Password 还会在未显式显示时
+    /// 启用安全掩码与隐藏态剪贴板限制。该 builder 不添加图标、校验或格式化。
+    pub fn input_type(mut self, input_type: InputType) -> Self {
+        self.input_type = input_type;
+        self
+    }
+
+    /// 设置受控的 Password 明文显示状态。
+    ///
+    /// 默认是 `false`。该值只在 [`InputType::Password`] 下生效；切换不会修改真实值、
+    /// 选区、IME、撤销历史，也不会发送 [`InputEvent::Changed`]。其他输入类型会忽略
+    /// 该配置。
+    pub fn password_revealed(mut self, revealed: bool) -> Self {
+        self.password_revealed = revealed;
+        self
+    }
+
     /// 设置 Vektra 共享语义尺寸。
     pub fn size(mut self, size: ComponentSize) -> Self {
         self.size = Some(size);
@@ -1488,8 +1651,9 @@ impl Input {
 
     /// 设置只读状态。
     ///
-    /// 只读 Input 仍可聚焦、选择和复制，但拒绝修改操作与 SetValue。任意槽位子组件的
-    /// 只读语义仍由调用方负责。
+    /// 只读 Input 仍可聚焦和选择；普通类型允许复制，隐藏态 Password 仍会阻止复制与
+    /// 剪切。所有类型都会拒绝修改操作与 SetValue。任意槽位子组件的只读语义仍由调用方
+    /// 负责。
     pub fn read_only(mut self, read_only: bool) -> Self {
         self.read_only = read_only;
         self
@@ -1674,6 +1838,8 @@ impl RenderOnce for Input {
             state,
             placeholder,
             variant,
+            input_type,
+            password_revealed,
             size: requested_size,
             disabled,
             read_only,
@@ -1695,6 +1861,8 @@ impl RenderOnce for Input {
             id: id.clone(),
             placeholder,
             variant,
+            input_type,
+            password_revealed,
             size: resolved_size,
             disabled,
             read_only,
@@ -2188,6 +2356,25 @@ fn next_grapheme_boundary(text: &str, offset: usize) -> usize {
         .map(|(index, _)| index)
         .find(|index| *index > offset)
         .unwrap_or(text.len())
+}
+
+fn nearest_paired_boundary(offset: usize, from: &[usize], to: &[usize]) -> usize {
+    debug_assert_eq!(from.len(), to.len());
+    debug_assert!(!from.is_empty());
+    let index = match from.binary_search(&offset) {
+        Ok(index) => index,
+        Err(0) => 0,
+        Err(index) if index == from.len() => from.len() - 1,
+        Err(index) => {
+            let before = index - 1;
+            if offset - from[before] <= from[index] - offset {
+                before
+            } else {
+                index
+            }
+        }
+    };
+    to[index]
 }
 
 fn previous_word_boundary(text: &str, offset: usize) -> usize {

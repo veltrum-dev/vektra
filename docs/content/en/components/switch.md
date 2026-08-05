@@ -12,6 +12,14 @@
 
 `.checked(...)` is the current controlled value, not an initial value. One valid activation passes `!checked` to `on_change`; the host updates its state, calls `cx.notify()`, and supplies the new value during the next render. Callbacks are synchronous local callbacks, not a runtime event bus; the host starts and owns asynchronous work. `.loading(...)` is also controlled and neither starts a task nor changes checked on its own.
 
+## Common states
+
+<VektraExample demo="switch/states" title="Switch enabled and disabled" :height="260">
+
+<<< ../../../preview/src/demos/switch.rs#switch-example-states{rust}
+
+</VektraExample>
+
 ## Anatomy
 
 ```text
@@ -75,6 +83,20 @@ Checked state and the focus lifecycle are independent. Renders, builder updates,
 <VektraExample demo="switch/loading" title="Switch controlled loading" :height="280">
 
 <<< ../../../preview/src/demos/switch.rs#switch-example-loading{rust}
+
+</VektraExample>
+
+## Sizes and state content
+
+<VektraExample demo="switch/sizes" title="Switch semantic sizes" :height="260">
+
+<<< ../../../preview/src/demos/switch.rs#switch-example-sizes{rust}
+
+</VektraExample>
+
+<VektraExample demo="switch/content" title="Switch text and icon content" :height="340">
+
+<<< ../../../preview/src/demos/switch.rs#switch-example-content{rust}
 
 </VektraExample>
 

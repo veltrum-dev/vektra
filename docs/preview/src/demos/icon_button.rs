@@ -83,6 +83,74 @@ pub(super) fn render_sizes(
     example_page("icon-button-example-sizes", title, example, window, cx)
 }
 
+pub(super) fn render_states(
+    language: PreviewLang,
+    focus_status: gpui::SharedString,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let (title, normal, selected, disabled) = match language {
+        PreviewLang::ZhCn => ("选中、焦点与禁用", "普通设置", "已固定设置", "禁用设置"),
+        PreviewLang::EnUs => (
+            "Selected, focus, and disabled",
+            "Settings",
+            "Pinned settings",
+            "Disabled settings",
+        ),
+    };
+    // #region icon-button-example-states
+    let example = div()
+        .flex()
+        .flex_col()
+        .items_center()
+        .gap(px(10.))
+        .child(
+            div().flex().gap(px(8.)).children([
+                IconButton::new("icon-state-normal", IconName::Settings)
+                    .aria_label(normal)
+                    .on_focus_in(cx, move |this, _, cx| {
+                        this.record_focus(normal, true, cx);
+                    })
+                    .on_blur_in(cx, move |this, _, cx| {
+                        this.record_focus(normal, false, cx);
+                    }),
+                IconButton::new("icon-state-selected", IconName::Settings)
+                    .aria_label(selected)
+                    .selected(true),
+                IconButton::new("icon-state-disabled", IconName::Settings)
+                    .aria_label(disabled)
+                    .disabled(true),
+            ]),
+        )
+        .child(focus_status);
+    // #endregion icon-button-example-states
+
+    example_page("icon-button-example-states", title, example, window, cx)
+}
+
+pub(super) fn render_tooltip(
+    language: PreviewLang,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let (title, label, description) = match language {
+        PreviewLang::ZhCn => ("Tooltip 与可访问名称", "打开设置", "更改应用偏好"),
+        PreviewLang::EnUs => (
+            "Tooltip and accessible name",
+            "Open settings",
+            "Change application preferences",
+        ),
+    };
+    // #region icon-button-example-tooltip
+    let example = IconButton::new("icon-tooltip", IconName::Settings)
+        .aria_label(label)
+        .aria_description(description)
+        .tooltip(label);
+    // #endregion icon-button-example-tooltip
+
+    example_page("icon-button-example-tooltip", title, example, window, cx)
+}
+
 fn example_page(
     id: &'static str,
     title: &'static str,

@@ -63,6 +63,18 @@ fn defaults_are_unresolved_until_render() {
     assert_eq!(button.icon_color_value(), None);
     assert_eq!(button.resolved_variant(), IconButtonVariant::Primary);
     assert!(!button.is_disabled());
+    assert_eq!(button.selected_state(), None);
+}
+
+#[test]
+fn selected_builder_preserves_controlled_toggle_state() {
+    let selected =
+        IconButton::new("selected", IconSource::asset("icons/settings.svg")).selected(true);
+    let unselected =
+        IconButton::new("unselected", IconSource::asset("icons/settings.svg")).selected(false);
+
+    assert_eq!(selected.selected_state(), Some(true));
+    assert_eq!(unselected.selected_state(), Some(false));
 }
 
 #[test]
