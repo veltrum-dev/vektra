@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://veltrum.dev/schemas/vektra-theme-profile.phase1.json",
   "title": "Vektra Theme Profile Phase 1",
-  "description": "Documents the semantic, Icon, and Button token surface required by Vektra phase 1 after DTCG token resolution.",
+  "description": "Documents Vektra's required base tokens and optional all-or-none component extensions after DTCG token resolution.",
   "type": "object",
   "required": ["semantic", "icon", "button"],
   "properties": {
@@ -57,6 +57,56 @@
           "type": "object"
         }
       }
+    },
+    "input": {
+      "type": "object",
+      "description": "Optional Input extension. When present it must contain the complete common, variant/state, and size matrices; themes that omit it use semantic/foundation fallbacks.",
+      "required": ["border-width", "focus-width", "caret-width", "variant", "size"],
+      "properties": {
+        "variant": {
+          "type": "object",
+          "required": ["outline", "filled", "borderless", "underline"],
+          "properties": {
+            "outline": { "$ref": "#/$defs/inputVariant" },
+            "filled": { "$ref": "#/$defs/inputVariant" },
+            "borderless": { "$ref": "#/$defs/inputVariant" },
+            "underline": { "$ref": "#/$defs/inputVariant" }
+          }
+        },
+        "size": {
+          "type": "object",
+          "required": ["xs", "sm", "md", "lg"],
+          "properties": {
+            "xs": { "$ref": "#/$defs/inputSize" },
+            "sm": { "$ref": "#/$defs/inputSize" },
+            "md": { "$ref": "#/$defs/inputSize" },
+            "lg": { "$ref": "#/$defs/inputSize" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "inputVariant": {
+      "type": "object",
+      "required": ["normal", "hover", "focus-visible", "invalid", "invalid-focus-visible", "read-only", "disabled"],
+      "properties": {
+        "normal": { "$ref": "#/$defs/inputState" },
+        "hover": { "$ref": "#/$defs/inputState" },
+        "focus-visible": { "$ref": "#/$defs/inputState" },
+        "invalid": { "$ref": "#/$defs/inputState" },
+        "invalid-focus-visible": { "$ref": "#/$defs/inputState" },
+        "read-only": { "$ref": "#/$defs/inputState" },
+        "disabled": { "$ref": "#/$defs/inputState" }
+      }
+    },
+    "inputState": {
+      "type": "object",
+      "required": ["background", "foreground", "placeholder", "border", "caret", "selection", "affix", "status"]
+    },
+    "inputSize": {
+      "type": "object",
+      "required": ["height", "padding-x", "font-size", "line-height", "radius", "slot-size", "icon-size", "status-size", "gap"]
     }
   }
 }

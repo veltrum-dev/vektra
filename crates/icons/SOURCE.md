@@ -1,5 +1,16 @@
 # Vektra Icon Sources
 
+## Vektra Search Icon
+
+- Source project: Vektra
+- Design: Original 16×16 outlined magnifying-glass icon
+- Stroke: `currentColor`, 1.2px, round caps and joins
+- Created on: 2026-08-05
+- Vektra file path: `assets/icons/search.svg`
+
+This icon was designed directly for Vektra's internal 12×12 optical boundary and is not copied
+from a third-party icon set.
+
 ## Lucide Settings Icon
 
 - Source project: Lucide

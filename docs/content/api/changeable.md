@@ -13,6 +13,6 @@ pub trait Changeable<T>: Sized {
 }
 ```
 
-Checkbox 与 Switch 实现 `Changeable<bool>`，RadioGroup 实现 `Changeable<T>`。变化可能来自鼠标、Space、方向键、Home 或 End，因此回调不携带 `ClickEvent`。宿主可以立即采用下一值，也可以先完成接口审批，再把最终权威值传回组件。
+Checkbox 与 Switch 实现 `Changeable<bool>`，RadioGroup 实现 `Changeable<T>`，Input 实现 `Changeable<SharedString>`。Input 的 `on_change` 只表示用户编辑实际改变了值；程序化 `InputState::set_value`、`clear` 和 `reset` 不调用它。变化可能来自键盘、鼠标或平台文本输入协议，因此回调不携带 `ClickEvent`。
 
 每个组件保留同名固有 builder，并与 trait 实现委托到同一路径。

@@ -25,7 +25,7 @@ pub trait Focusable: Sized {
 }
 ```
 
-Implementors: [`Checkbox`](/en/components/checkbox), [`Switch`](/en/components/switch), [`Button`](/en/components/button), and [`IconButton`](/en/components/icon-button). All expose inherent forwarding methods.
+Implementors: [`Checkbox`](/en/components/checkbox), [`Switch`](/en/components/switch), [`Input`](/en/components/input), [`Button`](/en/components/button), and [`IconButton`](/en/components/icon-button). All expose inherent forwarding methods.
 
 <<< ../../../preview/src/demos/button.rs#button-focus{rust}
 

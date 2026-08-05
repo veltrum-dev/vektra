@@ -36,7 +36,7 @@ fn button_showcase_is_selected_by_stable_id() {
 }
 
 #[test]
-fn checkbox_radio_switch_icon_button_and_tooltip_are_selected_by_stable_ids() {
+fn checkbox_radio_switch_input_icon_button_and_tooltip_are_selected_by_stable_ids() {
     assert_eq!(
         parse_demo_query("?demo=radio/basic"),
         DemoSelection::RadioBasic
@@ -54,9 +54,110 @@ fn checkbox_radio_switch_icon_button_and_tooltip_are_selected_by_stable_ids() {
         DemoSelection::IconButtonBasic
     );
     assert_eq!(
+        parse_demo_query("?demo=input/basic"),
+        DemoSelection::InputBasic
+    );
+    assert_eq!(
         parse_demo_query("?demo=tooltip/basic"),
         DemoSelection::TooltipBasic
     );
+}
+
+#[test]
+fn input_demo_covers_search_actions_variants_sizes_slots_clear_and_states() {
+    let source = include_str!("../../src/demos/input.rs");
+
+    for variant in ["Outline", "Filled", "Borderless", "Underline"] {
+        assert!(source.contains(&format!("InputVariant::{variant}")));
+    }
+    for size in ["Xs", "Sm", "Md", "Lg"] {
+        assert!(source.contains(&format!("ComponentSize::{size}")));
+    }
+    assert!(source.contains(".prefix("));
+    assert!(source.contains(".suffix("));
+    assert!(source.contains(".attached_suffix("));
+    assert!(source.contains(".clearable("));
+    assert!(source.contains(".invalid(true)"));
+    assert!(source.contains(".read_only(true)"));
+    assert!(source.contains(".disabled(true)"));
+    assert!(source.contains("InputClear::new"));
+    assert!(source.contains("Tooltip::new"));
+    assert!(source.contains("Input::new(\"search-icon-only\""));
+    assert!(source.contains("IconButton::new(\"submit-search-icon\", IconName::Search)"));
+    assert!(source.contains("Input::new(\"search-text-only\""));
+    assert!(source.contains("Button::new(\"submit-search-text\")"));
+    assert!(source.contains("Input::new(\"search-icon-text\""));
+    assert!(source.contains("\"search-attached-icon-text\""));
+    assert!(source.contains("Button::new(\"submit-search-attached-icon-text\")"));
+    assert!(source.contains("\"search-attached-icon-only\""));
+    assert!(source.contains("IconButton::new(\"submit-search-attached-icon\", IconName::Search)"));
+    assert!(source.contains(".start_icon(IconName::Search)"));
+    assert!(source.contains("中文 IME"));
+
+    let basic = source
+        .split("// #region input-basic")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion input-basic")
+        .next()
+        .unwrap();
+    assert!(basic.contains(".attached_suffix("));
+    assert!(basic.contains("Button::new(\"input-submit-search\")"));
+    assert!(basic.contains(".size(ComponentSize::Md)"));
+
+    let text_search = source
+        .split("Input::new(\"search-text-only\"")
+        .nth(1)
+        .unwrap()
+        .split("Input::new(\"search-icon-text\"")
+        .next()
+        .unwrap();
+    assert!(text_search.contains(".attached_suffix("));
+    assert!(text_search.contains(".size(ComponentSize::Md)"));
+
+    let icon_search = source
+        .split("Input::new(\"search-icon-only\"")
+        .nth(1)
+        .unwrap()
+        .split("Input::new(\"search-text-only\"")
+        .next()
+        .unwrap();
+    assert!(icon_search.contains(".suffix("));
+    assert!(!icon_search.contains(".attached_suffix("));
+
+    let icon_text_search = source
+        .split("Input::new(\"search-icon-text\"")
+        .nth(1)
+        .unwrap()
+        .split("\"search-attached-icon-text\"")
+        .next()
+        .unwrap();
+    assert!(icon_text_search.contains(".suffix("));
+    assert!(!icon_text_search.contains(".attached_suffix("));
+
+    let attached_icon_text_search = source
+        .split("\"search-attached-icon-text\"")
+        .nth(1)
+        .unwrap()
+        .split("\"search-attached-icon-only\"")
+        .next()
+        .unwrap();
+    assert!(attached_icon_text_search.contains(".attached_suffix("));
+    assert!(attached_icon_text_search.contains(".start_icon(IconName::Search)"));
+    assert!(attached_icon_text_search.contains(".size(ComponentSize::Md)"));
+
+    let attached_icon_search = source
+        .split("\"search-attached-icon-only\"")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion input-search-actions")
+        .next()
+        .unwrap();
+    assert!(attached_icon_search.contains(".attached_suffix("));
+    assert!(attached_icon_search.contains("IconName::Search"));
+    assert!(attached_icon_search.contains(".size(ComponentSize::Md)"));
+    assert!(attached_icon_search.contains(".aria_label(search_label)"));
+    assert!(attached_icon_search.contains(".tooltip(search_label)"));
 }
 
 #[test]

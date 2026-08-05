@@ -18,6 +18,12 @@ GPUI's application-level context. Standard builder callbacks receive `&mut App`.
 
 The update context for Entity `T`. `*_in` methods use `Context::listener` to bind standard callbacks to the host Entity and retain GPUI's weak-reference/no-op behavior after destruction. [Pinned source](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/app/context.rs#L20).
 
+## `Entity<T>` and `SharedString`
+
+Input requires the caller to own an `Entity<InputState>`, keeping editing state stable across renders. `SharedString` is Input's public value/event string type, while `InputState::value()` exposes content as `&str`.
+
+Internally, Input implements the pinned revision's `EntityInputHandler` and connects it through `ElementInputHandler` for platform text input, IME, UTF-16 selection, and range bounds. These are implementation details and require no global handler registration by the host.
+
 This Entity-bound example is compiled into the real WASM preview:
 
 <<< ../../../preview/src/demos/checkbox.rs#checkbox-focus{rust}

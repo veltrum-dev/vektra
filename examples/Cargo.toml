@@ -39,3 +39,7 @@ path = "icon_button/src/main.rs"
 [[example]]
 name = "tooltip"
 path = "tooltip/src/main.rs"
+
+[[example]]
+name = "input"
+path = "input/src/main.rs"

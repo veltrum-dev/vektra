@@ -35,6 +35,17 @@ const BUTTON_VARIANTS: &[&str] = &[
 
 const BUTTON_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
 const BUTTON_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
+const INPUT_VARIANTS: &[&str] = &["outline", "filled", "borderless", "underline"];
+const INPUT_STATES: &[&str] = &[
+    "normal",
+    "hover",
+    "focus-visible",
+    "invalid",
+    "invalid-focus-visible",
+    "read-only",
+    "disabled",
+];
+const INPUT_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
 const CHECKBOX_VISUAL_STATES: &[&str] = &["unchecked", "checked", "indeterminate"];
 const CHECKBOX_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
 const CHECKBOX_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
@@ -111,6 +122,62 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
             "content-gap",
         ] {
             tokens.required(&format!("button.size.{size}.{field}"))?;
+        }
+    }
+
+    let input_state_fields = [
+        "background",
+        "foreground",
+        "placeholder",
+        "border",
+        "caret",
+        "selection",
+        "affix",
+        "status",
+    ];
+    let has_input_state_extension = INPUT_VARIANTS.iter().any(|variant| {
+        INPUT_STATES.iter().any(|state| {
+            input_state_fields.iter().any(|field| {
+                tokens
+                    .get(&format!("input.variant.{variant}.{state}.{field}"))
+                    .is_some()
+            })
+        })
+    });
+    if has_input_state_extension {
+        tokens.required("input.border-width")?;
+        tokens.required("input.focus-width")?;
+        tokens.required("input.caret-width")?;
+        for variant in INPUT_VARIANTS {
+            for state in INPUT_STATES {
+                for field in input_state_fields {
+                    tokens.required(&format!("input.variant.{variant}.{state}.{field}"))?;
+                }
+            }
+        }
+    }
+
+    let input_size_fields = [
+        "height",
+        "padding-x",
+        "font-size",
+        "line-height",
+        "radius",
+        "slot-size",
+        "icon-size",
+        "status-size",
+        "gap",
+    ];
+    let has_input_size_extension = INPUT_SIZES.iter().any(|size| {
+        input_size_fields
+            .iter()
+            .any(|field| tokens.get(&format!("input.size.{size}.{field}")).is_some())
+    });
+    if has_input_size_extension {
+        for size in INPUT_SIZES {
+            for field in input_size_fields {
+                tokens.required(&format!("input.size.{size}.{field}"))?;
+            }
         }
     }
 

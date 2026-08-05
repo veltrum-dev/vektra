@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 gpui = { workspace = true }
 unicode-script = { workspace = true }
+unicode-segmentation = { workspace = true }
 vektra-assets = { workspace = true }
 vektra-icons = { workspace = true, optional = true }
 vektra-macros = { workspace = true }

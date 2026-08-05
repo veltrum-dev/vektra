@@ -17,6 +17,7 @@ const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const DARK: &str = "themes/default/dark.json";
 const BUTTON: &str = "themes/default/button.json";
+const INPUT: &str = "themes/default/input.json";
 const CHECKBOX: &str = "themes/default/checkbox.json";
 const RADIO: &str = "themes/default/radio.json";
 const SWITCH: &str = "themes/default/switch.json";
@@ -33,6 +34,7 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
         ResolvedThemeMode::Dark => DARK,
     })?;
     let button = load_builtin_text(BUTTON)?;
+    let input = load_builtin_text(INPUT)?;
     let checkbox = load_builtin_text(CHECKBOX)?;
     let radio = load_builtin_text(RADIO)?;
     let switch = load_builtin_text(SWITCH)?;
@@ -42,6 +44,7 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
         &foundation,
         &mode_source,
         &button,
+        &input,
         &checkbox,
         &radio,
         &switch,
@@ -146,6 +149,20 @@ mod tests {
             }
             for size in ["xs", "sm", "md", "lg"] {
                 theme.button_size(size).unwrap();
+                theme.input_size(size).unwrap();
+            }
+            for variant in ["outline", "filled", "borderless", "underline"] {
+                for state in [
+                    "normal",
+                    "hover",
+                    "focus-visible",
+                    "invalid",
+                    "invalid-focus-visible",
+                    "read-only",
+                    "disabled",
+                ] {
+                    theme.input_state(variant, state).unwrap();
+                }
             }
             for visual_state in ["unchecked", "checked", "indeterminate"] {
                 for state in ["normal", "hover", "pressed", "focus-visible", "disabled"] {
@@ -219,7 +236,7 @@ mod tests {
     #[test]
     fn default_theme_resources_are_loaded_from_assets_crate() {
         for path in [
-            FOUNDATION, LIGHT, DARK, BUTTON, CHECKBOX, RADIO, SWITCH, TOOLTIP,
+            FOUNDATION, LIGHT, DARK, BUTTON, INPUT, CHECKBOX, RADIO, SWITCH, TOOLTIP,
         ] {
             let text = load_builtin_text(path).unwrap();
             assert!(!text.is_empty(), "`{path}` 应从 vektra-assets 读取");

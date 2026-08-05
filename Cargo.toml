@@ -28,6 +28,7 @@ syn = { version = "2", features = ["derive", "parsing", "printing", "proc-macro"
 thiserror = "2"
 trybuild = "1"
 unicode-script = "0.5"
+unicode-segmentation = "1.13.3"
 vektra-assets = { path = "crates/assets" }
 vektra-icons = { path = "crates/icons" }
 vektra-macros = { path = "crates/vektra-macros" }

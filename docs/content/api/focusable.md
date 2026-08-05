@@ -28,7 +28,7 @@ pub trait Focusable: Sized {
 }
 ```
 
-实现组件：[`Checkbox`](/components/checkbox)、[`Switch`](/components/switch)、[`Button`](/components/button)、[`IconButton`](/components/icon-button)。这些组件也提供同名 inherent forwarding 方法。
+实现组件：[`Checkbox`](/components/checkbox)、[`Switch`](/components/switch)、[`Input`](/components/input)、[`Button`](/components/button)、[`IconButton`](/components/icon-button)。这些组件也提供同名 inherent forwarding 方法。
 
 <<< ../../preview/src/demos/button.rs#button-focus{rust}
 

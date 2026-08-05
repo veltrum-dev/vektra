@@ -18,6 +18,12 @@ GPUI 应用级上下文。普通 builder callback 接收 `&mut App`，适合不�
 
 Entity `T` 的更新上下文。`*_in` 便利方法通过 `Context::listener` 把标准 GPUI 回调绑定到宿主 Entity；Entity 销毁后保持弱引用/no-op 语义。[查看锁定源码](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/app/context.rs#L20)。
 
+## `Entity<T>` 与 `SharedString`
+
+Input 要求调用方持有 `Entity<InputState>`，使编辑状态跨 render 稳定存在。`SharedString` 是 Input 的公开 value/event 字符串类型；`InputState::value()` 仍以 `&str` 形式读取内容。
+
+Input 内部实现锁定 revision 的 `EntityInputHandler`，并通过 `ElementInputHandler` 接入平台文本输入、IME、UTF-16 selection 和范围坐标。这些是实现细节，不要求宿主注册全局处理器。
+
 可编译的 Entity 绑定示例来自实际 WASM preview：
 
 <<< ../../preview/src/demos/checkbox.rs#checkbox-focus{rust}

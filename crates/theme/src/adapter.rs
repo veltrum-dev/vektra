@@ -83,6 +83,61 @@ pub struct ButtonTokens {
     pub focus_width: Pixels,
 }
 
+/// Input 某个 variant/state 的 GPUI 样式 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct InputStateTokens {
+    /// 背景色。
+    pub background: Hsla,
+    /// 输入文字色。
+    pub foreground: Hsla,
+    /// placeholder 文字色。
+    pub placeholder: Hsla,
+    /// 边框或底线颜色。
+    pub border: Hsla,
+    /// 光标颜色。
+    pub caret: Hsla,
+    /// 选区背景色。
+    pub selection: Hsla,
+    /// prefix、suffix 等附属内容的默认前景色。
+    pub affix: Hsla,
+    /// invalid 状态标记颜色。
+    pub status: Hsla,
+}
+
+/// Input 某个 size 的 GPUI 尺寸 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct InputSizeTokens {
+    /// 控件高度。
+    pub height: Pixels,
+    /// 水平内边距。
+    pub padding_x: Pixels,
+    /// 输入文字字号。
+    pub font_size: Pixels,
+    /// 输入文字行高。
+    pub line_height: Pixels,
+    /// 外壳圆角。
+    pub radius: Pixels,
+    /// 推荐的紧凑槽位尺寸。
+    pub slot_size: Pixels,
+    /// 内置清除图标尺寸。
+    pub icon_size: Pixels,
+    /// invalid 状态图标尺寸。
+    pub status_size: Pixels,
+    /// 相邻内容间距。
+    pub gap: Pixels,
+}
+
+/// Input 组件所需的公共 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct InputTokens {
+    /// 普通边框或底线宽度。
+    pub border_width: Pixels,
+    /// focus-visible 边框或底线宽度。
+    pub focus_width: Pixels,
+    /// 文本光标宽度。
+    pub caret_width: Pixels,
+}
+
 /// Checkbox 某个 state 的 GPUI 样式 token。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CheckboxStateTokens {
@@ -319,6 +374,8 @@ pub struct ResolvedTheme {
     pub icon: IconTokens,
     /// Button 公共 token。
     pub button: ButtonTokens,
+    /// Input 公共 token。
+    pub input: InputTokens,
     /// Checkbox 公共 token。
     pub checkbox: CheckboxTokens,
     /// Radio 公共 token。
@@ -365,6 +422,23 @@ impl ResolvedTheme {
             button: ButtonTokens {
                 border_width: dimension(&tokens, "button.border-width")?,
                 focus_width: dimension(&tokens, "button.focus-width")?,
+            },
+            input: InputTokens {
+                border_width: optional_dimension(
+                    &tokens,
+                    "input.border-width",
+                    "foundation.border.width",
+                )?,
+                focus_width: optional_dimension(
+                    &tokens,
+                    "input.focus-width",
+                    "foundation.border.focus",
+                )?,
+                caret_width: if tokens.get("input.caret-width").is_some() {
+                    dimension(&tokens, "input.caret-width")?
+                } else {
+                    gpui::px(1.)
+                },
             },
             checkbox: CheckboxTokens {
                 border_width: optional_dimension(
@@ -525,6 +599,103 @@ impl ResolvedTheme {
             radius: dimension(&self.tokens, &format!("{prefix}.radius"))?,
             icon_size: dimension(&self.tokens, &format!("{prefix}.icon-size"))?,
             content_gap: dimension(&self.tokens, &format!("{prefix}.content-gap"))?,
+        })
+    }
+
+    /// 读取 Input variant/state 样式 token。
+    ///
+    /// 旧主题完全不含 Input 扩展时，从既有 semantic token 安全回退。
+    pub fn input_state(&self, variant: &str, state: &str) -> Result<InputStateTokens, ThemeError> {
+        let prefix = format!("input.variant.{variant}.{state}");
+        Ok(InputStateTokens {
+            background: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.background"),
+                input_background_fallback(self.semantic, variant, state),
+            )?,
+            foreground: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.foreground"),
+                input_foreground_fallback(self.semantic, state),
+            )?,
+            placeholder: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.placeholder"),
+                input_placeholder_fallback(self.semantic, state),
+            )?,
+            border: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.border"),
+                input_border_fallback(self.semantic, variant, state),
+            )?,
+            caret: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.caret"),
+                input_caret_fallback(self.semantic, state),
+            )?,
+            selection: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.selection"),
+                input_selection_fallback(self.semantic, state),
+            )?,
+            affix: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.affix"),
+                input_affix_fallback(self.semantic, state),
+            )?,
+            status: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.status"),
+                input_status_fallback(self.semantic, state),
+            )?,
+        })
+    }
+
+    /// 读取 Input size token。
+    ///
+    /// 旧主题缺少整个 Input 扩展时使用与 Button 对齐的安全尺寸回退。
+    pub fn input_size(&self, size: &str) -> Result<InputSizeTokens, ThemeError> {
+        let prefix = format!("input.size.{size}");
+        let (height, padding_x, line_height, slot_size, icon_size, status_size, gap) =
+            input_size_fallback(size);
+        Ok(InputSizeTokens {
+            height: optional_dimension_value(&self.tokens, &format!("{prefix}.height"), height)?,
+            padding_x: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.padding-x"),
+                padding_x,
+            )?,
+            font_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.font-size"),
+                input_font_size_fallback(size),
+            )?,
+            line_height: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.line-height"),
+                line_height,
+            )?,
+            radius: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.radius"),
+                input_radius_fallback(size),
+            )?,
+            slot_size: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.slot-size"),
+                slot_size,
+            )?,
+            icon_size: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.icon-size"),
+                icon_size,
+            )?,
+            status_size: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.status-size"),
+                status_size,
+            )?,
+            gap: optional_dimension_value(&self.tokens, &format!("{prefix}.gap"), gap)?,
         })
     }
 
@@ -940,6 +1111,203 @@ fn optional_dimension(
             fallback
         },
     )
+}
+
+fn optional_dimension_value(
+    tokens: &ResolvedTokens,
+    path: &str,
+    fallback: Pixels,
+) -> Result<Pixels, ThemeError> {
+    if tokens.get(path).is_some() {
+        dimension(tokens, path)
+    } else {
+        Ok(fallback)
+    }
+}
+
+fn optional_color_value(
+    tokens: &ResolvedTokens,
+    path: &str,
+    fallback: Hsla,
+) -> Result<Hsla, ThemeError> {
+    if tokens.get(path).is_some() {
+        color(tokens, path)
+    } else {
+        Ok(fallback)
+    }
+}
+
+fn input_background_fallback(semantic: SemanticColors, variant: &str, state: &str) -> Hsla {
+    if state == "disabled" {
+        return if matches!(variant, "borderless" | "underline") {
+            gpui::transparent_black()
+        } else {
+            semantic.disabled_background
+        };
+    }
+    if state == "read-only" {
+        return semantic.surface;
+    }
+    match variant {
+        "filled" => {
+            if state == "hover" {
+                semantic.accent
+            } else {
+                semantic.muted
+            }
+        }
+        "borderless" if matches!(state, "hover" | "invalid" | "invalid-focus-visible") => {
+            semantic.muted
+        }
+        "borderless" | "underline" => gpui::transparent_black(),
+        _ => semantic.background,
+    }
+}
+
+fn input_foreground_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    if state == "disabled" {
+        semantic.disabled_foreground
+    } else {
+        semantic.foreground
+    }
+}
+
+fn input_placeholder_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    if state == "disabled" {
+        semantic.disabled_foreground
+    } else {
+        semantic.on_muted
+    }
+}
+
+fn input_border_fallback(semantic: SemanticColors, variant: &str, state: &str) -> Hsla {
+    if state == "disabled" {
+        return if variant == "borderless" {
+            gpui::transparent_black()
+        } else {
+            semantic.disabled_border
+        };
+    }
+    if state == "invalid" {
+        return if variant == "borderless" {
+            gpui::transparent_black()
+        } else {
+            semantic.destructive
+        };
+    }
+    if matches!(state, "focus-visible" | "invalid-focus-visible") {
+        return semantic.ring;
+    }
+    if state == "hover" {
+        return match variant {
+            "borderless" => gpui::transparent_black(),
+            "filled" => semantic.input_border,
+            _ => semantic.ring,
+        };
+    }
+    if state == "read-only" {
+        return if variant == "borderless" {
+            gpui::transparent_black()
+        } else {
+            semantic.border
+        };
+    }
+    match variant {
+        "filled" | "borderless" => gpui::transparent_black(),
+        _ => semantic.input_border,
+    }
+}
+
+fn input_caret_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    if state == "disabled" {
+        semantic.disabled_foreground
+    } else if state == "invalid" || state == "invalid-focus-visible" {
+        semantic.destructive
+    } else {
+        semantic.ring
+    }
+}
+
+fn input_selection_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    if state == "disabled" {
+        semantic.muted
+    } else {
+        semantic.accent
+    }
+}
+
+fn input_affix_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    if state == "disabled" {
+        semantic.disabled_foreground
+    } else if state == "normal" || state == "read-only" {
+        semantic.on_muted
+    } else {
+        semantic.foreground
+    }
+}
+
+fn input_status_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    if state == "disabled" {
+        semantic.disabled_foreground
+    } else {
+        semantic.destructive
+    }
+}
+
+fn input_size_fallback(size: &str) -> (Pixels, Pixels, Pixels, Pixels, Pixels, Pixels, Pixels) {
+    match size {
+        "xs" => (
+            gpui::px(24.),
+            gpui::px(6.),
+            gpui::px(16.),
+            gpui::px(12.),
+            gpui::px(12.),
+            gpui::px(12.),
+            gpui::px(4.),
+        ),
+        "sm" => (
+            gpui::px(32.),
+            gpui::px(8.),
+            gpui::px(20.),
+            gpui::px(14.),
+            gpui::px(14.),
+            gpui::px(14.),
+            gpui::px(6.),
+        ),
+        "lg" => (
+            gpui::px(40.),
+            gpui::px(12.),
+            gpui::px(24.),
+            gpui::px(20.),
+            gpui::px(20.),
+            gpui::px(20.),
+            gpui::px(10.),
+        ),
+        _ => (
+            gpui::px(36.),
+            gpui::px(10.),
+            gpui::px(20.),
+            gpui::px(16.),
+            gpui::px(16.),
+            gpui::px(16.),
+            gpui::px(8.),
+        ),
+    }
+}
+
+fn input_font_size_fallback(size: &str) -> &'static str {
+    match size {
+        "xs" => "foundation.font.size.xs",
+        "sm" => "foundation.font.size.sm",
+        _ => "foundation.font.size.md",
+    }
+}
+
+fn input_radius_fallback(size: &str) -> &'static str {
+    match size {
+        "xs" | "sm" => "foundation.radius.sm",
+        _ => "foundation.radius.md",
+    }
 }
 
 fn checkbox_box_background_fallback(visual_state: &str, state: &str) -> &'static str {

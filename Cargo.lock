@@ -6101,6 +6101,7 @@ dependencies = [
  "image",
  "trybuild",
  "unicode-script",
+ "unicode-segmentation",
  "vektra-assets",
  "vektra-icons",
  "vektra-macros",

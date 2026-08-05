@@ -9,6 +9,7 @@
 | `Radio`, `RadioGroup` | [Radio components](/en/components/radio) |
 | `Switch` | [Switch component](/en/components/switch) |
 | `SwitchContent` | [Switch track state content](/en/components/switch#api) |
+| `Input`, `InputState`, `InputVariant`, `InputClear`, `InputEvent` | [Input component](/en/components/input) |
 | `IconButton`, `IconButtonVariant` | [IconButton component](/en/components/icon-button) |
 | `Icon`, `IconSource`, `IntoIconSource`, `IconName` | Icons and asset sources; the same-name `IntoIconSource` exports include the trait and derive macro, while `IconName` requires the `icons` feature |
 | `Tooltip`, `TooltipPlacement` | [Tooltip component](/en/components/tooltip) |
@@ -20,7 +21,7 @@
 | --- | --- |
 | `ComponentSize`, `component_size`, `set_component_size` | Shared semantic sizes and the global default |
 | `ThemeMode`, `ResolvedThemeMode` | Requested and resolved theme modes |
-| `ResolvedTheme`, `SemanticColors`, `RadioTokens`, `RadioStateTokens`, `RadioSizeTokens`, `TooltipTokens` | Public resolved-theme types |
+| `ResolvedTheme`, `SemanticColors`, `InputTokens`, `InputStateTokens`, `InputSizeTokens`, `RadioTokens`, `RadioStateTokens`, `RadioSizeTokens`, `TooltipTokens` | Public resolved-theme types |
 | `theme_mode`, `set_theme_mode`, `resolved_theme_mode` | Read, set, and resolve theme mode |
 | `current_theme`, `semantic_colors` | Current window theme and semantic colors |
 | `assets::Assets`, `assets::AssetsWithOverrides` | GPUI asset source and override composition |

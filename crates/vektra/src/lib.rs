@@ -1,6 +1,6 @@
 //! Vektra GPUI 组件库。
 //!
-//! 提供默认主题和可组合的 Button、Checkbox、RadioGroup、Switch、Icon、IconButton
+//! 提供默认主题和可组合的 Button、Input、Checkbox、RadioGroup、Switch、Icon、IconButton
 //! 与 Tooltip。受控组件的业务值由调用方持有，并通过 [`Changeable`] 请求下一值；
 //! Vektra 不在组件内管理业务状态或异步任务。Vektra 是组件库，不要求应用调用
 //! `vektra::init(cx)`，也不要求使用 Vektra 根容器。
@@ -13,6 +13,7 @@ mod checkbox;
 mod focus;
 pub mod icon;
 mod icon_button;
+mod input;
 mod radio;
 mod size;
 mod switch;
@@ -26,6 +27,7 @@ pub use checkbox::Checkbox;
 pub use icon::IconName;
 pub use icon::{Icon, IconSource, IntoIconSource};
 pub use icon_button::{IconButton, IconButtonVariant};
+pub use input::{Input, InputClear, InputEvent, InputState, InputVariant};
 pub use radio::{Radio, RadioGroup};
 pub use size::{ComponentSize, component_size, set_component_size};
 pub use switch::{Switch, SwitchContent};
@@ -34,8 +36,8 @@ pub use tooltip::{Tooltip, TooltipPlacement};
 pub use traits::{Changeable, Clickable, Disableable, Focusable, Sizable};
 pub use vektra_macros::IntoIconSource;
 pub use vektra_theme::{
-    RadioSizeTokens, RadioStateTokens, RadioTokens, ResolvedTheme, ResolvedThemeMode,
-    SemanticColors, ThemeMode, TooltipTokens,
+    InputSizeTokens, InputStateTokens, InputTokens, RadioSizeTokens, RadioStateTokens, RadioTokens,
+    ResolvedTheme, ResolvedThemeMode, SemanticColors, ThemeMode, TooltipTokens,
 };
 
 /// Vektra 自带资源。

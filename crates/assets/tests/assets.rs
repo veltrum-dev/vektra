@@ -62,12 +62,28 @@ fn loads_and_lists_default_theme_resources() {
             .contains("switch")
     );
     assert!(
+        Assets::load_text("themes/default/input.json")
+            .unwrap()
+            .unwrap()
+            .contains("input")
+    );
+    assert!(
         Assets
             .list("themes/default")
             .unwrap()
             .iter()
             .any(|path| path.as_ref() == "themes/default/foundation.json")
     );
+}
+
+#[test]
+fn input_icons_are_core_resources() {
+    for path in ["components/input/clear.svg", "components/input/invalid.svg"] {
+        let bytes = Assets.load(path).unwrap().unwrap();
+        let svg = std::str::from_utf8(bytes.as_ref()).unwrap();
+        assert!(svg.contains("viewBox=\"0 0 16 16\""));
+        assert!(svg.contains("currentColor"));
+    }
 }
 
 #[test]
@@ -156,6 +172,7 @@ fn list_merges_deduplicates_and_sorts() {
             "themes/default/custom.json",
             "themes/default/dark.json",
             "themes/default/foundation.json",
+            "themes/default/input.json",
             "themes/default/light.json",
             "themes/default/radio.json",
             "themes/default/switch.json",
@@ -181,29 +198,33 @@ fn override_errors_are_propagated() {
 
 #[cfg(feature = "icons")]
 #[test]
-fn icons_feature_embeds_settings_icon() {
-    let bytes = Assets
-        .load(vektra_icons::IconName::Settings.path())
-        .unwrap()
-        .unwrap();
-    let svg = std::str::from_utf8(bytes.as_ref()).unwrap();
-    assert!(svg.contains("currentColor"));
+fn icons_feature_embeds_all_typed_icons() {
+    for icon in vektra_icons::IconName::ALL {
+        let bytes = Assets
+            .load(icon.path())
+            .unwrap()
+            .unwrap_or_else(|| panic!("{:?} 未嵌入资源 {}", icon, icon.path()));
+        let svg = std::str::from_utf8(bytes.as_ref()).unwrap();
+        assert!(svg.contains("currentColor"), "{:?}", icon);
+    }
 }
 
 #[cfg(not(feature = "icons"))]
 #[test]
-fn default_build_only_embeds_the_core_loading_indicator() {
+fn default_build_embeds_all_core_component_resources() {
     assert!(
         Assets
             .load("components/button/loading.svg")
             .unwrap()
             .is_some()
     );
+    assert!(Assets.load("components/input/clear.svg").unwrap().is_some());
     assert!(
         Assets
             .load("components/checkbox/check.svg")
             .unwrap()
             .is_some()
     );
+    assert!(Assets.load("icons/search.svg").unwrap().is_none());
     assert!(Assets.load("icons/settings.svg").unwrap().is_none());
 }

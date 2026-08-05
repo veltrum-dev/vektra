@@ -21,7 +21,7 @@ description: 用于在 Vektra 中编写、修改、审查或调试 GPUI 代码�
 
 | 主题 | 文件 | 加载时机 |
 |------|------|----------|
-| Action 与快捷键 | [action.md](references/action.md) | 使用 `actions!`、`bind_keys`、`on_action`、`key_context` 时 |
+| Action 与快捷键 | [action.md](references/action.md) | 使用 `actions!`、`bind_keys`、`on_action`、`key_context`，或处理 `KeyDownEvent`、`Keystroke`、`Modifiers`、原始快捷键时 |
 | 异步与后台任务 | [async.md](references/async.md) | 使用 `cx.spawn`、`background_spawn`、`Task`、异步 I/O 时 |
 | 上下文管理 | [context.md](references/context.md) | 使用 `App`、`Window`、`Context<T>`、`AsyncApp` 时 |
 | 自定义元素（底层） | [element.md](references/element.md) | 普通布局和已有控件无法满足需求，并需要实现 `Element` trait、`request_layout`、`prepaint`、`paint` 时 |

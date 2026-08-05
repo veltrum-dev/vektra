@@ -13,6 +13,6 @@ pub trait Changeable<T>: Sized {
 }
 ```
 
-Checkbox and Switch implement `Changeable<bool>`; RadioGroup implements `Changeable<T>`. A change may come from a pointer, Space, arrow keys, Home, or End, so the callback carries no `ClickEvent`. Hosts may adopt the value immediately or wait for server approval before supplying the authoritative value again.
+Checkbox and Switch implement `Changeable<bool>`, RadioGroup implements `Changeable<T>`, and Input implements `Changeable<SharedString>`. Input calls `on_change` only when a user edit actually changes the value; programmatic `InputState::set_value`, `clear`, and `reset` do not call it. Changes may originate in keyboard, pointer, or platform text-input paths, so the callback carries no `ClickEvent`.
 
 Each component keeps inherent builders with the same names, delegating to the same implementation as the trait.

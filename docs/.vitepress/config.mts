@@ -81,6 +81,7 @@ function zhThemeConfig(): DefaultTheme.Config {
           { text: "Checkbox", link: "/components/checkbox" },
           { text: "Radio", link: "/components/radio" },
           { text: "Switch", link: "/components/switch" },
+          { text: "Input", link: "/components/input" },
           { text: "IconButton", link: "/components/icon-button" },
           { text: "Tooltip", link: "/components/tooltip" }
         ]
@@ -140,6 +141,7 @@ function enThemeConfig(): DefaultTheme.Config {
           { text: "Checkbox", link: "/en/components/checkbox" },
           { text: "Radio", link: "/en/components/radio" },
           { text: "Switch", link: "/en/components/switch" },
+          { text: "Input", link: "/en/components/input" },
           { text: "IconButton", link: "/en/components/icon-button" },
           { text: "Tooltip", link: "/en/components/tooltip" }
         ]
