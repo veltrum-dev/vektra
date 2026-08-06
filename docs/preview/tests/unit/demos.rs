@@ -350,6 +350,38 @@ fn component_pages_pair_every_preview_with_compiled_source_and_registered_id() {
     }
 }
 
+#[test]
+fn getting_started_pages_use_public_git_dependencies_and_platform_application() {
+    let docs_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../content");
+
+    for relative_path in ["guide/getting-started.md", "en/guide/getting-started.md"] {
+        let source = fs::read_to_string(docs_root.join(relative_path))
+            .expect("中英文快速开始文档必须可读取");
+
+        for dependency in [
+            "gpui = { git = \"https://github.com/zed-industries/zed\", rev = \"82aef44308540b576e4e51fb379efa71614e5c91\" }",
+            "vektra = { git = \"https://github.com/veltrum-dev/vektra.git\" }",
+            "[target.'cfg(target_os = \"macos\")'.dependencies]",
+            "features = [\"font-kit\"]",
+            "[target.'cfg(any(target_os = \"linux\", target_os = \"freebsd\"))'.dependencies]",
+            "features = [\"wayland\", \"x11\"]",
+            "[target.'cfg(target_os = \"windows\")'.dependencies]",
+        ] {
+            assert!(
+                source.contains(dependency),
+                "{relative_path} 必须包含可直接使用的 Git 依赖：{dependency}"
+            );
+        }
+
+        assert!(source.contains("gpui_platform::application()"));
+        assert_eq!(source.matches("gpui_platform = { git =").count(), 3);
+        assert!(source.contains("ParentElement"));
+        assert!(!source.contains("gpui::Application::new()"));
+        assert!(!source.contains("workspace = true"));
+        assert!(!source.contains("vektra = { path ="));
+    }
+}
+
 fn example_ids(source: &str) -> Vec<String> {
     source
         .match_indices("<VektraExample demo=\"")

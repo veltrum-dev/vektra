@@ -3,7 +3,7 @@
 Vektra is a component library for [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui).
 
 ::: warning Pre-release status
-Vektra is in early development. GPUI has published pre-1.0 releases, but its API is still moving quickly and may introduce breaking changes. Vektra currently pins a specific GPUI revision and has not committed to stable compatibility with crates.io GPUI, so there is no production-ready Vektra crate release yet. Use a Git workspace or path dependency, and expect Vektra public APIs to change in breaking ways.
+Vektra is in early development. GPUI has published pre-1.0 releases, but its API is still moving quickly and may introduce breaking changes. Vektra currently pins a specific GPUI revision and has not committed to stable compatibility with crates.io GPUI, so there is no production-ready Vektra crate release yet. Use a Git dependency, and expect Vektra public APIs to change in breaking ways.
 
 The `vektra` 0.0.1 package on crates.io only reserves the project name. It does not contain the current component library implementation and must not be used as the formal dependency. The current real component crate lives in `crates/vektra` and remains marked `publish = false`.
 :::
@@ -15,30 +15,38 @@ The `vektra` 0.0.1 package on crates.io only reserves the project name. It does 
 - The documentation preview build needs the `wasm32-unknown-unknown` target and Trunk `0.21.14`.
 - The documentation site uses Bun for frontend dependencies.
 
-## Use Vektra in the same workspace
+## Add dependencies
 
-If your application package is in this workspace, inherit the workspace dependencies:
-
-```toml
-[dependencies]
-gpui = { workspace = true }
-vektra = { workspace = true }
-```
-
-For a local project outside this repository, point a path dependency at the Vektra crate:
+Add GPUI, its platform bootstrap crate, and Vektra to your application's `Cargo.toml`:
 
 ```toml
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91" }
-vektra = { path = "../vektra/crates/vektra" }
+vektra = { git = "https://github.com/veltrum-dev/vektra.git" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91", features = ["font-kit"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91", features = ["wayland", "x11"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91" }
 ```
+
+`gpui` and `gpui_platform` must use the same revision currently pinned by Vektra. Omitting `rev` makes Cargo include both Zed's latest commit and Vektra's pinned commit, producing incompatible GPUI types.
+
+`gpui_platform` features are target-specific: macOS needs `font-kit` to render glyphs; Linux and FreeBSD need at least one of `wayland` or `x11`; Windows needs no additional features. For a single-platform application, keep only the matching target dependency.
 
 ## Minimal Example
 
 Vektra components are plain GPUI elements. Your app still creates windows and views through GPUI. Vektra provides components, themes, and assets.
 
 ```rust
-use gpui::{div, App, AppContext, IntoElement, Render, Window};
+use gpui::{
+    App, AppContext, Bounds, IntoElement, ParentElement, Render, Window, WindowBounds,
+    WindowOptions, div, px, size,
+};
 use vektra::Button;
 
 struct Demo;
@@ -56,10 +64,19 @@ impl Render for Demo {
 }
 
 fn main() {
-    gpui::Application::new()
+    gpui_platform::application()
         .with_assets(vektra::assets::Assets)
         .run(|cx: &mut App| {
-            let _ = cx;
+            let bounds = Bounds::centered(None, size(px(480.), px(320.)), cx);
+            cx.open_window(
+                WindowOptions {
+                    window_bounds: Some(WindowBounds::Windowed(bounds)),
+                    ..Default::default()
+                },
+                |_window, cx| cx.new(|_| Demo),
+            )
+            .expect("the Vektra example window should open");
+            cx.activate(true);
         });
 }
 ```
