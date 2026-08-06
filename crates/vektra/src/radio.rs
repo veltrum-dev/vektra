@@ -504,6 +504,7 @@ where
     let indicator_id: ElementId = (radio.id.clone(), "indicator").into();
     let indicator = div()
         .id(indicator_id)
+        .debug_selector(|| "vektra-radio-indicator".into())
         .flex_none()
         .flex()
         .items_center()
@@ -550,7 +551,7 @@ where
             element.aria_description(description)
         })
         .flex()
-        .items_start()
+        .items_center()
         .gap(size.label_gap)
         .min_h(size.hit_size)
         .min_w(size.hit_size)

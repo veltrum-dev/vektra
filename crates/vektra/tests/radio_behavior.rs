@@ -361,3 +361,22 @@ fn direct_on_change_and_all_theme_modes_render(cx: &mut TestAppContext) {
     cx.simulate_click(point(px(70.), px(12.)), Modifiers::none());
     assert_eq!(requested.borrow().as_slice(), [Plan::Pro]);
 }
+
+#[gpui::test]
+fn single_line_radio_content_is_vertically_centered_in_hit_area(cx: &mut TestAppContext) {
+    struct LayoutView;
+
+    impl Render for LayoutView {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            RadioGroup::new("layout-group")
+                .child(Radio::new("layout-radio", Plan::Free).label("免费版"))
+        }
+    }
+
+    let (_view, cx) = cx.add_window_view(|_, _| LayoutView);
+    draw(cx);
+    let item = cx.debug_bounds("vektra-radio").unwrap();
+    let indicator = cx.debug_bounds("vektra-radio-indicator").unwrap();
+
+    assert_eq!(item.center().y, indicator.center().y);
+}
