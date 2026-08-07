@@ -1,12 +1,13 @@
+#[path = "../../shared.rs"]
+mod shared;
+
 use gpui::{
     App, AppContext, Bounds, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
     ParentElement, Render, Styled, Window, WindowBounds, WindowOptions, actions, div, px, size,
 };
 use gpui_platform::application;
 use std::time::Duration;
-use vektra::{
-    ComponentSize, IconSource, Switch, SwitchContent, ThemeMode, current_theme, set_theme_mode,
-};
+use vektra::{ComponentSize, IconSource, Switch, SwitchContent, current_theme};
 
 actions!(vektra_switch_example, [Tab, TabPrev]);
 
@@ -65,6 +66,7 @@ impl Render for SwitchExample {
                     .child(div().text_size(px(24.)).child("Vektra Switch"))
                     .child("受控设置：默认 180ms ease-out cubic；Space 切换，Enter 不切换。")
                     .child(self.focus_status)
+                    .child(shared::theme_selector("switch-example", window, cx))
                     .child(
                         Switch::new("notifications")
                             .checked(self.notifications)
@@ -187,7 +189,6 @@ fn main() {
     application()
         .with_assets(vektra::assets::Assets)
         .run(|cx: &mut App| {
-            set_theme_mode(ThemeMode::System, cx);
             cx.bind_keys([
                 KeyBinding::new("tab", Tab, None),
                 KeyBinding::new("shift-tab", TabPrev, None),

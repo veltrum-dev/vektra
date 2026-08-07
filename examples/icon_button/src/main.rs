@@ -1,5 +1,8 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
+#[path = "../../shared.rs"]
+mod shared;
+
 use gpui::{
     App, AppContext, Bounds, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
     ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, WindowBounds,
@@ -9,8 +12,7 @@ use gpui::{
 actions!(vektra_icon_button_example, [Tab, TabPrev]);
 use gpui_platform::application;
 use vektra::{
-    ComponentSize, Icon, IconButton, IconButtonVariant, IconName, IconSource, ThemeMode,
-    current_theme, resolved_theme_mode, set_theme_mode,
+    ComponentSize, Icon, IconButton, IconButtonVariant, IconName, IconSource, current_theme,
 };
 
 struct IconButtonExample {
@@ -53,16 +55,6 @@ impl IconButtonExample {
         .into();
         cx.notify();
     }
-
-    fn switch_theme(&mut self, mode: ThemeMode, window: &mut Window, cx: &mut Context<Self>) {
-        set_theme_mode(mode, cx);
-        self.last_clicked = format!(
-            "主题已切换：{}",
-            resolved_theme_mode_label(resolved_theme_mode(window, cx))
-        )
-        .into();
-        cx.notify();
-    }
 }
 
 impl Render for IconButtonExample {
@@ -92,12 +84,11 @@ impl Render for IconButtonExample {
                             .child("Vektra 图标按钮")
                             .text_size(px(24.))
                             .child(format!(
-                                "点击次数：{}  上次点击：{}  当前主题：{}",
-                                self.clicks,
-                                self.last_clicked,
-                                resolved_theme_mode_label(resolved_theme_mode(window, cx))
+                                "点击次数：{}  上次点击：{}",
+                                self.clicks, self.last_clicked
                             )),
                     )
+                    .child(shared::theme_selector("icon-button-example", window, cx))
                     .child(
                         self.section("纯图标").child(
                             div()
@@ -106,32 +97,6 @@ impl Render for IconButtonExample {
                                 .items_center()
                                 .child(Icon::new(IconName::Settings))
                                 .child(Icon::new(IconSource::asset("icons/settings.svg"))),
-                        ),
-                    )
-                    .child(
-                        self.section("主题模式").child(
-                            div()
-                                .flex()
-                                .gap(px(8.))
-                                .flex_wrap()
-                                .child(self.theme_button(
-                                    "theme-system",
-                                    "跟随系统",
-                                    ThemeMode::System,
-                                    cx,
-                                ))
-                                .child(self.theme_button(
-                                    "theme-light",
-                                    "浅色",
-                                    ThemeMode::Light,
-                                    cx,
-                                ))
-                                .child(self.theme_button(
-                                    "theme-dark",
-                                    "深色",
-                                    ThemeMode::Dark,
-                                    cx,
-                                )),
                         ),
                     )
                     .child(self.section("变体").child(
@@ -289,22 +254,6 @@ impl IconButtonExample {
                 this.record_focus(label, false, cx);
             })
     }
-
-    fn theme_button(
-        &self,
-        id: &'static str,
-        label: &'static str,
-        mode: ThemeMode,
-        cx: &mut Context<Self>,
-    ) -> IconButton {
-        IconButton::new(id, IconSource::asset("icons/settings.svg"))
-            .aria_label(label)
-            .tooltip(label)
-            .variant(IconButtonVariant::Outline)
-            .on_click_in(cx, move |this, _, window, cx| {
-                this.switch_theme(mode, window, cx);
-            })
-    }
 }
 
 fn run_example() {
@@ -326,13 +275,6 @@ fn run_example() {
             .expect("IconButton 示例窗口应能成功打开");
             cx.activate(true);
         });
-}
-
-fn resolved_theme_mode_label(mode: vektra::ResolvedThemeMode) -> &'static str {
-    match mode {
-        vektra::ResolvedThemeMode::Light => "浅色",
-        vektra::ResolvedThemeMode::Dark => "深色",
-    }
 }
 
 #[cfg(not(target_family = "wasm"))]

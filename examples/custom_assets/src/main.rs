@@ -1,5 +1,8 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
+#[path = "../../shared.rs"]
+mod shared;
+
 use gpui::{
     App, AppContext, AssetSource, Bounds, Context, FocusHandle, InteractiveElement, IntoElement,
     KeyBinding, ParentElement, Render, SharedString, Styled, Window, WindowBounds, WindowOptions,
@@ -8,7 +11,7 @@ use gpui::{
 use gpui_platform::application;
 use rust_embed::RustEmbed;
 use std::borrow::Cow;
-use vektra::{Button, Icon, IconButton, IconName, ThemeMode, current_theme, set_theme_mode};
+use vektra::{Button, Icon, IconButton, IconName, current_theme};
 
 actions!(vektra_custom_assets_example, [Tab, TabPrev]);
 
@@ -90,6 +93,7 @@ impl Render for CustomAssetsExample {
                         "自定义图标来自 examples/custom_assets/assets，Settings 来自 Vektra 回退资源。点击次数：{}",
                         self.clicks
                     ))
+                    .child(shared::theme_selector("custom-assets-example", window, cx))
                     .child(
                         div()
                             .flex()
@@ -126,7 +130,6 @@ impl Render for CustomAssetsExample {
                                 IconButton::new("settings-action", IconName::Settings)
                                     .aria_label("设置")
                                     .on_click_in(cx, |this, _, _, cx| {
-                                        set_theme_mode(ThemeMode::Dark, cx);
                                         this.clicks += 1;
                                         cx.notify();
                                     }),
@@ -143,7 +146,7 @@ fn run_example() {
             KeyBinding::new("tab", Tab, None),
             KeyBinding::new("shift-tab", TabPrev, None),
         ]);
-        let bounds = Bounds::centered(None, size(px(560.), px(360.)), cx);
+        let bounds = Bounds::centered(None, size(px(560.), px(430.)), cx);
         cx.open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),

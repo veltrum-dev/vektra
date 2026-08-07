@@ -6,7 +6,7 @@ This section documents the public surface of the root `vektra` crate. VitePress 
 
 - `vektra::Button`, `Checkbox`, `Radio`, `RadioGroup`, `Switch`, `Input`, `IconButton`, `Tooltip`, capability traits, theme APIs, and shared types are Vektra APIs documented here and in rustdoc.
 - `gpui::ClickEvent`, `Window`, `App`, and `Context<T>` are GPUI APIs. Vektra uses them in callback signatures without copying their definitions; use the [GPUI dependency type index](./gpui-types) for pinned source links.
-- `gpui` and `gpui_platform` are pinned to commit `82aef44308540b576e4e51fb379efa71614e5c91`. Links never target a drifting `main` branch.
+- `gpui` and `gpui_platform` are pinned to commit `87e698fb6fd09e69a16c66ae83060ac1e3af3fd6`. Links never target a drifting `main` branch.
 
 ## Navigation
 

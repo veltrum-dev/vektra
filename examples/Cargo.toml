@@ -43,3 +43,7 @@ path = "tooltip/src/main.rs"
 [[example]]
 name = "input"
 path = "input/src/main.rs"
+
+[[example]]
+name = "scrollbar"
+path = "scrollbar/src/main.rs"

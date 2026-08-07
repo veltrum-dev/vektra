@@ -1,22 +1,22 @@
 # GPUI 依赖类型
 
-以下类型由 GPUI 定义，不是 Vektra 类型。Vektra 只在公共回调边界使用它们，不复制维护完整定义。当前链接固定到 commit `82aef44308540b576e4e51fb379efa71614e5c91`。
+以下类型由 GPUI 定义，不是 Vektra 类型。Vektra 只在公共回调边界使用它们，不复制维护完整定义。当前链接固定到 commit `87e698fb6fd09e69a16c66ae83060ac1e3af3fd6`。
 
 ## `ClickEvent`
 
-仅出现在 `Clickable::on_click` 等原始激活入口中，用于区分鼠标与键盘激活。`Changeable::on_change` 不携带它，因为变化也可能来自方向键、Home 或 End。[查看锁定源码](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/interactive.rs#L281)。
+仅出现在 `Clickable::on_click` 等原始激活入口中，用于区分鼠标与键盘激活。`Changeable::on_change` 不携带它，因为变化也可能来自方向键、Home 或 End。[查看锁定源码](https://github.com/zed-industries/zed/blob/87e698fb6fd09e69a16c66ae83060ac1e3af3fd6/crates/gpui/src/interactive.rs#L281)。
 
 ## `Window`
 
-当前窗口的焦点、输入、绘制和平台状态入口。Vektra 回调传入 `&mut Window`，让宿主可调用当前 revision 支持的窗口 API。[查看锁定源码](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/window.rs#L1073)。
+当前窗口的焦点、输入、绘制和平台状态入口。Vektra 回调传入 `&mut Window`，让宿主可调用当前 revision 支持的窗口 API。[查看锁定源码](https://github.com/zed-industries/zed/blob/87e698fb6fd09e69a16c66ae83060ac1e3af3fd6/crates/gpui/src/window.rs#L1073)。
 
 ## `App`
 
-GPUI 应用级上下文。普通 builder callback 接收 `&mut App`，适合不需要某个 Entity 状态的同步逻辑。[查看锁定源码](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/app.rs#L679)。
+GPUI 应用级上下文。普通 builder callback 接收 `&mut App`，适合不需要某个 Entity 状态的同步逻辑。[查看锁定源码](https://github.com/zed-industries/zed/blob/87e698fb6fd09e69a16c66ae83060ac1e3af3fd6/crates/gpui/src/app.rs#L692)。
 
 ## `Context<T>`
 
-Entity `T` 的更新上下文。`*_in` 便利方法通过 `Context::listener` 把标准 GPUI 回调绑定到宿主 Entity；Entity 销毁后保持弱引用/no-op 语义。[查看锁定源码](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/app/context.rs#L20)。
+Entity `T` 的更新上下文。`*_in` 便利方法通过 `Context::listener` 把标准 GPUI 回调绑定到宿主 Entity；Entity 销毁后保持弱引用/no-op 语义。[查看锁定源码](https://github.com/zed-industries/zed/blob/87e698fb6fd09e69a16c66ae83060ac1e3af3fd6/crates/gpui/src/app/context.rs#L20)。
 
 ## `Entity<T>` 与 `SharedString`
 

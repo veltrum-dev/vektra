@@ -363,6 +363,33 @@ pub struct TooltipTokens {
     pub shadow_spread: Pixels,
 }
 
+/// Scrollbar 组件所需的 GPUI token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ScrollbarTokens {
+    /// 轨道在 hover 或拖动时的背景色。
+    pub track: Hsla,
+    /// Thumb 默认颜色。
+    pub thumb: Hsla,
+    /// Thumb hover 颜色。
+    pub thumb_hover: Hsla,
+    /// Thumb 拖动颜色。
+    pub thumb_pressed: Hsla,
+    /// 键盘焦点环颜色。
+    pub focus_ring: Hsla,
+    /// 实际绘制的轨道与 Thumb 宽度。
+    pub thickness: Pixels,
+    /// Thumb 在 hover 或拖动时的视觉宽度。
+    pub thumb_hover_thickness: Pixels,
+    /// 鼠标命中区域宽度，也是 `Stable` gutter 的预留宽度。
+    pub hit_thickness: Pixels,
+    /// Thumb 在主轴上的最小长度。
+    pub min_thumb_length: Pixels,
+    /// 轨道圆角；Thumb 始终根据自身短边绘制为胶囊形。
+    pub radius: Pixels,
+    /// 键盘焦点环宽度。
+    pub focus_width: Pixels,
+}
+
 /// 解析并转换后的 Vektra 主题。
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedTheme {
@@ -384,6 +411,8 @@ pub struct ResolvedTheme {
     pub switch: SwitchTokens,
     /// Tooltip 公共 token。
     pub tooltip: TooltipTokens,
+    /// Scrollbar 公共 token。
+    pub scrollbar: ScrollbarTokens,
     tokens: ResolvedTokens,
 }
 
@@ -551,6 +580,43 @@ impl ResolvedTheme {
                     &tokens,
                     "tooltip.shadow-spread",
                     "foundation.space.0",
+                )?,
+            },
+            scrollbar: ScrollbarTokens {
+                track: optional_color(&tokens, "scrollbar.track", "semantic.secondary")?,
+                thumb: optional_color(&tokens, "scrollbar.thumb", "semantic.on-muted")?,
+                thumb_hover: optional_color(
+                    &tokens,
+                    "scrollbar.thumb-hover",
+                    "semantic.foreground",
+                )?,
+                thumb_pressed: optional_color(
+                    &tokens,
+                    "scrollbar.thumb-pressed",
+                    "semantic.primary",
+                )?,
+                focus_ring: optional_color(&tokens, "scrollbar.focus-ring", "semantic.ring")?,
+                thickness: optional_dimension_value(&tokens, "scrollbar.thickness", gpui::px(8.))?,
+                thumb_hover_thickness: optional_dimension_value(
+                    &tokens,
+                    "scrollbar.thumb-hover-thickness",
+                    gpui::px(10.),
+                )?,
+                hit_thickness: optional_dimension_value(
+                    &tokens,
+                    "scrollbar.hit-thickness",
+                    gpui::px(14.),
+                )?,
+                min_thumb_length: optional_dimension_value(
+                    &tokens,
+                    "scrollbar.min-thumb-length",
+                    gpui::px(24.),
+                )?,
+                radius: optional_dimension(&tokens, "scrollbar.radius", "foundation.radius.md")?,
+                focus_width: optional_dimension(
+                    &tokens,
+                    "scrollbar.focus-width",
+                    "foundation.border.focus",
                 )?,
             },
             tokens,

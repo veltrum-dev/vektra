@@ -1,3 +1,6 @@
+#[path = "../../shared.rs"]
+mod shared;
+
 use gpui::{
     App, AppContext, Bounds, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
     ParentElement, Render, StatefulInteractiveElement, Styled, Window, WindowBounds, WindowOptions,
@@ -6,8 +9,7 @@ use gpui::{
 use gpui_platform::application;
 use vektra::{
     Button, ButtonVariant, ComponentSize, Icon, IconButton, IconButtonVariant, IconName, Input,
-    InputClear, InputState, InputVariant, ThemeMode, Tooltip, TooltipPlacement, current_theme,
-    set_theme_mode,
+    InputClear, InputState, InputVariant, Tooltip, TooltipPlacement, current_theme,
 };
 
 actions!(vektra_input_example, [Tab, TabPrev]);
@@ -102,6 +104,7 @@ impl Render for InputExample {
                         "纯 GPUI 单行输入；观察动画光标，并尝试中文 IME、双击、三击、撤销和清除。",
                     )
                     .child(self.status.clone())
+                    .child(shared::theme_selector("input-example", window, cx))
                     .child(
                         Input::new("search", search.clone())
                             .size(ComponentSize::Md)
@@ -351,7 +354,6 @@ fn main() {
     application()
         .with_assets(vektra::assets::Assets)
         .run(|cx: &mut App| {
-            set_theme_mode(ThemeMode::System, cx);
             cx.bind_keys([
                 KeyBinding::new("tab", Tab, None),
                 KeyBinding::new("shift-tab", TabPrev, None),

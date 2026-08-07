@@ -88,6 +88,28 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
         }
     }
 
+    let scrollbar_fields = [
+        "track",
+        "thumb",
+        "thumb-hover",
+        "thumb-pressed",
+        "focus-ring",
+        "thickness",
+        "thumb-hover-thickness",
+        "hit-thickness",
+        "min-thumb-length",
+        "radius",
+        "focus-width",
+    ];
+    let has_scrollbar_extension = scrollbar_fields
+        .iter()
+        .any(|field| tokens.get(&format!("scrollbar.{field}")).is_some());
+    if has_scrollbar_extension {
+        for field in scrollbar_fields {
+            tokens.required(&format!("scrollbar.{field}"))?;
+        }
+    }
+
     for variant in BUTTON_VARIANTS {
         for state in BUTTON_STATES {
             for field in ["background", "foreground", "border"] {

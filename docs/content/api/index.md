@@ -6,7 +6,7 @@
 
 - `vektra::Button`、`Checkbox`、`Radio`、`RadioGroup`、`Switch`、`Input`、`IconButton`、`Tooltip`、能力 traits、主题和共享类型由 Vektra 定义，本站负责解释并提供完整 rustdoc。
 - `gpui::ClickEvent`、`Window`、`App`、`Context<T>` 等由 GPUI 定义。它们出现在 Vektra 回调签名中，但 Vektra 不复制维护其完整定义；请从 [GPUI 依赖类型](./gpui-types) 跳转到锁定源码。
-- GPUI 与 `gpui_platform` 固定在 commit `82aef44308540b576e4e51fb379efa71614e5c91`。源码链接不指向会漂移的 `main`。
+- GPUI 与 `gpui_platform` 固定在 commit `87e698fb6fd09e69a16c66ae83060ac1e3af3fd6`。源码链接不指向会漂移的 `main`。
 
 ## 导航
 

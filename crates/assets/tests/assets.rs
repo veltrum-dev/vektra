@@ -62,6 +62,12 @@ fn loads_and_lists_default_theme_resources() {
             .contains("switch")
     );
     assert!(
+        Assets::load_text("themes/default/scrollbar.json")
+            .unwrap()
+            .unwrap()
+            .contains("scrollbar")
+    );
+    assert!(
         Assets::load_text("themes/default/input.json")
             .unwrap()
             .unwrap()
@@ -175,6 +181,7 @@ fn list_merges_deduplicates_and_sorts() {
             "themes/default/input.json",
             "themes/default/light.json",
             "themes/default/radio.json",
+            "themes/default/scrollbar.json",
             "themes/default/switch.json",
             "themes/default/tooltip.json",
         ]

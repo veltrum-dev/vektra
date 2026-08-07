@@ -10,8 +10,8 @@ The `vektra` 0.0.1 package on crates.io only reserves the project name. It does 
 
 ## Requirements
 
-- The Rust workspace uses edition 2024 and `rust-version = "1.95"`.
-- GPUI is pinned in the root `Cargo.toml` to Zed revision `82aef44308540b576e4e51fb379efa71614e5c91`.
+- The Rust workspace uses edition 2024 and `rust-version = "1.97.1"`.
+- GPUI is pinned in the root `Cargo.toml` to Zed revision `87e698fb6fd09e69a16c66ae83060ac1e3af3fd6`.
 - The documentation preview build needs the `wasm32-unknown-unknown` target and Trunk `0.21.14`.
 - The documentation site uses Bun for frontend dependencies.
 
@@ -21,17 +21,17 @@ Add GPUI, its platform bootstrap crate, and Vektra to your application's `Cargo.
 
 ```toml
 [dependencies]
-gpui = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91" }
+gpui = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6" }
 vektra = { git = "https://github.com/veltrum-dev/vektra.git" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91", features = ["font-kit"] }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6", features = ["font-kit"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91", features = ["wayland", "x11"] }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6", features = ["wayland", "x11"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "82aef44308540b576e4e51fb379efa71614e5c91" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6" }
 ```
 
 `gpui` and `gpui_platform` must use the same revision currently pinned by Vektra. Omitting `rev` makes Cargo include both Zed's latest commit and Vektra's pinned commit, producing incompatible GPUI types.

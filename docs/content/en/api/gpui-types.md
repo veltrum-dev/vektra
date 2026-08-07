@@ -1,22 +1,22 @@
 # GPUI Dependency Types
 
-These are GPUI types, not Vektra types. Vektra uses them at public callback boundaries without copying their full definitions. Every link is pinned to commit `82aef44308540b576e4e51fb379efa71614e5c91`.
+These are GPUI types, not Vektra types. Vektra uses them at public callback boundaries without copying their full definitions. Every link is pinned to commit `87e698fb6fd09e69a16c66ae83060ac1e3af3fd6`.
 
 ## `ClickEvent`
 
-Used only by raw activation entries such as `Clickable::on_click`. `Changeable::on_change` carries no click event because changes may also originate from arrow keys, Home, or End. [Pinned source](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/interactive.rs#L281).
+Used only by raw activation entries such as `Clickable::on_click`. `Changeable::on_change` carries no click event because changes may also originate from arrow keys, Home, or End. [Pinned source](https://github.com/zed-industries/zed/blob/87e698fb6fd09e69a16c66ae83060ac1e3af3fd6/crates/gpui/src/interactive.rs#L281).
 
 ## `Window`
 
-The current window's focus, input, drawing, and platform-state entry point. Vektra callbacks receive `&mut Window`. [Pinned source](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/window.rs#L1073).
+The current window's focus, input, drawing, and platform-state entry point. Vektra callbacks receive `&mut Window`. [Pinned source](https://github.com/zed-industries/zed/blob/87e698fb6fd09e69a16c66ae83060ac1e3af3fd6/crates/gpui/src/window.rs#L1073).
 
 ## `App`
 
-GPUI's application-level context. Standard builder callbacks receive `&mut App`. [Pinned source](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/app.rs#L679).
+GPUI's application-level context. Standard builder callbacks receive `&mut App`. [Pinned source](https://github.com/zed-industries/zed/blob/87e698fb6fd09e69a16c66ae83060ac1e3af3fd6/crates/gpui/src/app.rs#L692).
 
 ## `Context<T>`
 
-The update context for Entity `T`. `*_in` methods use `Context::listener` to bind standard callbacks to the host Entity and retain GPUI's weak-reference/no-op behavior after destruction. [Pinned source](https://github.com/zed-industries/zed/blob/82aef44308540b576e4e51fb379efa71614e5c91/crates/gpui/src/app/context.rs#L20).
+The update context for Entity `T`. `*_in` methods use `Context::listener` to bind standard callbacks to the host Entity and retain GPUI's weak-reference/no-op behavior after destruction. [Pinned source](https://github.com/zed-industries/zed/blob/87e698fb6fd09e69a16c66ae83060ac1e3af3fd6/crates/gpui/src/app/context.rs#L20).
 
 ## `Entity<T>` and `SharedString`
 

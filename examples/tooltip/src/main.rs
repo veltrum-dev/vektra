@@ -1,5 +1,8 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
+#[path = "../../shared.rs"]
+mod shared;
+
 use gpui::{
     App, AppContext, Bounds, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
     ParentElement, Render, Styled, Window, WindowBounds, WindowOptions, actions, div, px, rgb,
@@ -54,6 +57,7 @@ impl Render for TooltipExample {
                     .max_w(px(680.))
                     .child(div().text_size(px(24.)).child("Vektra Tooltip"))
                     .child("悬停或使用 Tab 聚焦 500ms 后显示；Escape 关闭且保留焦点。")
+                    .child(shared::theme_selector("tooltip-example", window, cx))
                     .child(
                         Button::new("controlled-tooltip")
                             .label("常驻、自定义颜色、无箭头、无动画")

@@ -1,5 +1,8 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
+#[path = "../../shared.rs"]
+mod shared;
+
 use gpui::{
     App, AppContext, Bounds, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
     ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window, WindowBounds,
@@ -8,10 +11,7 @@ use gpui::{
 
 actions!(vektra_button_example, [Tab, TabPrev]);
 use gpui_platform::application;
-use vektra::{
-    Button, ButtonVariant, ComponentSize, IconName, IconSource, ThemeMode, current_theme,
-    resolved_theme_mode, set_theme_mode, theme_mode,
-};
+use vektra::{Button, ButtonVariant, ComponentSize, IconName, IconSource, current_theme};
 
 struct ButtonExample {
     clicks: usize,
@@ -56,16 +56,6 @@ impl ButtonExample {
         } else {
             format!("已失焦：{label}")
         }
-        .into();
-        cx.notify();
-    }
-
-    fn switch_theme(&mut self, mode: ThemeMode, window: &mut Window, cx: &mut Context<Self>) {
-        set_theme_mode(mode, cx);
-        self.last_clicked = format!(
-            "主题已切换：{}",
-            resolved_theme_mode_label(resolved_theme_mode(window, cx))
-        )
         .into();
         cx.notify();
     }
@@ -117,43 +107,11 @@ impl Render for ButtonExample {
                             .child("Vektra 按钮")
                             .text_size(px(24.))
                             .child(format!(
-                                "点击次数：{}  上次点击：{}  主题设置：{}  当前主题：{}",
-                                self.clicks,
-                                self.last_clicked,
-                                theme_mode_label(theme_mode(cx)),
-                                resolved_theme_mode_label(resolved_theme_mode(window, cx))
+                                "点击次数：{}  上次点击：{}",
+                                self.clicks, self.last_clicked
                             )),
                     )
-                    .child(
-                        self.section("主题模式").child(
-                            div()
-                                .flex()
-                                .gap(px(8.))
-                                .flex_wrap()
-                                .child(
-                                    Button::new("theme-system")
-                                        .label("跟随系统")
-                                        .variant(ButtonVariant::Outline)
-                                        .on_click_in(cx, |this, _, window, cx| {
-                                            this.switch_theme(ThemeMode::System, window, cx);
-                                        }),
-                                )
-                                .child(Button::new("theme-light").label("浅色").on_click_in(
-                                    cx,
-                                    |this, _, window, cx| {
-                                        this.switch_theme(ThemeMode::Light, window, cx);
-                                    },
-                                ))
-                                .child(
-                                    Button::new("theme-dark")
-                                        .label("深色")
-                                        .variant(ButtonVariant::Secondary)
-                                        .on_click_in(cx, |this, _, window, cx| {
-                                            this.switch_theme(ThemeMode::Dark, window, cx);
-                                        }),
-                                ),
-                        ),
-                    )
+                    .child(shared::theme_selector("button-example", window, cx))
                     .child(
                         self.section("主题令牌").child(
                             div()
@@ -495,21 +453,6 @@ fn run_example() {
             .expect("Button 示例窗口应能成功打开");
             cx.activate(true);
         });
-}
-
-fn theme_mode_label(mode: ThemeMode) -> &'static str {
-    match mode {
-        ThemeMode::System => "跟随系统",
-        ThemeMode::Light => "浅色",
-        ThemeMode::Dark => "深色",
-    }
-}
-
-fn resolved_theme_mode_label(mode: vektra::ResolvedThemeMode) -> &'static str {
-    match mode {
-        vektra::ResolvedThemeMode::Light => "浅色",
-        vektra::ResolvedThemeMode::Dark => "深色",
-    }
 }
 
 #[cfg(not(target_family = "wasm"))]

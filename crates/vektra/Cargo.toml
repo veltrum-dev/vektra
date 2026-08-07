@@ -16,7 +16,7 @@ vektra-theme = { workspace = true }
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
-image = "0.25.9"
+image = "0.25.10"
 trybuild = { workspace = true }
 
 [features]

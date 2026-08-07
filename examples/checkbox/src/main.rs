@@ -1,5 +1,8 @@
 #![cfg_attr(target_family = "wasm", no_main)]
 
+#[path = "../../shared.rs"]
+mod shared;
+
 use gpui::{
     App, AppContext, AssetSource, Bounds, Context, FocusHandle, InteractiveElement, IntoElement,
     KeyBinding, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled, Window,
@@ -9,8 +12,7 @@ use gpui_platform::application;
 use rust_embed::RustEmbed;
 use std::borrow::Cow;
 use vektra::{
-    Button, Checkbox, ComponentSize, IconName, ThemeMode, component_size, current_theme,
-    set_component_size, set_theme_mode,
+    Button, Checkbox, ComponentSize, IconName, component_size, current_theme, set_component_size,
 };
 
 actions!(vektra_checkbox_example, [Tab, TabPrev]);
@@ -193,6 +195,7 @@ impl Render for CheckboxExample {
                     .child(div().text_size(px(24.)).child("Vektra Checkbox"))
                     .child(format!("全局尺寸：{:?}", component_size(cx)))
                     .child(self.focus_status.clone())
+                    .child(shared::theme_selector("checkbox-example", window, cx))
                     .child(
                         Checkbox::new("terms")
                             .checked(self.demo.terms.checked)
@@ -384,16 +387,6 @@ impl Render for CheckboxExample {
                                 .label("全局 Md")
                                 .on_click(|_, _, cx| {
                                     set_component_size(ComponentSize::Md, cx);
-                                }),
-                            Button::new("theme-light")
-                                .label("浅色")
-                                .on_click(|_, _, cx| {
-                                    set_theme_mode(ThemeMode::Light, cx);
-                                }),
-                            Button::new("theme-dark")
-                                .label("深色")
-                                .on_click(|_, _, cx| {
-                                    set_theme_mode(ThemeMode::Dark, cx);
                                 }),
                         ]),
                     ),

@@ -83,7 +83,8 @@ function zhThemeConfig(): DefaultTheme.Config {
           { text: "Switch", link: "/components/switch" },
           { text: "Input", link: "/components/input" },
           { text: "IconButton", link: "/components/icon-button" },
-          { text: "Tooltip", link: "/components/tooltip" }
+          { text: "Tooltip", link: "/components/tooltip" },
+          { text: "Scrollbar", link: "/components/scrollbar" }
         ]
       },
       {
@@ -143,7 +144,8 @@ function enThemeConfig(): DefaultTheme.Config {
           { text: "Switch", link: "/en/components/switch" },
           { text: "Input", link: "/en/components/input" },
           { text: "IconButton", link: "/en/components/icon-button" },
-          { text: "Tooltip", link: "/en/components/tooltip" }
+          { text: "Tooltip", link: "/en/components/tooltip" },
+          { text: "Scrollbar", link: "/en/components/scrollbar" }
         ]
       },
       {

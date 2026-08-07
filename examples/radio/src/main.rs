@@ -1,9 +1,12 @@
+#[path = "../../shared.rs"]
+mod shared;
+
 use gpui::{
     App, AppContext, Bounds, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
     ParentElement, Render, Styled, Window, WindowBounds, WindowOptions, actions, div, px, size,
 };
 use gpui_platform::application;
-use vektra::{Radio, RadioGroup, ThemeMode, current_theme, set_theme_mode};
+use vektra::{Radio, RadioGroup, current_theme};
 
 actions!(vektra_radio_example, [Tab, TabPrev]);
 
@@ -58,6 +61,7 @@ impl Render for RadioExample {
                     .max_w(px(520.))
                     .child(div().text_size(px(24.)).child("Vektra RadioGroup"))
                     .child("受控单选：方向键、Home、End 和 Space 都请求下一值。")
+                    .child(shared::theme_selector("radio-example", window, cx))
                     .child(
                         RadioGroup::new("plan-group")
                             .selected_value(self.plan)
@@ -92,12 +96,11 @@ fn main() {
     application()
         .with_assets(vektra::assets::Assets)
         .run(|cx: &mut App| {
-            set_theme_mode(ThemeMode::System, cx);
             cx.bind_keys([
                 KeyBinding::new("tab", Tab, None),
                 KeyBinding::new("shift-tab", TabPrev, None),
             ]);
-            let bounds = Bounds::centered(None, size(px(640.), px(420.)), cx);
+            let bounds = Bounds::centered(None, size(px(640.), px(500.)), cx);
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),

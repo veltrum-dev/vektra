@@ -16,6 +16,7 @@ crates.io 上的 `vektra` 0.0.1 只用于保留项目名称，不包含当前组
 - Switch API：[docs/content/components/switch.md](docs/content/components/switch.md)
 - IconButton API：[docs/content/components/icon-button.md](docs/content/components/icon-button.md)
 - Tooltip API：[docs/content/components/tooltip.md](docs/content/components/tooltip.md)
+- Scrollbar API：[docs/content/components/scrollbar.md](docs/content/components/scrollbar.md)
 
 ## 许可证
 
@@ -56,10 +57,15 @@ vektra = { path = "crates/vektra", features = ["icons"] }
 cargo run --example button
 cargo run --example checkbox
 cargo run --example switch
+cargo run --example radio
 cargo run --example icon_button
 cargo run --example custom_assets
 cargo run --example tooltip
+cargo run --example input
+cargo run --example scrollbar
 ```
+
+所有桌面示例都提供统一的 `System / Light / Dark` 主题选择器，并同时显示配置模式与当前解析到的实际主题。
 
 ## 常用开发命令
 
@@ -91,9 +97,9 @@ VEKTRA_DOCS_BASE=/vektra/ bun run build
 │   ├── icons/           # vektra-icons
 │   ├── theme/           # vektra-theme
 │   ├── vektra/          # 组件门面 crate
-│   └── vektra-macros/   # 派生宏
+│   └── macros/          # vektra-macros 派生宏
 ├── docs/                # VitePress 文档站与 GPUI WASM preview
 └── examples/            # 桌面示例
 ```
 
-GPUI 锁定到 Zed revision `82aef44308540b576e4e51fb379efa71614e5c91`。仓库不使用 crates.io 的浮动 GPUI，也不使用 `branch = "main"`。
+GPUI 锁定到 Zed revision `87e698fb6fd09e69a16c66ae83060ac1e3af3fd6`。仓库不使用 crates.io 的浮动 GPUI，也不使用 `branch = "main"`。

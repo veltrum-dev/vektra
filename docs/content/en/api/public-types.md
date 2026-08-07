@@ -13,6 +13,7 @@
 | `IconButton`, `IconButtonVariant` | [IconButton component](/en/components/icon-button) |
 | `Icon`, `IconSource`, `IntoIconSource`, `IconName` | Icons and asset sources; the same-name `IntoIconSource` exports include the trait and derive macro, while `IconName` requires the `icons` feature |
 | `Tooltip`, `TooltipPlacement` | [Tooltip component](/en/components/tooltip) |
+| `ScrollArea`, `ScrollAxis`, `ScrollVisibility`, `ScrollGutter`, `ScrollbarConfig`, `ScrollableExt` | [Scrollbar component](/en/components/scrollbar) |
 | `Changeable`, `Clickable`, `Focusable`, `Disableable`, `Sizable` | [Capability traits](/en/api/) |
 
 ## Theme, Size, and Assets
@@ -21,7 +22,7 @@
 | --- | --- |
 | `ComponentSize`, `component_size`, `set_component_size` | Shared semantic sizes and the global default |
 | `ThemeMode`, `ResolvedThemeMode` | Requested and resolved theme modes |
-| `ResolvedTheme`, `SemanticColors`, `InputTokens`, `InputStateTokens`, `InputSizeTokens`, `RadioTokens`, `RadioStateTokens`, `RadioSizeTokens`, `TooltipTokens` | Public resolved-theme types |
+| `ResolvedTheme`, `SemanticColors`, `InputTokens`, `InputStateTokens`, `InputSizeTokens`, `RadioTokens`, `RadioStateTokens`, `RadioSizeTokens`, `TooltipTokens`, `ScrollbarTokens` | Public resolved-theme types |
 | `theme_mode`, `set_theme_mode`, `resolved_theme_mode` | Read, set, and resolve theme mode |
 | `current_theme`, `semantic_colors` | Current window theme and semantic colors |
 | `assets::Assets`, `assets::AssetsWithOverrides` | GPUI asset source and override composition |

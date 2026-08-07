@@ -3,6 +3,7 @@ mod checkbox;
 mod icon_button;
 mod input;
 mod radio;
+mod scrollbar;
 mod switch;
 mod tooltip;
 
@@ -65,6 +66,8 @@ pub(crate) enum DemoSelection {
     TooltipAppearance,
     TooltipLifecycle,
     TooltipComprehensive,
+    ScrollbarBasic,
+    ScrollbarConfiguration,
     Unknown(String),
 }
 
@@ -114,6 +117,8 @@ impl DemoSelection {
         "tooltip/controlled",
         "tooltip/appearance",
         "tooltip/lifecycle",
+        "scrollbar/basic",
+        "scrollbar/configuration",
     ];
     pub(crate) const ALL_IDS: &'static [&'static str] = &[
         "button/basic",
@@ -165,6 +170,8 @@ impl DemoSelection {
         "tooltip/appearance",
         "tooltip/lifecycle",
         "tooltip/comprehensive",
+        "scrollbar/basic",
+        "scrollbar/configuration",
     ];
 
     fn from_demo_id(demo_id: Option<&str>) -> Self {
@@ -219,6 +226,8 @@ impl DemoSelection {
             Some("tooltip/appearance") => Self::TooltipAppearance,
             Some("tooltip/lifecycle") => Self::TooltipLifecycle,
             Some("tooltip/comprehensive") => Self::TooltipComprehensive,
+            Some("scrollbar/basic") => Self::ScrollbarBasic,
+            Some("scrollbar/configuration") => Self::ScrollbarConfiguration,
             Some(value) => Self::Unknown(value.to_owned()),
         }
     }
@@ -274,6 +283,8 @@ impl DemoSelection {
             Self::TooltipAppearance => "tooltip/appearance",
             Self::TooltipLifecycle => "tooltip/lifecycle",
             Self::TooltipComprehensive => "tooltip/comprehensive",
+            Self::ScrollbarBasic => "scrollbar/basic",
+            Self::ScrollbarConfiguration => "scrollbar/configuration",
             Self::Unknown(value) => value,
         }
     }
@@ -350,6 +361,7 @@ pub(crate) struct PreviewApp {
     switch_demo: switch::SwitchDemo,
     input_basic_demo: input::InputBasicDemo,
     input_demo: input::InputDemo,
+    scrollbar_demo: scrollbar::ScrollbarDemo,
     focus_status: gpui::SharedString,
     focus_handle: FocusHandle,
 }
@@ -385,6 +397,7 @@ impl PreviewApp {
             switch_demo: switch::SwitchDemo::new(),
             input_basic_demo: input::InputBasicDemo::new(cx),
             input_demo: input::InputDemo::new(cx),
+            scrollbar_demo: scrollbar::ScrollbarDemo::new(),
             focus_status: language.no_recent_focus().into(),
             focus_handle,
         }
@@ -621,6 +634,13 @@ impl Render for PreviewApp {
             DemoSelection::TooltipComprehensive => {
                 tooltip::render(self.language, window, cx).into_any_element()
             }
+            DemoSelection::ScrollbarBasic => {
+                scrollbar::render_basic(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::ScrollbarConfiguration => self
+                .scrollbar_demo
+                .render_configuration(self.language, window, cx)
+                .into_any_element(),
             DemoSelection::Unknown(demo_id) => {
                 render_unknown_demo(demo_id, self.language, window, cx).into_any_element()
             }

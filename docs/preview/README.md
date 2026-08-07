@@ -37,6 +37,7 @@ trunk build --release --public-url ./
 - `icon-button/basic`：IconButton 的 variant、size、disabled、键盘和 Tooltip 预览。
 - `input/basic`：Input 的四种 variant、四种 size、IME、prefix/suffix/attached suffix、五种 Search 操作、clear、invalid、read-only、disabled 和窄宽度预览。
 - `tooltip/basic`：Button/IconButton 的自动触发、受控 `open`、Escape、无箭头、自定义颜色、关闭动画、disabled 和长文本 Tooltip 预览。
+- `scrollbar/basic`：Both/Auto/Overlay 的双轴滚动、键盘与拖动交互预览；`scrollbar/configuration` 用三组 Radio 在同一个双轴溢出区域中实时切换 Axis、Visibility 与 Gutter。
 
 未知 `demo` 值会显示错误状态，不会 panic，也不会静默回退。
 

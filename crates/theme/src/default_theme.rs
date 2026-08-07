@@ -22,6 +22,7 @@ const CHECKBOX: &str = "themes/default/checkbox.json";
 const RADIO: &str = "themes/default/radio.json";
 const SWITCH: &str = "themes/default/switch.json";
 const TOOLTIP: &str = "themes/default/tooltip.json";
+const SCROLLBAR: &str = "themes/default/scrollbar.json";
 
 static LIGHT_THEME: OnceLock<Arc<ResolvedTheme>> = OnceLock::new();
 static DARK_THEME: OnceLock<Arc<ResolvedTheme>> = OnceLock::new();
@@ -39,6 +40,7 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
     let radio = load_builtin_text(RADIO)?;
     let switch = load_builtin_text(SWITCH)?;
     let tooltip = load_builtin_text(TOOLTIP)?;
+    let scrollbar = load_builtin_text(SCROLLBAR)?;
 
     let tokens = parse_token_sets(&[
         &foundation,
@@ -49,6 +51,7 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
         &radio,
         &switch,
         &tooltip,
+        &scrollbar,
     ])?;
     profile::validate(&tokens)?;
     Ok(tokens)
@@ -209,6 +212,19 @@ mod tests {
     }
 
     #[test]
+    fn scrollbar_tokens_resolve_for_light_and_dark() {
+        for mode in [ResolvedThemeMode::Light, ResolvedThemeMode::Dark] {
+            let theme = default_theme(mode);
+            assert_eq!(theme.scrollbar.thickness, px(8.));
+            assert_eq!(theme.scrollbar.thumb_hover_thickness, px(10.));
+            assert_eq!(theme.scrollbar.hit_thickness, px(14.));
+            assert_eq!(theme.scrollbar.min_thumb_length, px(24.));
+            assert_eq!(theme.scrollbar.track, theme.semantic.secondary);
+            assert_eq!(theme.scrollbar.focus_ring, theme.semantic.ring);
+        }
+    }
+
+    #[test]
     fn link_button_keeps_transparent_surfaces_except_focus_ring() {
         for mode in [ResolvedThemeMode::Light, ResolvedThemeMode::Dark] {
             let theme = default_theme(mode);
@@ -236,7 +252,7 @@ mod tests {
     #[test]
     fn default_theme_resources_are_loaded_from_assets_crate() {
         for path in [
-            FOUNDATION, LIGHT, DARK, BUTTON, INPUT, CHECKBOX, RADIO, SWITCH, TOOLTIP,
+            FOUNDATION, LIGHT, DARK, BUTTON, INPUT, CHECKBOX, RADIO, SWITCH, TOOLTIP, SCROLLBAR,
         ] {
             let text = load_builtin_text(path).unwrap();
             assert!(!text.is_empty(), "`{path}` 应从 vektra-assets 读取");
