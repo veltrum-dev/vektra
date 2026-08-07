@@ -158,7 +158,7 @@ activity 只表达状态与阻止重复激活，不拥有任务生命周期。�
 
 ## 鼠标与键盘
 
-可用状态下，左键点击会阻止默认行为、停止传播并触发回调。聚焦 Button 后，Enter 在 keydown 触发，Space 在 keyup 触发；两者都会构造 `ClickEvent::Keyboard` 并进入同一点击回调。selected Button 仍使用相同激活路径。loading/progress 会消费鼠标和 Enter/Space（包括阻止 Space 默认滚动）但不触发业务回调；disabled 不触发这些路径。
+可用状态下，鼠标、触摸以及聚焦后的 Enter/Space 都进入同一个 GPUI `on_click` 回调。Enter 和 Space 只有在完成合法的 KeyDown + KeyUp 周期后才各合成一次 `ClickEvent::Keyboard`，其来源分别为 `KeyboardButton::Enter` 与 `KeyboardButton::Space`；单独 KeyDown 不会调用业务回调。selected Button 仍使用相同激活路径。loading/progress 会消费鼠标和 Enter/Space（包括阻止 Space 默认滚动）但不触发业务回调；disabled 不触发这些路径。
 
 Button 注册 GPUI Tab stop，但在当前锁定 GPUI revision 中，宿主窗口仍需把真实 Tab/Shift+Tab 绑定到 `window.focus_next(cx)`/`focus_prev(cx)`；快速开始和桌面 example 展示了最小接线。字符串 Tooltip 在键盘焦点停留 500ms 后显示；`Tooltip::new(...).open(true)` 无需焦点即可显示，`open(false)` 强制关闭。Escape 关闭提示但保留按钮焦点；受控 `open(true)` 被关闭后需经历 `false -> true` 才会恢复。
 

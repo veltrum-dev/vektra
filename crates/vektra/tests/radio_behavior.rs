@@ -150,6 +150,11 @@ fn key_up(key: &str, cx: &mut gpui::VisualTestContext) {
     });
 }
 
+fn key_cycle(key: &str, cx: &mut gpui::VisualTestContext) {
+    key_down(key, cx);
+    key_up(key, cx);
+}
+
 #[gpui::test]
 fn selected_item_is_the_only_group_tab_stop(cx: &mut TestAppContext) {
     cx.update(|cx| cx.activate(true));
@@ -168,7 +173,7 @@ fn selected_item_is_the_only_group_tab_stop(cx: &mut TestAppContext) {
 
     cx.update(|window, cx| window.focus_next(cx));
     draw(cx);
-    key_up("space", cx);
+    key_cycle("space", cx);
     assert_eq!(view.read_with(cx, |view, _| view.after_changes), 1);
 }
 
@@ -180,6 +185,8 @@ fn none_selected_uses_first_enabled_tab_stop_and_single_item_can_select(cx: &mut
     draw(cx);
     focus_first_tab_stop(&view, cx);
     draw(cx);
+    key_down("space", cx);
+    assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
     key_up("space", cx);
     assert_eq!(
         view.read_with(cx, |view, _| view.selected),
@@ -203,11 +210,37 @@ fn none_selected_uses_first_enabled_tab_stop_and_single_item_can_select(cx: &mut
     let (single, cx) = cx.add_window_view(|_, _| SingleView { selected: None });
     draw(cx);
     cx.update(|window, cx| window.focus_next(cx));
-    key_up("space", cx);
+    key_cycle("space", cx);
     assert_eq!(
         single.read_with(cx, |view, _| view.selected),
         Some(Plan::Free)
     );
+}
+
+#[gpui::test]
+fn enter_and_modified_space_do_not_select_a_radio(cx: &mut TestAppContext) {
+    let (view, cx) =
+        cx.add_window_view(|window, cx| RadioView::new(None, true, false, true, window, cx));
+    draw(cx);
+    focus_first_tab_stop(&view, cx);
+    key_cycle("enter", cx);
+    key_cycle("cmd-space", cx);
+
+    assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+}
+
+#[gpui::test]
+fn moving_focus_between_space_down_and_up_cancels_radio_activation(cx: &mut TestAppContext) {
+    let (view, cx) =
+        cx.add_window_view(|window, cx| RadioView::new(None, true, false, true, window, cx));
+    draw(cx);
+    focus_first_tab_stop(&view, cx);
+    key_down("space", cx);
+    cx.update(|window, cx| window.focus_next(cx));
+    key_up("space", cx);
+
+    assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+    assert_eq!(view.read_with(cx, |view, _| view.after_changes), 0);
 }
 
 #[gpui::test]
@@ -258,7 +291,7 @@ fn home_end_and_space_share_the_controlled_change_path(cx: &mut TestAppContext) 
         Some(Plan::Free)
     );
     draw(cx);
-    key_up("space", cx);
+    key_cycle("space", cx);
     assert_eq!(view.read_with(cx, |view, _| view.requests.len()), 2);
 }
 
@@ -292,7 +325,7 @@ fn group_disabled_removes_all_radio_tab_stops_and_blocks_input(cx: &mut TestAppC
     draw(cx);
     focus_first_tab_stop(&view, cx);
     draw(cx);
-    key_up("space", cx);
+    key_cycle("space", cx);
     assert_eq!(view.read_with(cx, |view, _| view.after_changes), 1);
     key_down("down", cx);
     cx.simulate_click(point(px(12.), px(90.)), Modifiers::none());
@@ -308,7 +341,7 @@ fn repeated_selection_is_silent_and_rejected_async_request_keeps_authoritative_v
     });
     draw(cx);
     focus_first_tab_stop(&view, cx);
-    key_up("space", cx);
+    key_cycle("space", cx);
     cx.simulate_click(point(px(12.), px(12.)), Modifiers::none());
     assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
 

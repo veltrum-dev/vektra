@@ -2,14 +2,15 @@ use super::*;
 use crate::IconButton;
 use crate::{resolved_theme_mode, set_theme_mode};
 use gpui::{
-    AnyWindowHandle, AppContext, AtlasKey, AtlasTextureId, AtlasTextureKind, AtlasTile, ClickEvent,
-    Context, CursorStyle, DevicePixels, HeadlessAppContext, InputEvent, KeyUpEvent, Keystroke,
-    Modifiers, MouseMoveEvent, NoopTextSystem, PlatformAtlas, PlatformHeadlessRenderer, Render,
-    Scene, Size, TestAppContext, TileId, VisualTestContext, point, px, rgb, size,
+    AnyWindowHandle, AppContext, AtlasKey, AtlasTextureId, AtlasTextureKind, AtlasTile, Context,
+    CursorStyle, DevicePixels, HeadlessAppContext, InputEvent, KeyDownEvent, KeyUpEvent,
+    KeyboardButton, Keystroke, Modifiers, MouseMoveEvent, NoopTextSystem, PlatformAtlas,
+    PlatformHeadlessRenderer, Render, Scene, Size, TestAppContext, TileId, VisualTestContext,
+    point, px, rgb, size,
 };
 use std::{
     borrow::Cow,
-    cell::{Cell, RefCell},
+    cell::RefCell,
     collections::HashMap,
     rc::Rc,
     sync::{Arc, Mutex},
@@ -302,30 +303,10 @@ fn activity_id_is_stably_derived_from_button_id() {
     );
 }
 
-#[test]
-fn callback_can_be_reused_for_keyboard_event_shape() {
-    let count = Rc::new(Cell::new(0));
-    let seen_keyboard = Rc::new(Cell::new(false));
-    let handler = {
-        let count = count.clone();
-        let seen_keyboard = seen_keyboard.clone();
-        Rc::new(
-            move |event: &ClickEvent, _window: &mut Window, _cx: &mut App| {
-                count.set(count.get() + 1);
-                seen_keyboard.set(event.is_keyboard());
-            },
-        )
-    };
-
-    let event = keyboard_click(KeyboardButton::Enter);
-    assert!(event.is_keyboard());
-    let _button = Button::new("a").on_click(move |event, window, cx| handler(event, window, cx));
-    assert_eq!(count.get(), 0);
-}
-
 struct TestView {
     count: usize,
     disabled: bool,
+    sources: Vec<Option<KeyboardButton>>,
 }
 
 struct LinkUnderlineView;
@@ -355,8 +336,12 @@ impl Render for TestView {
                 .label("Hit")
                 .width(px(120.))
                 .disabled(self.disabled)
-                .on_click(cx.listener(|this, _, _, cx| {
+                .on_click(cx.listener(|this, event, _, cx| {
                     this.count += 1;
+                    this.sources.push(match event {
+                        ClickEvent::Keyboard(event) => Some(event.button),
+                        ClickEvent::Mouse(_) | ClickEvent::Touch(_) => None,
+                    });
                     cx.notify();
                 })),
         )
@@ -637,7 +622,11 @@ fn test_view(
     cx: &mut TestAppContext,
     disabled: bool,
 ) -> (gpui::Entity<TestView>, &mut VisualTestContext) {
-    cx.add_window_view(|_, _| TestView { count: 0, disabled })
+    cx.add_window_view(|_, _| TestView {
+        count: 0,
+        disabled,
+        sources: Vec::new(),
+    })
 }
 
 fn activity_view(
@@ -658,6 +647,25 @@ fn activity_view(
 
 fn draw(cx: &mut VisualTestContext) {
     cx.update(|window, cx| window.draw(cx).clear(cx));
+}
+
+fn simulate_key_down(cx: &mut VisualTestContext, key: &str) {
+    let keystroke = Keystroke::parse(key).unwrap();
+    cx.simulate_event(KeyDownEvent {
+        keystroke,
+        is_held: false,
+        prefer_character_input: false,
+    });
+}
+
+fn simulate_key_up(cx: &mut VisualTestContext, key: &str) {
+    let keystroke = Keystroke::parse(key).unwrap();
+    cx.simulate_event(KeyUpEvent { keystroke });
+}
+
+fn simulate_key_cycle(cx: &mut VisualTestContext, key: &str) {
+    simulate_key_down(cx, key);
+    simulate_key_up(cx, key);
 }
 
 fn headless_link_view() -> (HeadlessAppContext, AnyWindowHandle, UnderlineRecorder) {
@@ -760,25 +768,63 @@ fn disabled_button_does_not_activate(cx: &mut TestAppContext) {
     let (view, cx) = test_view(cx, true);
     draw(cx);
     cx.simulate_click(point(px(24.), px(18.)), Modifiers::none());
-    cx.simulate_keystrokes("enter space");
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    simulate_key_cycle(cx, "enter");
+    assert_eq!(view.read_with(cx, |view, _| view.count), 0);
+    simulate_key_cycle(cx, "space");
 
     assert_eq!(view.read_with(cx, |view, _| view.count), 0);
 }
 
 #[gpui::test]
-fn enter_and_space_activate_focused_button_once(cx: &mut TestAppContext) {
+fn mouse_enter_and_space_each_activate_once_with_the_expected_source(cx: &mut TestAppContext) {
+    let (view, cx) = test_view(cx, false);
+    draw(cx);
+    cx.simulate_click(point(px(24.), px(18.)), Modifiers::none());
+    assert_eq!(view.read_with(cx, |view, _| view.count), 1);
+    cx.update(|window, cx| window.focus_next(cx));
+    simulate_key_down(cx, "enter");
+    assert_eq!(view.read_with(cx, |view, _| view.count), 1);
+    simulate_key_up(cx, "enter");
+    assert_eq!(view.read_with(cx, |view, _| view.count), 2);
+    simulate_key_down(cx, "space");
+    assert_eq!(view.read_with(cx, |view, _| view.count), 2);
+    simulate_key_up(cx, "space");
+
+    assert_eq!(view.read_with(cx, |view, _| view.count), 3);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.sources.clone()),
+        [
+            None,
+            Some(KeyboardButton::Enter),
+            Some(KeyboardButton::Space),
+        ]
+    );
+}
+
+#[gpui::test]
+fn modified_enter_and_space_do_not_activate(cx: &mut TestAppContext) {
     let (view, cx) = test_view(cx, false);
     draw(cx);
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_keystrokes("enter");
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    simulate_key_cycle(cx, "cmd-enter");
+    simulate_key_cycle(cx, "cmd-space");
 
-    assert_eq!(view.read_with(cx, |view, _| view.count), 2);
+    assert_eq!(view.read_with(cx, |view, _| view.count), 0);
+}
+
+#[gpui::test]
+fn moving_focus_between_key_down_and_key_up_cancels_activation(cx: &mut TestAppContext) {
+    let (view, cx) = test_view(cx, false);
+    draw(cx);
+
+    for key in ["enter", "space"] {
+        cx.update(|window, cx| window.focus_next(cx));
+        simulate_key_down(cx, key);
+        cx.update(|window, _| window.blur());
+        simulate_key_up(cx, key);
+    }
+
+    assert_eq!(view.read_with(cx, |view, _| view.count), 0);
 }
 
 #[gpui::test]
@@ -786,15 +832,15 @@ fn selected_button_still_activates_with_mouse_enter_and_space(cx: &mut TestAppCo
     let (view, cx) = activity_view(cx, TestActivity::Idle, false, Some(true));
     draw(cx);
     cx.simulate_click(point(px(24.), px(18.)), Modifiers::none());
+    assert_eq!(view.read_with(cx, |view, _| view.business_count), 1);
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_keystrokes("enter");
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    simulate_key_cycle(cx, "enter");
+    assert_eq!(view.read_with(cx, |view, _| view.business_count), 2);
+    simulate_key_cycle(cx, "space");
 
     assert_eq!(view.read_with(cx, |view, _| view.business_count), 3);
     assert_eq!(view.read_with(cx, |view, _| view.parent_click_count), 0);
-    assert_eq!(view.read_with(cx, |view, _| view.parent_key_count), 0);
+    assert_eq!(view.read_with(cx, |view, _| view.parent_key_count), 2);
 }
 
 #[gpui::test]
@@ -804,10 +850,9 @@ fn loading_and_progress_consume_mouse_enter_and_space_without_activation(cx: &mu
         draw(cx);
         cx.simulate_click(point(px(24.), px(18.)), Modifiers::none());
         cx.update(|window, cx| window.focus_next(cx));
-        cx.simulate_keystrokes("enter space");
-        cx.simulate_event(KeyUpEvent {
-            keystroke: Keystroke::parse("space").unwrap(),
-        });
+        simulate_key_cycle(cx, "enter");
+        assert_eq!(view.read_with(cx, |view, _| view.business_count), 0);
+        simulate_key_cycle(cx, "space");
 
         assert_eq!(view.read_with(cx, |view, _| view.business_count), 0);
         assert_eq!(view.read_with(cx, |view, _| view.parent_click_count), 0);
@@ -820,10 +865,9 @@ fn disabled_busy_selected_button_remains_inactive(cx: &mut TestAppContext) {
     let (view, cx) = activity_view(cx, TestActivity::Progress, true, Some(true));
     draw(cx);
     cx.simulate_click(point(px(24.), px(18.)), Modifiers::none());
-    cx.simulate_keystrokes("enter space");
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    simulate_key_cycle(cx, "enter");
+    assert_eq!(view.read_with(cx, |view, _| view.business_count), 0);
+    simulate_key_cycle(cx, "space");
 
     assert_eq!(view.read_with(cx, |view, _| view.business_count), 0);
     assert_eq!(view.read_with(cx, |view, _| view.parent_click_count), 0);

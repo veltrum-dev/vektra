@@ -629,17 +629,25 @@ where
             );
         });
 
-    let key_selected = selected_value.clone();
+    item = item
+        .capture_key_down(|event: &KeyDownEvent, window, cx| {
+            if event.keystroke.key == "enter" && event.keystroke.modifiers == Modifiers::none() {
+                window.prevent_default();
+                cx.stop_propagation();
+            }
+        })
+        .capture_key_up(|event: &KeyUpEvent, window, cx| {
+            if event.keystroke.key == "enter" && event.keystroke.modifiers == Modifiers::none() {
+                window.prevent_default();
+                cx.stop_propagation();
+            }
+        });
+
+    let key_selected = selected_value;
     let key_handler = on_change.clone();
     let key_targets = enabled_targets.clone();
-    item = item.on_key_down(move |event: &KeyDownEvent, window, cx| {
+    item.on_key_down(move |event: &KeyDownEvent, window, cx| {
         if event.keystroke.modifiers != Modifiers::none() {
-            return;
-        }
-
-        if event.keystroke.key == "space" {
-            window.prevent_default();
-            cx.stop_propagation();
             return;
         }
 
@@ -661,22 +669,6 @@ where
             window,
             cx,
         );
-    });
-
-    let space_selected = selected_value;
-    let space_value = radio.value;
-    item.on_key_up(move |event: &KeyUpEvent, window, cx| {
-        if event.keystroke.key == "space" && event.keystroke.modifiers == Modifiers::none() {
-            window.prevent_default();
-            cx.stop_propagation();
-            request_change(
-                &space_selected,
-                space_value.clone(),
-                on_change.as_ref(),
-                window,
-                cx,
-            );
-        }
     })
 }
 

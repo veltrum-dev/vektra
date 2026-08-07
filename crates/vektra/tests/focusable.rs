@@ -1,7 +1,7 @@
 use gpui::{
-    App, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding, KeyUpEvent, Keystroke,
-    Modifiers, ParentElement, Render, Styled, TestAppContext, Window, actions, div,
-    prelude::FluentBuilder, px,
+    App, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding, KeyDownEvent,
+    KeyUpEvent, Keystroke, Modifiers, ParentElement, Render, Styled, TestAppContext, Window,
+    actions, div, prelude::FluentBuilder, px,
 };
 use std::{cell::RefCell, rc::Rc, time::Duration};
 use vektra::{Button, Checkbox, Focusable, IconButton, IconSource};
@@ -588,6 +588,11 @@ fn checkbox_change_and_focus_lifecycles_are_independent(cx: &mut TestAppContext)
     activate_root(cx, root_focus);
     cx.simulate_keystrokes("tab");
     draw(cx);
+    cx.simulate_event(KeyDownEvent {
+        keystroke: Keystroke::parse("space").unwrap(),
+        is_held: false,
+        prefer_character_input: false,
+    });
     cx.simulate_event(KeyUpEvent {
         keystroke: Keystroke::parse("space").unwrap(),
     });

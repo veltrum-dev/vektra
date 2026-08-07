@@ -1,6 +1,6 @@
 use gpui::{
-    ClickEvent, Context, InteractiveElement, IntoElement, KeyUpEvent, Keystroke, Modifiers,
-    ParentElement, Render, Styled, TestAppContext, Window, div, point, px,
+    ClickEvent, Context, InteractiveElement, IntoElement, KeyDownEvent, KeyUpEvent, Keystroke,
+    Modifiers, ParentElement, Render, Styled, TestAppContext, Window, div, point, px,
 };
 use vektra::{
     Button, Changeable, Checkbox, Clickable, ComponentSize, Disableable, IconButton, IconSource,
@@ -207,15 +207,23 @@ fn activate(cx: &mut gpui::VisualTestContext, activation: Activation) {
         Activation::Mouse => cx.simulate_click(point(px(18.), px(18.)), Modifiers::none()),
         Activation::Enter => {
             cx.update(|window, cx| window.focus_next(cx));
-            cx.simulate_keystrokes("enter");
+            simulate_key_cycle(cx, "enter");
         }
         Activation::Space => {
             cx.update(|window, cx| window.focus_next(cx));
-            cx.simulate_event(KeyUpEvent {
-                keystroke: Keystroke::parse("space").unwrap(),
-            });
+            simulate_key_cycle(cx, "space");
         }
     }
+}
+
+fn simulate_key_cycle(cx: &mut gpui::VisualTestContext, key: &str) {
+    let keystroke = Keystroke::parse(key).unwrap();
+    cx.simulate_event(KeyDownEvent {
+        keystroke: keystroke.clone(),
+        is_held: false,
+        prefer_character_input: false,
+    });
+    cx.simulate_event(KeyUpEvent { keystroke });
 }
 
 fn run_activation(
@@ -379,4 +387,39 @@ fn checkbox_disabled_blocks_space(cx: &mut TestAppContext) {
         run_checkbox_activation(cx, true, Activation::Space),
         (0, 0, None)
     );
+}
+
+#[gpui::test]
+fn checkbox_disabled_blocks_enter(cx: &mut TestAppContext) {
+    assert_eq!(
+        run_checkbox_activation(cx, true, Activation::Enter),
+        (0, 0, None)
+    );
+}
+
+#[gpui::test]
+fn checkbox_modified_space_does_not_activate(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, _| CapabilityView::new(Target::Checkbox, false));
+    draw(cx);
+    cx.update(|window, cx| window.focus_next(cx));
+    simulate_key_cycle(cx, "cmd-space");
+
+    assert_eq!(view.read_with(cx, |view, _| view.count), 0);
+}
+
+#[gpui::test]
+fn checkbox_focus_change_between_space_down_and_up_cancels_activation(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, _| CapabilityView::new(Target::Checkbox, false));
+    draw(cx);
+    cx.update(|window, cx| window.focus_next(cx));
+    let keystroke = Keystroke::parse("space").unwrap();
+    cx.simulate_event(KeyDownEvent {
+        keystroke: keystroke.clone(),
+        is_held: false,
+        prefer_character_input: false,
+    });
+    cx.update(|window, _| window.blur());
+    cx.simulate_event(KeyUpEvent { keystroke });
+
+    assert_eq!(view.read_with(cx, |view, _| view.count), 0);
 }

@@ -46,6 +46,9 @@ description: 用于在 Vektra 仓库中创建新的公开可见 GPUI 组件、�
 - 保留便于调用的 inherent forwarding builder，并让 trait 实现委托给同一实现，避免两套行为分叉。
 - 按需审计 `Clickable`、`Focusable`、`Disableable`、`Sizable`；具体适用条件和语义边界见 [component-api-design.md](references/component-api-design.md)。
 - 受控组件即使拥有 `on_change(next_value, ...)` 等语义回调，只要还需要供通用包装器、前置请求或中间件使用的原始激活入口，也应实现 `Clickable`；标准入口与语义入口必须复用同一激活路径，并明确组合优先级，禁止一次激活重复触发两套回调。
+- 实现交互组件前，先检查根 `Cargo.toml` 锁定的 GPUI revision 及其真实源码是否已提供语义事件合成。Button 类组件若已由 GPUI `on_click` 统一鼠标、触摸、Enter 与 Space，只能注册一条语义激活路径；禁止同时注册 `on_click`，又在 `on_key_down` 或 `on_key_up` 中手动调用同一业务 handler。
+- 原始键盘处理只用于 GPUI 未覆盖的组件专属语义，例如 Radio 方向键、Home、End，输入编辑、Escape 关闭或 busy 状态事件消费；不得借此重复触发语义回调。可重映射命令和应用快捷键使用 `Action`/`KeyBinding`，不要塞进组件 `on_click`。
+- GPUI 原始 `Keystroke.key` 是 `String` 只属于底层实现事实；公共激活来源通过 `ClickEvent::Keyboard` 与 `KeyboardButton` 枚举判断。完整职责边界和测试规则见 [component-api-design.md](references/component-api-design.md#单一语义激活路径)。
 - 为适用 trait 增加泛型能力测试和 inherent forwarding 测试，验证 trait 调用与直接 builder 调用遵循同一契约。
 
 ## 参考路由

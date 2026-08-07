@@ -158,7 +158,7 @@ By default, when the label contains exactly two Unicode Han characters, Button i
 
 ## Mouse and Keyboard
 
-When enabled, a left-click prevents the default event, stops propagation, and triggers the callback. When the Button is focused, Enter activates on keydown and Space activates on keyup. Both create `ClickEvent::Keyboard` and enter the same click callback. Selected buttons use the same activation path. Loading/progress consumes mouse and Enter/Space events (including Space's default scrolling behavior) without calling the business handler. Disabled buttons do not activate.
+When enabled, mouse, touch, and focused Enter/Space activation all enter the same GPUI `on_click` callback. Enter and Space each synthesize exactly one `ClickEvent::Keyboard` only after a valid KeyDown + KeyUp cycle, with `KeyboardButton::Enter` or `KeyboardButton::Space` as the source; KeyDown alone does not call the business handler. Selected buttons use the same activation path. Loading/progress consumes mouse and Enter/Space events (including Space's default scrolling behavior) without calling the business handler. Disabled buttons do not activate.
 
 Button registers a GPUI Tab stop. With the pinned GPUI revision, the host window still maps real Tab/Shift+Tab keys to `window.focus_next(cx)`/`focus_prev(cx)`; the quick start and desktop example show the minimal wiring. A string Tooltip appears after 500ms of keyboard focus. `Tooltip::new(...).open(true)` displays without focus, while `open(false)` forces it closed. Escape dismisses without moving Button focus; a dismissed controlled `open(true)` requires a `false -> true` change to reopen.
 

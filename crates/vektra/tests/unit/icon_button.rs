@@ -1,10 +1,9 @@
 use super::*;
-use crate::{ThemeMode, set_theme_mode};
+use crate::{Button, ThemeMode, set_theme_mode};
 use gpui::{
-    ClickEvent, Context, Hsla, KeyUpEvent, KeyboardButton, Keystroke, Modifiers, Render,
+    Context, Hsla, KeyDownEvent, KeyUpEvent, KeyboardButton, Keystroke, Modifiers, Render,
     TestAppContext, point, px, rgb,
 };
-use std::{cell::Cell, rc::Rc};
 use vektra_theme::ResolvedThemeMode;
 
 #[test]
@@ -129,6 +128,7 @@ fn icon_color_resolves_with_disabled_priority(cx: &mut TestAppContext) {
     let (_view, cx) = cx.add_window_view(|_, _| IconButtonTestView {
         count: 0,
         disabled: false,
+        sources: Vec::new(),
     });
     cx.update(|window, cx| {
         let theme = theme::current_theme(window, cx);
@@ -153,35 +153,29 @@ fn icon_color_resolves_with_disabled_priority(cx: &mut TestAppContext) {
     });
 }
 
-#[test]
-fn callback_event_shape_is_shared() {
-    let seen = Rc::new(Cell::new(None));
-    let seen_handler = seen.clone();
-    let handler = move |event: &ClickEvent, _window: &mut Window, _cx: &mut App| {
-        seen_handler.set(Some(event.is_keyboard()));
-    };
-    let _button =
-        IconButton::new("settings", IconSource::asset("icons/settings.svg")).on_click(handler);
-
-    let event = button::keyboard_click(KeyboardButton::Enter);
-    assert!(event.is_keyboard());
-    assert_eq!(seen.get(), None);
-}
-
 struct IconButtonTestView {
     count: usize,
     disabled: bool,
+    sources: Vec<Option<KeyboardButton>>,
 }
 
 impl Render for IconButtonTestView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        IconButton::new("target", IconSource::asset("icons/settings.svg"))
-            .aria_label("设置")
-            .disabled(self.disabled)
-            .on_click(cx.listener(|this, _, _, cx| {
-                this.count += 1;
-                cx.notify();
-            }))
+        div()
+            .child(
+                IconButton::new("target", IconSource::asset("icons/settings.svg"))
+                    .aria_label("设置")
+                    .disabled(self.disabled)
+                    .on_click(cx.listener(|this, event, _, cx| {
+                        this.count += 1;
+                        this.sources.push(match event {
+                            ClickEvent::Keyboard(event) => Some(event.button),
+                            ClickEvent::Mouse(_) | ClickEvent::Touch(_) => None,
+                        });
+                        cx.notify();
+                    })),
+            )
+            .child(Button::new("other").label("其他"))
     }
 }
 
@@ -189,21 +183,53 @@ fn draw(cx: &mut gpui::VisualTestContext) {
     cx.update(|window, cx| window.draw(cx).clear(cx));
 }
 
+fn simulate_key_down(cx: &mut gpui::VisualTestContext, key: &str) {
+    let keystroke = Keystroke::parse(key).unwrap();
+    cx.simulate_event(KeyDownEvent {
+        keystroke,
+        is_held: false,
+        prefer_character_input: false,
+    });
+}
+
+fn simulate_key_up(cx: &mut gpui::VisualTestContext, key: &str) {
+    let keystroke = Keystroke::parse(key).unwrap();
+    cx.simulate_event(KeyUpEvent { keystroke });
+}
+
+fn simulate_key_cycle(cx: &mut gpui::VisualTestContext, key: &str) {
+    simulate_key_down(cx, key);
+    simulate_key_up(cx, key);
+}
+
 #[gpui::test]
 fn enabled_mouse_enter_and_space_activate(cx: &mut TestAppContext) {
     let (view, cx) = cx.add_window_view(|_, _| IconButtonTestView {
         count: 0,
         disabled: false,
+        sources: Vec::new(),
     });
     draw(cx);
     cx.simulate_click(point(px(18.), px(18.)), Modifiers::none());
+    assert_eq!(view.read_with(cx, |view, _| view.count), 1);
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_keystrokes("enter");
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    simulate_key_down(cx, "enter");
+    assert_eq!(view.read_with(cx, |view, _| view.count), 1);
+    simulate_key_up(cx, "enter");
+    assert_eq!(view.read_with(cx, |view, _| view.count), 2);
+    simulate_key_down(cx, "space");
+    assert_eq!(view.read_with(cx, |view, _| view.count), 2);
+    simulate_key_up(cx, "space");
 
     assert_eq!(view.read_with(cx, |view, _| view.count), 3);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.sources.clone()),
+        [
+            None,
+            Some(KeyboardButton::Enter),
+            Some(KeyboardButton::Space),
+        ]
+    );
 }
 
 #[gpui::test]
@@ -211,13 +237,13 @@ fn disabled_mouse_enter_and_space_do_not_activate(cx: &mut TestAppContext) {
     let (view, cx) = cx.add_window_view(|_, _| IconButtonTestView {
         count: 0,
         disabled: true,
+        sources: Vec::new(),
     });
     draw(cx);
     cx.simulate_click(point(px(18.), px(18.)), Modifiers::none());
-    cx.simulate_keystrokes("enter space");
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    simulate_key_cycle(cx, "enter");
+    assert_eq!(view.read_with(cx, |view, _| view.count), 0);
+    simulate_key_cycle(cx, "space");
 
     assert_eq!(view.read_with(cx, |view, _| view.count), 0);
 }
@@ -227,13 +253,31 @@ fn modifier_keys_do_not_activate_keyboard_shortcuts(cx: &mut TestAppContext) {
     let (view, cx) = cx.add_window_view(|_, _| IconButtonTestView {
         count: 0,
         disabled: false,
+        sources: Vec::new(),
     });
     draw(cx);
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_keystrokes("cmd-enter cmd-space");
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("cmd-space").unwrap(),
+    simulate_key_cycle(cx, "cmd-enter");
+    simulate_key_cycle(cx, "cmd-space");
+
+    assert_eq!(view.read_with(cx, |view, _| view.count), 0);
+}
+
+#[gpui::test]
+fn moving_focus_between_key_down_and_key_up_cancels_activation(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, _| IconButtonTestView {
+        count: 0,
+        disabled: false,
+        sources: Vec::new(),
     });
+    draw(cx);
+
+    for key in ["enter", "space"] {
+        cx.update(|window, cx| window.focus_next(cx));
+        simulate_key_down(cx, key);
+        cx.update(|window, _| window.blur());
+        simulate_key_up(cx, key);
+    }
 
     assert_eq!(view.read_with(cx, |view, _| view.count), 0);
 }

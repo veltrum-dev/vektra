@@ -1,7 +1,7 @@
 use gpui::{
-    Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding, KeyDownEvent, KeyUpEvent,
-    Keystroke, Modifiers, ParentElement, Render, StatefulInteractiveElement, Styled,
-    TestAppContext, Window, actions, div, point, px,
+    ClickEvent, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding, KeyDownEvent,
+    KeyUpEvent, KeyboardButton, Keystroke, Modifiers, ParentElement, Render,
+    StatefulInteractiveElement, Styled, TestAppContext, Window, actions, div, point, px,
 };
 use std::{cell::RefCell, rc::Rc, time::Duration};
 use vektra::{
@@ -136,7 +136,7 @@ impl Render for SwitchView {
 
 struct ClickableSwitchView {
     checked: bool,
-    requests: Vec<(bool, bool)>,
+    requests: Vec<(bool, Option<KeyboardButton>)>,
 }
 
 impl Render for ClickableSwitchView {
@@ -146,7 +146,11 @@ impl Render for ClickableSwitchView {
                 .checked(self.checked)
                 .label("远程设置")
                 .on_click_in(cx, |this, event, _, cx| {
-                    this.requests.push((!this.checked, event.is_keyboard()));
+                    let source = match event {
+                        ClickEvent::Keyboard(event) => Some(event.button),
+                        ClickEvent::Mouse(_) | ClickEvent::Touch(_) => None,
+                    };
+                    this.requests.push((!this.checked, source));
                     cx.notify();
                 }),
         )
@@ -182,6 +186,25 @@ fn draw(cx: &mut gpui::VisualTestContext) {
     cx.update(|window, cx| window.draw(cx).clear(cx));
 }
 
+fn key_down(key: &str, cx: &mut gpui::VisualTestContext) {
+    cx.simulate_event(KeyDownEvent {
+        keystroke: Keystroke::parse(key).unwrap(),
+        is_held: false,
+        prefer_character_input: false,
+    });
+}
+
+fn key_up(key: &str, cx: &mut gpui::VisualTestContext) {
+    cx.simulate_event(KeyUpEvent {
+        keystroke: Keystroke::parse(key).unwrap(),
+    });
+}
+
+fn key_cycle(key: &str, cx: &mut gpui::VisualTestContext) {
+    key_down(key, cx);
+    key_up(key, cx);
+}
+
 #[gpui::test]
 fn switch_mouse_space_enter_and_disabled_follow_controlled_contract(cx: &mut TestAppContext) {
     let (view, cx) = cx.add_window_view(|_, _| SwitchView::new(false, false, false));
@@ -190,30 +213,22 @@ fn switch_mouse_space_enter_and_disabled_follow_controlled_contract(cx: &mut Tes
     assert_eq!(view.read_with(cx, |view, _| view.changes.clone()), [true]);
 
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_event(KeyDownEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-        is_held: false,
-        prefer_character_input: false,
-    });
+    key_down("space", cx);
     assert_eq!(view.read_with(cx, |view, _| view.changes.len()), 1);
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    key_up("space", cx);
     assert_eq!(
         view.read_with(cx, |view, _| view.changes.clone()),
         [true, false]
     );
 
-    cx.simulate_keystrokes("enter");
+    key_cycle("enter", cx);
     assert_eq!(view.read_with(cx, |view, _| view.changes.len()), 2);
 
     let (disabled, cx) = cx.add_window_view(|_, _| SwitchView::new(false, true, false));
     draw(cx);
     cx.simulate_click(point(px(18.), px(18.)), Modifiers::none());
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    key_cycle("space", cx);
     assert!(disabled.read_with(cx, |view, _| view.changes.is_empty()));
 }
 
@@ -229,18 +244,18 @@ fn clickable_starts_a_host_request_without_optimistically_changing_checked(
     cx.simulate_click(point(px(18.), px(18.)), Modifiers::none());
     assert_eq!(
         view.read_with(cx, |view, _| view.requests.clone()),
-        [(true, false)]
+        [(true, None)]
     );
     assert!(!view.read_with(cx, |view, _| view.checked));
 
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
-    cx.simulate_keystrokes("enter");
+    key_down("space", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.requests.len()), 1);
+    key_up("space", cx);
+    key_cycle("enter", cx);
     assert_eq!(
         view.read_with(cx, |view, _| view.requests.clone()),
-        [(true, false), (true, true)]
+        [(true, None), (true, Some(KeyboardButton::Space))]
     );
 
     view.update(cx, |view, cx| {
@@ -273,14 +288,30 @@ fn switch_enter_does_not_activate_a_focused_control(cx: &mut TestAppContext) {
     draw(cx);
     cx.update(|window, cx| window.focus_next(cx));
     draw(cx);
-    cx.simulate_event(KeyDownEvent {
-        keystroke: Keystroke::parse("enter").unwrap(),
-        is_held: false,
-        prefer_character_input: false,
-    });
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("enter").unwrap(),
-    });
+    key_cycle("enter", cx);
+
+    assert!(view.read_with(cx, |view, _| view.changes.is_empty()));
+}
+
+#[gpui::test]
+fn switch_modified_enter_and_space_do_not_activate(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, _| SwitchView::new(false, false, false));
+    draw(cx);
+    cx.update(|window, cx| window.focus_next(cx));
+    key_cycle("cmd-enter", cx);
+    key_cycle("cmd-space", cx);
+
+    assert!(view.read_with(cx, |view, _| view.changes.is_empty()));
+}
+
+#[gpui::test]
+fn switch_focus_change_between_space_down_and_up_cancels_activation(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, _| SwitchView::new(false, false, false));
+    draw(cx);
+    cx.update(|window, cx| window.focus_next(cx));
+    key_down("space", cx);
+    cx.update(|window, _| window.blur());
+    key_up("space", cx);
 
     assert!(view.read_with(cx, |view, _| view.changes.is_empty()));
 }
@@ -294,35 +325,19 @@ fn content_mode_preserves_mouse_space_enter_and_disabled_behavior(cx: &mut TestA
 
     draw(cx);
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_event(KeyDownEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-        is_held: false,
-        prefer_character_input: false,
-    });
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    key_cycle("space", cx);
     assert_eq!(
         view.read_with(cx, |view, _| view.changes.clone()),
         [true, false]
     );
-    cx.simulate_event(KeyDownEvent {
-        keystroke: Keystroke::parse("enter").unwrap(),
-        is_held: false,
-        prefer_character_input: false,
-    });
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("enter").unwrap(),
-    });
+    key_cycle("enter", cx);
     assert_eq!(view.read_with(cx, |view, _| view.changes.len()), 2);
 
     let (disabled, cx) = cx.add_window_view(|_, _| SwitchView::new(false, true, true));
     draw(cx);
     cx.simulate_click(point(px(30.), px(18.)), Modifiers::none());
     cx.update(|window, cx| window.focus_next(cx));
-    cx.simulate_event(KeyUpEvent {
-        keystroke: Keystroke::parse("space").unwrap(),
-    });
+    key_cycle("space", cx);
     assert!(disabled.read_with(cx, |view, _| view.changes.is_empty()));
 }
 
@@ -362,22 +377,8 @@ fn loading_consumes_mouse_space_and_enter_without_activation_or_parent_bubbling(
         draw(cx);
         cx.simulate_click(point(px(30.), px(18.)), Modifiers::none());
         cx.update(|window, cx| window.focus_next(cx));
-        cx.simulate_event(KeyDownEvent {
-            keystroke: Keystroke::parse("enter").unwrap(),
-            is_held: false,
-            prefer_character_input: false,
-        });
-        cx.simulate_event(KeyUpEvent {
-            keystroke: Keystroke::parse("enter").unwrap(),
-        });
-        cx.simulate_event(KeyDownEvent {
-            keystroke: Keystroke::parse("space").unwrap(),
-            is_held: false,
-            prefer_character_input: false,
-        });
-        cx.simulate_event(KeyUpEvent {
-            keystroke: Keystroke::parse("space").unwrap(),
-        });
+        key_cycle("enter", cx);
+        key_cycle("space", cx);
 
         assert!(view.read_with(cx, |view, _| view.changes.is_empty()));
         assert_eq!(view.read_with(cx, |view, _| view.parent_clicks), 0);

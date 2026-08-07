@@ -68,7 +68,7 @@ IconButton 是固定正方形、只显示图标的操作控件，适合工具栏
 
 ## 状态、键盘与无障碍
 
-normal、hover、pressed、focus-visible 和 disabled 使用 Button 主题状态矩阵。Tab/Shift+Tab 由宿主的 GPUI 焦点遍历接线；Enter 在 keydown 激活，Space 在 keyup 激活。字符串 Tooltip 在 hover 或键盘焦点停留 500ms 后出现；配置对象支持立即 `open(true)` 或强制 `open(false)`。焦点移出会启动退出过渡，Escape 关闭但不移动焦点；受控 true 必须经历 `false -> true` 才能恢复。鼠标点击产生的焦点不会启动键盘 Tooltip。
+normal、hover、pressed、focus-visible 和 disabled 使用 Button 主题状态矩阵。Tab/Shift+Tab 由宿主的 GPUI 焦点遍历接线；鼠标、触摸及聚焦后的 Enter/Space 都进入同一个 `on_click`，Enter 与 Space 只有在完整 KeyDown + KeyUp 周期结束时才各触发一次。字符串 Tooltip 在 hover 或键盘焦点停留 500ms 后出现；配置对象支持立即 `open(true)` 或强制 `open(false)`。焦点移出会启动退出过渡，Escape 关闭但不移动焦点；受控 true 必须经历 `false -> true` 才能恢复。鼠标点击产生的焦点不会启动键盘 Tooltip。
 
 业务焦点回调与 Tooltip 复用一个 `FocusHandle`，一次转换只调用一次。重新渲染使用最新 handler，disabled 离开 Tab 顺序；完整 `_in` 与生命周期语义见 [`Focusable`](/api/focusable)。
 

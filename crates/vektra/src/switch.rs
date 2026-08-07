@@ -10,9 +10,9 @@ use crate::{
 };
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, Context, CursorStyle, ElementId,
-    InteractiveElement, IntoElement, KeyDownEvent, KeyUpEvent, KeyboardButton, Modifiers,
-    MouseButton, ParentElement, Pixels, RenderOnce, Role, SharedString, StatefulInteractiveElement,
-    Styled, Toggled, Transformation, Window, div, percentage, prelude::FluentBuilder, px, svg,
+    InteractiveElement, IntoElement, KeyDownEvent, KeyUpEvent, Modifiers, MouseButton,
+    ParentElement, Pixels, RenderOnce, Role, SharedString, StatefulInteractiveElement, Styled,
+    Toggled, Transformation, Window, div, percentage, prelude::FluentBuilder, px, svg,
 };
 use std::{rc::Rc, time::Duration};
 use vektra_theme::{ResolvedTheme, SwitchSizeTokens, SwitchStateTokens};
@@ -1017,7 +1017,7 @@ fn apply_interaction(
         focused,
         focus_width,
     } = interaction;
-    let on_key_space = on_click.clone();
+    let has_handler = on_click.is_some();
     element
         .when(disabled, |this| {
             this.cursor(CursorStyle::OperationNotAllowed)
@@ -1065,21 +1065,17 @@ fn apply_interaction(
                     (handler)(event, window, cx);
                 })
         })
-        .when_some(on_key_space, |this, handler| {
+        .when(has_handler, |this| {
             this.capture_key_down(|event, window, cx| {
-                if is_plain_key(event, "enter") || is_plain_key(event, "space") {
+                if is_plain_key(event, "enter") {
                     window.prevent_default();
                     cx.stop_propagation();
                 }
             })
-            .capture_key_up(move |event, window, cx| {
+            .capture_key_up(|event, window, cx| {
                 if is_plain_key_up(event, "enter") {
                     window.prevent_default();
                     cx.stop_propagation();
-                } else if is_plain_key_up(event, "space") {
-                    window.prevent_default();
-                    cx.stop_propagation();
-                    (handler)(&button::keyboard_click(KeyboardButton::Space), window, cx);
                 }
             })
         })

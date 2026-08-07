@@ -1,6 +1,7 @@
 use gpui::{
-    App, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding, Modifiers,
-    ParentElement, Render, Styled, TestAppContext, Window, actions, div, px,
+    App, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding, KeyDownEvent,
+    KeyUpEvent, Keystroke, Modifiers, ParentElement, Render, Styled, TestAppContext, Window,
+    actions, div, px,
 };
 use vektra::{Button, IconButton, IconSource, Tooltip};
 
@@ -91,12 +92,29 @@ fn real_tab_and_shift_tab_bindings_move_focus_and_skip_disabled(cx: &mut TestApp
     });
     cx.update(|window, cx| window.draw(cx).clear(cx));
 
-    cx.simulate_keystrokes("tab enter tab enter tab enter shift-tab enter");
+    cx.simulate_keystrokes("tab");
+    simulate_key_cycle(cx, "enter");
+    cx.simulate_keystrokes("tab");
+    simulate_key_cycle(cx, "enter");
+    cx.simulate_keystrokes("tab");
+    simulate_key_cycle(cx, "enter");
+    cx.simulate_keystrokes("shift-tab");
+    simulate_key_cycle(cx, "enter");
 
     assert_eq!(
         view.read_with(cx, |view, _| view.activations.clone()),
         ["first", "last", "icon", "last"]
     );
+}
+
+fn simulate_key_cycle(cx: &mut gpui::VisualTestContext, key: &str) {
+    let keystroke = Keystroke::parse(key).unwrap();
+    cx.simulate_event(KeyDownEvent {
+        keystroke: keystroke.clone(),
+        is_held: false,
+        prefer_character_input: false,
+    });
+    cx.simulate_event(KeyUpEvent { keystroke });
 }
 
 struct ManyTooltips;

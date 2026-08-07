@@ -247,6 +247,11 @@ fn key_up(key: &str, cx: &mut gpui::VisualTestContext) {
     });
 }
 
+fn key_cycle(key: &str, cx: &mut gpui::VisualTestContext) {
+    key_down(key, cx);
+    key_up(key, cx);
+}
+
 #[cfg(target_os = "macos")]
 fn command(key: &str) -> String {
     format!("cmd-{key}")
@@ -734,7 +739,7 @@ fn clear_is_one_user_change_and_restores_editor_focus(cx: &mut TestAppContext) {
     cx.update(|window, cx| {
         window.focus_next(cx);
     });
-    key_up("space", cx);
+    key_cycle("space", cx);
     assert_eq!(value(&view, cx), "");
     assert_eq!(
         view.read_with(cx, |view, _| {
@@ -922,7 +927,7 @@ fn clear_precedes_suffix_in_layout_and_tab_order(cx: &mut TestAppContext) {
 
     focus_editor(&view, cx);
     cx.update(|window, cx| window.focus_next(cx));
-    key_up("space", cx);
+    key_cycle("space", cx);
     assert_eq!(value(&view, cx), "");
     assert_eq!(view.read_with(cx, |view, _| view.suffix_clicks), 0);
 
@@ -933,7 +938,7 @@ fn clear_precedes_suffix_in_layout_and_tab_order(cx: &mut TestAppContext) {
         window.focus_next(cx);
         window.focus_next(cx);
     });
-    key_up("space", cx);
+    key_cycle("space", cx);
     assert_eq!(value(&view, cx), "再次");
     assert_eq!(view.read_with(cx, |view, _| view.suffix_clicks), 1);
 
@@ -943,7 +948,7 @@ fn clear_precedes_suffix_in_layout_and_tab_order(cx: &mut TestAppContext) {
         window.focus_next(cx);
         window.focus_next(cx);
     });
-    key_down("enter", cx);
+    key_cycle("enter", cx);
     assert_eq!(value(&view, cx), "再次");
     assert_eq!(view.read_with(cx, |view, _| view.attached_clicks), 1);
 }
@@ -961,8 +966,8 @@ fn attached_suffix_mouse_enter_space_and_editor_enter_share_submission(cx: &mut 
     key_down("enter", cx);
 
     cx.update(|window, cx| window.focus_next(cx));
-    key_down("enter", cx);
-    key_up("space", cx);
+    key_cycle("enter", cx);
+    key_cycle("space", cx);
 
     let attached = cx.debug_bounds("input-test-attached").unwrap();
     cx.simulate_click(attached.center(), Modifiers::none());

@@ -55,7 +55,7 @@
 4. 直接 builder 与 trait 调用的契约一致性测试。
 
 受控组件可以同时保留语义回调与标准原始激活入口。例如 Switch 的
-`on_change(next_checked, ClickEvent, ...)` 便于立即采用下一值，`Clickable::on_click` 则便于
+`on_change(next_checked, ...)` 便于立即采用下一值，`Clickable::on_click` 则便于
 宿主先请求后台接口，成功后再更新 checked。两者必须适配到同一内部激活路径，并明确采用
 “后调用者生效”等单一优先级；不得在一次激活中无条件同时调用两者。组件仍不应自行等待请求
 或提前修改受控状态。不要新增公开 `Loadable`、`Toggleable` 等 trait，除非至少两个组件已经
@@ -113,6 +113,43 @@ pub trait Clickable: Sized {
 - `on_click_in` 封装 `cx.listener` 的 Entity 弱引用绑定。
 - 高级调用者仍可直接传入标准 GPUI callback。
 - Rust 不支持按参数列表重载同名方法，因此不要强行让两种形式都叫 `on_click`。
+
+## 单一语义激活路径
+
+`on_click` 是 Vektra 的标准公共激活入口；不要为 Button 类组件新增 `on_activate`、公开
+`on_key_down`/`on_key_up` 或第二套键盘激活回调。实现前必须读取根 `Cargo.toml` 锁定的 GPUI
+revision 和对应源码，确认框架是否已经把底层输入合成为语义事件，不根据其他 revision 或记忆
+补写兼容逻辑。
+
+当前锁定 GPUI 的通用 `Div` 在元素获得焦点且没有修饰键时，会把合法的 Enter/Space
+`KeyDown + KeyUp` 合成为一次 `ClickEvent::Keyboard`；鼠标与触摸也进入同一个 `on_click`
+监听。因此 Button 与 IconButton 的推荐模式是：
+
+1. 根据 `disabled`、`loading`、`progress` 或其他 busy 状态决定是否注册业务 `on_click`；
+2. 可操作状态只把唯一 handler 注册给 GPUI `InteractiveElement::on_click`；
+3. `on_mouse_down` 可以保留焦点或阻止默认鼠标行为，但不得形成第二条激活路径；
+4. busy 状态可在底层消费鼠标、Enter 或 Space，阻止默认行为和冒泡，但消费逻辑不得调用业务
+   handler；
+5. 不得再从原始 `KeyDown`/`KeyUp` 手动构造 `KeyboardClickEvent` 或调用同一 handler。
+
+原始键盘事件与语义 ClickEvent 的职责边界如下：
+
+- `ClickEvent` 表示已经完成的激活。公开来源使用 `ClickEvent::Keyboard` 中的
+  `KeyboardButton::{Enter, Space}` 判断；不要把 GPUI 原始 `Keystroke.key: String` 扩散成
+  Vektra 的公开按键枚举。
+- 原始 `KeyDown`/`KeyUp` 只处理 GPUI `on_click` 未覆盖的组件专属语义，例如 Radio 的方向键、
+  Home、End，Input 的编辑按键，Escape 关闭浮层，或 disabled/busy 状态的事件消费。
+- Checkbox、Switch、Radio 等选择或复合组件可以为其公开语义消费不适用的 Enter，或处理方向键
+  等专属按键；Space 若复用 GPUI `on_click`，原始监听不得再次调用 `on_change`/`on_click`。每条
+  专属键盘路径都必须用完整按键周期证明不会与 GPUI 合成路径重复。
+- 可重映射命令、命令面板和应用快捷键属于 `Action`/`KeyBinding`，不应塞进组件 `on_click` 或
+  原始键盘监听。
+
+不论业务 callback 是 `on_click` 还是适配后的 `on_change`，一次鼠标、触摸或完整键盘操作最多
+调用一次。测试必须分别发送 Enter `KeyDown`、Enter `KeyUp`、Space `KeyDown` 和 Space
+`KeyUp`；不能用只有 KeyDown 的 `simulate_keystrokes("enter")` 冒充真实按键周期。Button 类
+组件至少还要断言 mouse/Enter/Space 的累计次数、`KeyboardButton` 来源、带修饰键不激活、焦点
+在 KeyDown 后移走时 KeyUp 不激活，以及 disabled/loading/progress/busy 不绕过状态门禁。
 
 ## 悬停规则
 

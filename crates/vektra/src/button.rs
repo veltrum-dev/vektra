@@ -10,9 +10,9 @@ use crate::{
 };
 use gpui::{
     Animation, AnimationExt, App, ClickEvent, Context, CursorStyle, DefiniteLength, ElementId,
-    IntoElement, KeyDownEvent, KeyUpEvent, KeyboardButton, KeyboardClickEvent, Modifiers,
-    MouseButton, ParentElement, RenderOnce, Role, SharedString, StatefulInteractiveElement, Styled,
-    Toggled, Transformation, Window, div, percentage, relative, svg,
+    IntoElement, KeyDownEvent, KeyUpEvent, Modifiers, MouseButton, ParentElement, RenderOnce, Role,
+    SharedString, StatefulInteractiveElement, Styled, Toggled, Transformation, Window, div,
+    percentage, relative, svg,
 };
 use gpui::{InteractiveElement, prelude::FluentBuilder};
 use std::{rc::Rc, time::Duration};
@@ -733,9 +733,6 @@ fn apply_interaction_with_activity(
         focus_width,
         underline_on_hover,
     } = interaction;
-    let on_key_enter = on_click.clone();
-    let on_key_space = on_click.clone();
-
     element
         .when(disabled, |this| {
             this.cursor(CursorStyle::OperationNotAllowed)
@@ -801,30 +798,6 @@ fn apply_interaction_with_activity(
                 (handler)(event, window, cx);
             })
         })
-        .when_some(on_key_enter, |this, handler| {
-            this.on_key_down(move |event, window, cx| {
-                if is_plain_key(event, "enter") && !event.is_held {
-                    window.prevent_default();
-                    cx.stop_propagation();
-                    (handler)(&keyboard_click(KeyboardButton::Enter), window, cx);
-                }
-            })
-        })
-        .when_some(on_key_space, |this, handler| {
-            this.on_key_down(|event, window, cx| {
-                if is_plain_key(event, "space") {
-                    window.prevent_default();
-                    cx.stop_propagation();
-                }
-            })
-            .on_key_up(move |event, window, cx| {
-                if is_plain_key_up(event, "space") {
-                    window.prevent_default();
-                    cx.stop_propagation();
-                    (handler)(&keyboard_click(KeyboardButton::Space), window, cx);
-                }
-            })
-        })
 }
 
 pub(crate) fn resolved_cursor_style(
@@ -849,13 +822,6 @@ fn apply_width(
         ButtonWidth::Fixed(width) => element.w(width).justify_center().text_center(),
         ButtonWidth::Full => element.w(relative(1.)).justify_center().text_center(),
     }
-}
-
-pub(crate) fn keyboard_click(button: KeyboardButton) -> ClickEvent {
-    ClickEvent::Keyboard(KeyboardClickEvent {
-        button,
-        bounds: Default::default(),
-    })
 }
 
 fn is_plain_key(event: &KeyDownEvent, key: &str) -> bool {

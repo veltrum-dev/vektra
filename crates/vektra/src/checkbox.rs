@@ -534,7 +534,7 @@ fn apply_interaction(
     focus_color: gpui::Hsla,
     focus_width: gpui::Pixels,
 ) -> gpui::Stateful<gpui::Div> {
-    let on_key_space = on_click.clone();
+    let has_handler = on_click.is_some();
 
     element
         .when(disabled, |this| {
@@ -554,22 +554,17 @@ fn apply_interaction(
                 (handler)(event, window, cx);
             })
         })
-        .when_some(on_key_space, |this, handler| {
-            this.on_key_down(|event, window, cx| {
-                if is_plain_key(event, "space") {
+        .when(has_handler, |this| {
+            this.capture_key_down(|event, window, cx| {
+                if is_plain_key(event, "enter") {
                     window.prevent_default();
                     cx.stop_propagation();
                 }
             })
-            .on_key_up(move |event, window, cx| {
-                if is_plain_key_up(event, "space") {
+            .capture_key_up(|event, window, cx| {
+                if is_plain_key_up(event, "enter") {
                     window.prevent_default();
                     cx.stop_propagation();
-                    (handler)(
-                        &button::keyboard_click(gpui::KeyboardButton::Space),
-                        window,
-                        cx,
-                    );
                 }
             })
         })
