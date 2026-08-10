@@ -199,6 +199,23 @@ fn content_width_depends_on_the_semantic_content_kind() {
 }
 
 #[test]
+fn long_text_keeps_the_same_bounded_content_slot() {
+    let theme = default_theme(ResolvedThemeMode::Light);
+    let size = theme.switch_size("sm").unwrap();
+    let short = SwitchContent::text("开启");
+    let long = SwitchContent::text("这是需要继续截断的任意长状态文本");
+
+    assert_eq!(
+        content_required_width(Some(&short), size),
+        content_required_width(Some(&long), size)
+    );
+    assert_eq!(
+        content_required_width(Some(&long), size),
+        size.content_edge_padding + size.content_max_text_width
+    );
+}
+
+#[test]
 fn content_mode_uses_one_stable_content_slot_for_both_states() {
     let theme = default_theme(ResolvedThemeMode::Light);
     let size = theme.switch_size("md").unwrap();

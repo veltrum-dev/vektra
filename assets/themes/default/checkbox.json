@@ -6,8 +6,8 @@
       "unchecked": {
         "$type": "color",
         "normal": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "box-background": { "$value": "{semantic.background}" }, "border": { "$value": "{semantic.input-border}" }, "icon": { "$value": "{semantic.foreground}" }, "label": { "$value": "{semantic.foreground}" } },
-        "hover": { "background": { "$value": "{semantic.accent}" }, "box-background": { "$value": "{semantic.background}" }, "border": { "$value": "{semantic.ring}" }, "icon": { "$value": "{semantic.foreground}" }, "label": { "$value": "{semantic.foreground}" } },
-        "pressed": { "background": { "$value": "{semantic.accent-pressed}" }, "box-background": { "$value": "{semantic.background}" }, "border": { "$value": "{semantic.ring}" }, "icon": { "$value": "{semantic.foreground}" }, "label": { "$value": "{semantic.foreground}" } },
+        "hover": { "background": { "$value": "{semantic.accent}" }, "box-background": { "$value": "{semantic.background}" }, "border": { "$value": "{semantic.border}" }, "icon": { "$value": "{semantic.foreground}" }, "label": { "$value": "{semantic.foreground}" } },
+        "pressed": { "background": { "$value": "{semantic.accent-pressed}" }, "box-background": { "$value": "{semantic.background}" }, "border": { "$value": "{semantic.border}" }, "icon": { "$value": "{semantic.foreground}" }, "label": { "$value": "{semantic.foreground}" } },
         "focus-visible": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "box-background": { "$value": "{semantic.background}" }, "border": { "$value": "{semantic.ring}" }, "icon": { "$value": "{semantic.foreground}" }, "label": { "$value": "{semantic.foreground}" } },
         "disabled": { "background": { "$value": { "colorSpace": "srgb", "components": [0, 0, 0], "alpha": 0 } }, "box-background": { "$value": "{semantic.disabled-background}" }, "border": { "$value": "{semantic.disabled-border}" }, "icon": { "$value": "{semantic.disabled-foreground}" }, "label": { "$value": "{semantic.disabled-foreground}" } }
       },

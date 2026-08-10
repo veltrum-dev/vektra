@@ -593,7 +593,7 @@ impl ResolvedTheme {
                 thumb_pressed: optional_color(
                     &tokens,
                     "scrollbar.thumb-pressed",
-                    "semantic.primary",
+                    "semantic.foreground",
                 )?,
                 focus_ring: optional_color(&tokens, "scrollbar.focus-ring", "semantic.ring")?,
                 thickness: optional_dimension_value(&tokens, "scrollbar.thickness", gpui::px(8.))?,
@@ -1268,7 +1268,7 @@ fn input_border_fallback(semantic: SemanticColors, variant: &str, state: &str) -
         return match variant {
             "borderless" => gpui::transparent_black(),
             "filled" => semantic.input_border,
-            _ => semantic.ring,
+            _ => semantic.border,
         };
     }
     if state == "read-only" {
@@ -1278,9 +1278,10 @@ fn input_border_fallback(semantic: SemanticColors, variant: &str, state: &str) -
             semantic.border
         };
     }
-    match variant {
-        "filled" | "borderless" => gpui::transparent_black(),
-        _ => semantic.input_border,
+    if variant == "borderless" {
+        gpui::transparent_black()
+    } else {
+        semantic.input_border
     }
 }
 
@@ -1382,7 +1383,11 @@ fn checkbox_box_background_fallback(visual_state: &str, state: &str) -> &'static
     } else if visual_state == "unchecked" {
         "semantic.background"
     } else {
-        "semantic.primary"
+        match state {
+            "hover" => "semantic.primary-hover",
+            "pressed" => "semantic.primary-pressed",
+            _ => "semantic.primary",
+        }
     }
 }
 
@@ -1392,9 +1397,17 @@ fn checkbox_border_fallback(visual_state: &str, state: &str) -> &'static str {
     } else if state == "disabled" {
         "semantic.disabled-border"
     } else if visual_state == "unchecked" {
-        "semantic.input-border"
+        if matches!(state, "hover" | "pressed") {
+            "semantic.border"
+        } else {
+            "semantic.input-border"
+        }
     } else {
-        "semantic.primary"
+        match state {
+            "hover" => "semantic.primary-hover",
+            "pressed" => "semantic.primary-pressed",
+            _ => "semantic.primary",
+        }
     }
 }
 
@@ -1486,7 +1499,13 @@ fn radio_border_fallback(selected: bool, state: &str) -> &'static str {
     } else if state == "disabled" {
         "semantic.disabled-border"
     } else if selected {
-        "semantic.primary"
+        match state {
+            "hover" => "semantic.primary-hover",
+            "pressed" => "semantic.primary-pressed",
+            _ => "semantic.primary",
+        }
+    } else if matches!(state, "hover" | "pressed") {
+        "semantic.border"
     } else {
         "semantic.input-border"
     }
@@ -1496,7 +1515,11 @@ fn radio_dot_fallback(selected: bool, state: &str) -> &'static str {
     if state == "disabled" {
         "semantic.disabled-foreground"
     } else if selected {
-        "semantic.primary"
+        match state {
+            "hover" => "semantic.primary-hover",
+            "pressed" => "semantic.primary-pressed",
+            _ => "semantic.primary",
+        }
     } else {
         "semantic.background"
     }
@@ -1505,6 +1528,8 @@ fn radio_dot_fallback(selected: bool, state: &str) -> &'static str {
 fn radio_description_fallback(state: &str) -> &'static str {
     if state == "disabled" {
         "semantic.disabled-foreground"
+    } else if state == "pressed" {
+        "semantic.foreground"
     } else {
         "semantic.on-muted"
     }
@@ -1524,9 +1549,17 @@ fn switch_track_background_fallback(visual_state: &str, state: &str) -> &'static
     if state == "disabled" {
         "semantic.disabled-background"
     } else if visual_state == "checked" {
-        "semantic.primary"
+        match state {
+            "hover" => "semantic.primary-hover",
+            "pressed" => "semantic.primary-pressed",
+            _ => "semantic.primary",
+        }
     } else {
-        "semantic.muted"
+        match state {
+            "hover" => "semantic.border",
+            "pressed" => "semantic.accent-pressed",
+            _ => "semantic.input-border",
+        }
     }
 }
 
@@ -1536,15 +1569,23 @@ fn switch_track_border_fallback(visual_state: &str, state: &str) -> &'static str
     } else if state == "disabled" {
         "semantic.disabled-border"
     } else if visual_state == "checked" {
-        "semantic.primary"
+        match state {
+            "hover" => "semantic.primary-hover",
+            "pressed" => "semantic.primary-pressed",
+            _ => "semantic.primary",
+        }
+    } else if matches!(state, "hover" | "pressed") {
+        "semantic.border"
     } else {
         "semantic.input-border"
     }
 }
 
-fn switch_thumb_fallback(_visual_state: &str, state: &str) -> &'static str {
+fn switch_thumb_fallback(visual_state: &str, state: &str) -> &'static str {
     if state == "disabled" {
         "semantic.disabled-foreground"
+    } else if visual_state == "checked" {
+        "semantic.on-primary"
     } else {
         "semantic.background"
     }
@@ -1564,7 +1605,11 @@ fn switch_spinner_fallback(visual_state: &str, state: &str) -> &'static str {
     if state == "disabled" {
         "semantic.background"
     } else if visual_state == "checked" {
-        "semantic.primary"
+        match state {
+            "hover" => "semantic.primary-hover",
+            "pressed" => "semantic.primary-pressed",
+            _ => "semantic.primary",
+        }
     } else {
         "semantic.foreground"
     }

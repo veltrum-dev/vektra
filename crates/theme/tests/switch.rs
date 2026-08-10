@@ -41,11 +41,15 @@ fn default_switch_tokens_resolve_and_have_legal_size_relationships() {
 
 #[test]
 fn default_content_mode_uses_one_track_and_thumb_height() {
-    let theme = default_theme(ResolvedThemeMode::Light);
-    for size in ["xs", "sm", "md", "lg"] {
-        let tokens = theme.switch_size(size).unwrap();
-        assert_eq!(tokens.content_track_height, gpui::px(24.));
-        assert_eq!(tokens.content_thumb_size, gpui::px(20.));
+    for mode in [ResolvedThemeMode::Light, ResolvedThemeMode::Dark] {
+        let theme = default_theme(mode);
+        for size in ["xs", "sm", "md", "lg"] {
+            let tokens = theme.switch_size(size).unwrap();
+            assert_eq!(tokens.content_track_height, gpui::px(24.));
+            assert_eq!(tokens.content_thumb_size, gpui::px(20.));
+            assert!(tokens.content_max_text_width >= tokens.font_size * 2. + gpui::px(2.));
+            assert!(tokens.content_max_text_width < tokens.font_size * 3.);
+        }
     }
 }
 

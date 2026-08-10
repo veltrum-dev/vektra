@@ -3,7 +3,7 @@
     "track": { "$type": "color", "$value": "{semantic.secondary}" },
     "thumb": { "$type": "color", "$value": "{semantic.on-muted}" },
     "thumb-hover": { "$type": "color", "$value": "{semantic.foreground}" },
-    "thumb-pressed": { "$type": "color", "$value": "{semantic.primary}" },
+    "thumb-pressed": { "$type": "color", "$value": "{semantic.foreground}" },
     "focus-ring": { "$type": "color", "$value": "{semantic.ring}" },
     "thickness": { "$type": "dimension", "$value": { "value": 8, "unit": "px" } },
     "thumb-hover-thickness": { "$type": "dimension", "$value": { "value": 10, "unit": "px" } },

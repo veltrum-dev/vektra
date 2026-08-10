@@ -42,7 +42,7 @@ fn default_input_tokens_resolve_for_all_modes_variants_states_and_sizes() {
 }
 
 #[test]
-fn borderless_and_filled_preserve_transparent_structural_borders() {
+fn borderless_stays_transparent_while_filled_keeps_a_required_boundary() {
     for mode in [ResolvedThemeMode::Light, ResolvedThemeMode::Dark] {
         let theme = default_theme(mode);
         assert!(
@@ -52,12 +52,9 @@ fn borderless_and_filled_preserve_transparent_structural_borders() {
                 .border
                 .is_transparent()
         );
-        assert!(
-            theme
-                .input_state("filled", "normal")
-                .unwrap()
-                .border
-                .is_transparent()
+        assert_eq!(
+            theme.input_state("filled", "normal").unwrap().border,
+            theme.semantic.input_border
         );
         assert!(
             !theme
@@ -87,6 +84,10 @@ fn themes_without_input_extension_use_semantic_and_size_fallbacks() {
             .unwrap()
             .border
             .is_transparent()
+    );
+    assert_eq!(
+        theme.input_state("filled", "normal").unwrap().border,
+        theme.semantic.input_border
     );
     assert_eq!(theme.input_size("md").unwrap().height, gpui::px(36.));
     assert_eq!(theme.input.caret_width, gpui::px(1.));

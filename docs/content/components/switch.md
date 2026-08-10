@@ -32,7 +32,7 @@
 
 track、thumb 与 label 只有一个交互目标、一个 Tab stop 和一个可访问节点。label 可在窄容器中换行，track 不会压缩。
 
-没有配置状态内容时，Switch 保持原有紧凑 track。配置任意一侧后进入内容模式，统一使用 24px track 和 20px thumb，不因内容形式或语义尺寸改变高度。轨道由一个 thumb 槽和一个共享内容槽组成；内容槽宽度取 checked 与 unchecked 两种内容类型所需宽度的较大值，因此切换时轨道不会跳动。状态内容与外侧轨道边缘之间保留主题化间距；纯图标只占图标宽度，不会被强行撑成文字宽度。checked 内容显示在逻辑起始侧，unchecked 内容显示在逻辑末端侧。
+没有配置状态内容时，Switch 保持原有紧凑 track。配置任意一侧后进入内容模式，统一使用 24px track 和 20px thumb，不因内容形式或语义尺寸改变高度。轨道由一个 thumb 槽和一个共享内容槽组成；内容槽宽度取 checked 与 unchecked 两种内容类型所需宽度的较大值，因此切换时轨道不会跳动。四种默认尺寸的文字槽都至少容纳两个中文全角字并保留 2px 余量，文档推荐的“开启/关闭”不会被意外截断。状态内容与外侧轨道边缘之间保留主题化间距；纯图标只占图标宽度，不会被强行撑成文字宽度。checked 内容显示在逻辑起始侧，unchecked 内容显示在逻辑末端侧。
 
 ## API
 
@@ -115,7 +115,7 @@ Switch 在 macOS、Windows、Linux 与 Web 预览中复用同一 GPUI 实现。�
 受控 checked 值变化时，thumb 与内容默认使用 180ms、固定 ease-out cubic；旧内容在前半程淡出，新内容在后半程淡入，避免与移动中的 thumb 明显重叠。`.transition_duration(...)` 接受调用方传入的非零时长且不静默夹取，建议 100–400ms；`Duration::ZERO` 不创建状态切换动画。初次 render 不播放入场动画，只改变 duration 不会增加 motion generation 或重启动画，同一次 render 同时改变 checked 与 duration 时使用新时长。GPUI reduced-motion 的优先级更高，会让 thumb、内容与 spinner 直接显示静态终态。
 
 - 没有非受控状态或 `default_checked`。
-- 状态文字保持单行并按主题上限截断，只适合“开启/关闭”等短文本。
+- 状态文字保持单行；四种默认尺寸支持“开启/关闭”这类两字中文短状态，更长内容仍按主题上限截断。
 - 没有拖拽、`indeterminate`、自定义 easing/复杂动画配置、任意 `AnyElement` slot 或表单校验。
 - 如果两个选项需要始终同时可见并可分别点击，应使用 Segmented Control，而不是扩展 Switch。
 - label 固定在 track 后方。

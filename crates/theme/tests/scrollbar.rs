@@ -34,7 +34,7 @@ fn themes_without_scrollbar_extension_use_semantic_and_geometry_fallbacks() {
     assert_eq!(theme.scrollbar.track, theme.semantic.secondary);
     assert_eq!(theme.scrollbar.thumb, theme.semantic.on_muted);
     assert_eq!(theme.scrollbar.thumb_hover, theme.semantic.foreground);
-    assert_eq!(theme.scrollbar.thumb_pressed, theme.semantic.primary);
+    assert_eq!(theme.scrollbar.thumb_pressed, theme.semantic.foreground);
     assert_eq!(theme.scrollbar.thickness, gpui::px(8.));
     assert_eq!(theme.scrollbar.thumb_hover_thickness, gpui::px(10.));
     assert_eq!(theme.scrollbar.hit_thickness, gpui::px(14.));

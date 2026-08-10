@@ -32,7 +32,7 @@ Root interaction and focus area
 
 Track, thumb, and label have one interaction target, Tab stop, and accessibility node. Labels can wrap in narrow layouts while the track does not shrink.
 
-Without state content, Switch keeps its existing compact track. Configuring either side enables content mode, which consistently uses a 24px track and 20px thumb regardless of content kind or semantic size. The track consists of one thumb slot and one shared content slot. The content slot uses the larger width required by the checked and unchecked content kinds, so toggling does not resize the track. Theme spacing separates state content from the outer track edge. Icon-only content takes only icon width instead of being inflated to text width. Checked content occupies the logical-start side; unchecked content occupies the logical-end side.
+Without state content, Switch keeps its existing compact track. Configuring either side enables content mode, which consistently uses a 24px track and 20px thumb regardless of content kind or semantic size. The track consists of one thumb slot and one shared content slot. The content slot uses the larger width required by the checked and unchecked content kinds, so toggling does not resize the track. Text slots in all four default sizes fit at least two full-width CJK characters with 2px of spare width, so the documented “开启/关闭” labels are not clipped unexpectedly. Theme spacing separates state content from the outer track edge. Icon-only content takes only icon width instead of being inflated to text width. Checked content occupies the logical-start side; unchecked content occupies the logical-end side.
 
 ## API
 
@@ -115,7 +115,7 @@ Switch uses the same GPUI implementation on macOS, Windows, Linux, and the Web p
 Controlled checked changes move the thumb and content with a default 180ms fixed ease-out cubic transition. Old content fades out during the first half and new content fades in during the second half, avoiding obvious overlap with the moving thumb. `.transition_duration(...)` accepts the supplied nonzero duration without silent clamping; 100–400ms is recommended. `Duration::ZERO` creates no state-transition animation. Initial render never plays an entrance transition, a duration-only change does not increment motion generation or restart motion, and changing checked plus duration in one render uses the new duration. GPUI reduced motion has higher priority and renders thumb, content, and spinner in their static final state.
 
 - No uncontrolled state or `default_checked`.
-- State text is single-line and theme-truncated; use short labels such as “On/Off”.
+- State text stays on one line. All four default sizes support short two-character CJK states such as “开启/关闭”; longer text remains theme-truncated.
 - No drag, `indeterminate`, custom easing/complex motion configuration, arbitrary `AnyElement` slot, or form validation.
 - If two choices must remain visible and separately clickable, use a Segmented Control instead of extending Switch.
 - The label is fixed after the track.
