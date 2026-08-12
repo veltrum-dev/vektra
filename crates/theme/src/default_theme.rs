@@ -23,6 +23,7 @@ const RADIO: &str = "themes/default/radio.json";
 const SWITCH: &str = "themes/default/switch.json";
 const TOOLTIP: &str = "themes/default/tooltip.json";
 const SCROLLBAR: &str = "themes/default/scrollbar.json";
+const SELECT: &str = "themes/default/select.json";
 
 static LIGHT_THEME: OnceLock<Arc<ResolvedTheme>> = OnceLock::new();
 static DARK_THEME: OnceLock<Arc<ResolvedTheme>> = OnceLock::new();
@@ -41,6 +42,7 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
     let switch = load_builtin_text(SWITCH)?;
     let tooltip = load_builtin_text(TOOLTIP)?;
     let scrollbar = load_builtin_text(SCROLLBAR)?;
+    let select = load_builtin_text(SELECT)?;
 
     let tokens = parse_token_sets(&[
         &foundation,
@@ -52,6 +54,7 @@ pub fn default_tokens(mode: ResolvedThemeMode) -> Result<ResolvedTokens, ThemeEr
         &switch,
         &tooltip,
         &scrollbar,
+        &select,
     ])?;
     profile::validate(&tokens)?;
     Ok(tokens)
@@ -253,6 +256,7 @@ mod tests {
     fn default_theme_resources_are_loaded_from_assets_crate() {
         for path in [
             FOUNDATION, LIGHT, DARK, BUTTON, INPUT, CHECKBOX, RADIO, SWITCH, TOOLTIP, SCROLLBAR,
+            SELECT,
         ] {
             let text = load_builtin_text(path).unwrap();
             assert!(!text.is_empty(), "`{path}` 应从 vektra-assets 读取");

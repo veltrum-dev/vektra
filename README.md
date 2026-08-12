@@ -11,8 +11,10 @@ crates.io 上的 `vektra` 0.0.1 只用于保留项目名称，不包含当前组
 - 中文文档：<https://veltrum-dev.github.io/vektra/>
 - English docs: <https://veltrum-dev.github.io/vektra/en/>
 - 本地文档开发：[docs/README.md](docs/README.md)
+- 版本与发布政策：[docs/content/guide/versioning-and-releases.md](docs/content/guide/versioning-and-releases.md)
 - 资源与图标：[docs/content/guide/assets-and-icons.md](docs/content/guide/assets-and-icons.md)
 - Button API：[docs/content/components/button.md](docs/content/components/button.md)
+- Select API：[docs/content/components/select.md](docs/content/components/select.md)
 - Switch API：[docs/content/components/switch.md](docs/content/components/switch.md)
 - IconButton API：[docs/content/components/icon-button.md](docs/content/components/icon-button.md)
 - Tooltip API：[docs/content/components/tooltip.md](docs/content/components/tooltip.md)
@@ -58,6 +60,7 @@ cargo run --example button
 cargo run --example checkbox
 cargo run --example switch
 cargo run --example radio
+cargo run --example select
 cargo run --example icon_button
 cargo run --example custom_assets
 cargo run --example tooltip

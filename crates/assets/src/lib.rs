@@ -1,8 +1,8 @@
 //! Vektra 自带资源的 GPUI `AssetSource` 实现与组合工具。
 //!
 //! 该 crate 负责把 Vektra 框架资源嵌入二进制，并通过 GPUI 原生资源接口提供给
-//! `Application::with_assets`。默认包含主题（含 Input、Tooltip 与 Scrollbar token）、Input 状态图标和
-//! Button loading 指示器；启用 `icons` feature 后才包含 Eye、EyeOff、Search、Settings 等
+//! `Application::with_assets`。默认包含主题（含 Input、Select、Tooltip 与 Scrollbar token）、Input 状态图标和
+//! Button loading 指示器和 Select 下拉指示器；启用 `icons` feature 后才包含 Eye、EyeOff、Search、Settings 等
 //! 其余 Vektra 内置 SVG 图标。
 
 use gpui::{AssetSource, Result, SharedString};
@@ -11,8 +11,8 @@ use std::{borrow::Cow, collections::BTreeSet};
 
 /// Vektra 默认资源集合。
 ///
-/// 该资源源默认提供 `themes/default/**/*`（含 Input、Checkbox、Radio、Switch、Tooltip 与
-/// Scrollbar token）、Button 使用的 `components/button/loading.svg`、Input 与 Checkbox 默认状态图标。
+/// 该资源源默认提供 `themes/default/**/*`（含 Input、Checkbox、Radio、Switch、Select、
+/// Tooltip 与 Scrollbar token）、Button 使用的 `components/button/loading.svg`、Input、Checkbox 与 Select 默认状态图标。
 /// 启用 `icons` feature 时，额外提供其他 `icons/**/*.svg` 内置图标。应用没有自定义
 /// 资源时，可以把该类型直接传给 GPUI：
 ///
@@ -31,6 +31,8 @@ pub struct Assets;
 #[include = "components/checkbox/heart-filled.svg"]
 #[include = "components/checkbox/heart.svg"]
 #[include = "components/checkbox/minus.svg"]
+#[include = "components/select/chevron-down.svg"]
+#[include = "components/select/chevron-up.svg"]
 struct CoreAssets;
 
 #[cfg(feature = "icons")]

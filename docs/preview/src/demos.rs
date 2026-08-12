@@ -4,6 +4,7 @@ mod icon_button;
 mod input;
 mod radio;
 mod scrollbar;
+mod select;
 mod switch;
 mod tooltip;
 
@@ -36,6 +37,11 @@ pub(crate) enum DemoSelection {
     RadioKeyboard,
     RadioOrientation,
     RadioComprehensive,
+    SelectBasic,
+    SelectGroups,
+    SelectStates,
+    SelectKeyboard,
+    SelectLongList,
     SwitchBasic,
     SwitchStates,
     SwitchFocus,
@@ -91,6 +97,11 @@ impl DemoSelection {
         "radio/disabled",
         "radio/keyboard",
         "radio/orientation",
+        "select/basic",
+        "select/groups",
+        "select/states",
+        "select/keyboard",
+        "select/long-list",
         "switch/basic",
         "switch/states",
         "switch/focus",
@@ -140,6 +151,11 @@ impl DemoSelection {
         "radio/keyboard",
         "radio/orientation",
         "radio/comprehensive",
+        "select/basic",
+        "select/groups",
+        "select/states",
+        "select/keyboard",
+        "select/long-list",
         "switch/basic",
         "switch/states",
         "switch/focus",
@@ -196,6 +212,11 @@ impl DemoSelection {
             Some("radio/keyboard") => Self::RadioKeyboard,
             Some("radio/orientation") => Self::RadioOrientation,
             Some("radio/comprehensive") => Self::RadioComprehensive,
+            Some("select/basic") => Self::SelectBasic,
+            Some("select/groups") => Self::SelectGroups,
+            Some("select/states") => Self::SelectStates,
+            Some("select/keyboard") => Self::SelectKeyboard,
+            Some("select/long-list") => Self::SelectLongList,
             Some("switch/basic") => Self::SwitchBasic,
             Some("switch/states") => Self::SwitchStates,
             Some("switch/focus") => Self::SwitchFocus,
@@ -253,6 +274,11 @@ impl DemoSelection {
             Self::RadioKeyboard => "radio/keyboard",
             Self::RadioOrientation => "radio/orientation",
             Self::RadioComprehensive => "radio/comprehensive",
+            Self::SelectBasic => "select/basic",
+            Self::SelectGroups => "select/groups",
+            Self::SelectStates => "select/states",
+            Self::SelectKeyboard => "select/keyboard",
+            Self::SelectLongList => "select/long-list",
             Self::SwitchBasic => "switch/basic",
             Self::SwitchStates => "switch/states",
             Self::SwitchFocus => "switch/focus",
@@ -357,6 +383,7 @@ pub(crate) struct PreviewApp {
     checkbox_demo: checkbox::CheckboxDemo,
     radio_basic_demo: radio::RadioBasicDemo,
     radio_demo: radio::RadioDemo,
+    select_demo: select::SelectDemo,
     switch_basic_demo: switch::SwitchBasicDemo,
     switch_demo: switch::SwitchDemo,
     input_basic_demo: input::InputBasicDemo,
@@ -393,6 +420,7 @@ impl PreviewApp {
             checkbox_demo: checkbox::CheckboxDemo::new(),
             radio_basic_demo: radio::RadioBasicDemo::new(),
             radio_demo: radio::RadioDemo::new(),
+            select_demo: select::SelectDemo::new(),
             switch_basic_demo: switch::SwitchBasicDemo::new(),
             switch_demo: switch::SwitchDemo::new(),
             input_basic_demo: input::InputBasicDemo::new(cx),
@@ -524,6 +552,26 @@ impl Render for PreviewApp {
             DemoSelection::RadioComprehensive => self
                 .radio_demo
                 .render(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SelectBasic => self
+                .select_demo
+                .render_basic(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SelectGroups => self
+                .select_demo
+                .render_groups(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SelectStates => self
+                .select_demo
+                .render_states(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SelectKeyboard => self
+                .select_demo
+                .render_keyboard(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::SelectLongList => self
+                .select_demo
+                .render_long_list(self.language, window, cx)
                 .into_any_element(),
             DemoSelection::SwitchBasic => self
                 .switch_basic_demo

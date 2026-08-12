@@ -29,6 +29,10 @@ name = "radio"
 path = "radio/src/main.rs"
 
 [[example]]
+name = "select"
+path = "select/src/main.rs"
+
+[[example]]
 name = "custom_assets"
 path = "custom_assets/src/main.rs"
 

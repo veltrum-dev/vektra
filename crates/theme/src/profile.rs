@@ -52,6 +52,16 @@ const CHECKBOX_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
 const RADIO_SELECTION_STATES: &[&str] = &["unselected", "selected"];
 const RADIO_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
 const RADIO_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
+const SELECT_TRIGGER_STATES: &[&str] = &[
+    "normal",
+    "hover",
+    "pressed",
+    "focus-visible",
+    "open",
+    "disabled",
+];
+const SELECT_OPTION_STATES: &[&str] = &["normal", "hover", "active", "selected", "disabled"];
+const SELECT_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
 const SWITCH_VISUAL_STATES: &[&str] = &["unchecked", "checked"];
 const SWITCH_STATES: &[&str] = &["normal", "hover", "pressed", "focus-visible", "disabled"];
 const SWITCH_SIZES: &[&str] = &["xs", "sm", "md", "lg"];
@@ -303,6 +313,85 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
         for size in RADIO_SIZES {
             for field in radio_size_fields {
                 tokens.required(&format!("radio.size.{size}.{field}"))?;
+            }
+        }
+    }
+
+    let select_common_fields = ["border-width", "focus-width", "group-label"];
+    let select_popup_fields = [
+        "background",
+        "border",
+        "border-width",
+        "radius",
+        "padding",
+        "shadow-color",
+        "shadow-offset-y",
+        "shadow-blur",
+        "shadow-spread",
+        "anchor-gap",
+        "viewport-padding",
+        "max-height",
+    ];
+    let select_status_fields = ["loading", "empty", "error"];
+    let select_trigger_fields = [
+        "background",
+        "foreground",
+        "placeholder",
+        "border",
+        "indicator",
+    ];
+    let select_option_fields = ["background", "foreground", "description", "indicator"];
+    let select_size_fields = [
+        "height",
+        "padding-x",
+        "font-size",
+        "line-height",
+        "radius",
+        "icon-size",
+        "indicator-size",
+        "content-gap",
+        "option-padding-x",
+        "option-padding-y",
+        "description-font-size",
+        "description-line-height",
+        "group-padding-y",
+    ];
+    let has_select_extension = select_common_fields
+        .iter()
+        .any(|field| tokens.get(&format!("select.{field}")).is_some())
+        || select_popup_fields
+            .iter()
+            .any(|field| tokens.get(&format!("select.popup.{field}")).is_some())
+        || SELECT_TRIGGER_STATES.iter().any(|state| {
+            select_trigger_fields.iter().any(|field| {
+                tokens
+                    .get(&format!("select.trigger.{state}.{field}"))
+                    .is_some()
+            })
+        });
+    if has_select_extension {
+        for field in select_common_fields {
+            tokens.required(&format!("select.{field}"))?;
+        }
+        for field in select_popup_fields {
+            tokens.required(&format!("select.popup.{field}"))?;
+        }
+        for field in select_status_fields {
+            tokens.required(&format!("select.status.{field}"))?;
+        }
+        for state in SELECT_TRIGGER_STATES {
+            for field in select_trigger_fields {
+                tokens.required(&format!("select.trigger.{state}.{field}"))?;
+            }
+        }
+        for state in SELECT_OPTION_STATES {
+            for field in select_option_fields {
+                tokens.required(&format!("select.option.{state}.{field}"))?;
+            }
+        }
+        for size in SELECT_SIZES {
+            for field in select_size_fields {
+                tokens.required(&format!("select.size.{size}.{field}"))?;
             }
         }
     }

@@ -243,6 +243,19 @@ fn controlled_basic_examples_keep_only_their_required_state() {
     assert_eq!(radio.matches("Option<BasicPlan>").count(), 1);
     assert!(!radio.contains("pending"));
     assert!(!radio.contains("disabled"));
+
+    let select = include_str!("../../src/demos/select.rs")
+        .split("// #region select-example-basic")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion select-example-basic")
+        .next()
+        .unwrap();
+    assert_eq!(select.matches("Option<Plan>").count(), 0);
+    assert!(select.contains(".selected_value(self.basic)"));
+    assert!(!select.contains("SelectGroup"));
+    assert!(!select.contains("SelectStatus"));
+    assert!(!select.contains("disabled"));
 }
 
 #[test]
@@ -298,6 +311,24 @@ fn focused_examples_cover_component_states_keyboard_sizes_and_tooltips() {
     assert!(scrollbar.contains("// #region scrollbar-example-basic"));
     assert!(scrollbar.contains(".scrollbar()"));
     assert!(scrollbar.contains("// #region scrollbar-example-configuration"));
+
+    let select = include_str!("../../src/demos/select.rs");
+    for region in [
+        "select-example-basic",
+        "select-example-groups",
+        "select-example-states",
+        "select-example-keyboard",
+        "select-example-long-list",
+    ] {
+        assert!(select.contains(&format!("// #region {region}")));
+        assert!(select.contains(&format!("// #endregion {region}")));
+    }
+    assert!(select.contains("SelectGroup::new"));
+    assert!(select.contains("SelectStatus::loading"));
+    assert!(select.contains("SelectStatus::empty"));
+    assert!(select.contains("SelectStatus::error"));
+    assert!(select.contains(".disabled(true)"));
+    assert!(select.contains("for index in 1..=30"));
     assert!(scrollbar.contains(".scrollbar_with(ScrollbarConfig"));
     assert!(scrollbar.contains("ScrollAxis::Horizontal"));
     assert!(scrollbar.contains("ScrollVisibility::Always"));
@@ -311,6 +342,7 @@ fn component_pages_pair_every_preview_with_compiled_source_and_registered_id() {
         "button",
         "checkbox",
         "radio",
+        "select",
         "switch",
         "icon-button",
         "input",

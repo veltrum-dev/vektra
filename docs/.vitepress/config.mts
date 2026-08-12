@@ -71,6 +71,7 @@ function zhThemeConfig(): DefaultTheme.Config {
         text: "指南",
         items: [
           { text: "快速开始", link: "/guide/getting-started" },
+          { text: "版本与发布", link: "/guide/versioning-and-releases" },
           { text: "资源与图标", link: "/guide/assets-and-icons" }
         ]
       },
@@ -80,6 +81,7 @@ function zhThemeConfig(): DefaultTheme.Config {
           { text: "Button", link: "/components/button" },
           { text: "Checkbox", link: "/components/checkbox" },
           { text: "Radio", link: "/components/radio" },
+          { text: "Select", link: "/components/select" },
           { text: "Switch", link: "/components/switch" },
           { text: "Input", link: "/components/input" },
           { text: "IconButton", link: "/components/icon-button" },
@@ -132,6 +134,7 @@ function enThemeConfig(): DefaultTheme.Config {
         text: "Guide",
         items: [
           { text: "Quick Start", link: "/en/guide/getting-started" },
+          { text: "Versioning and Releases", link: "/en/guide/versioning-and-releases" },
           { text: "Assets and Icons", link: "/en/guide/assets-and-icons" }
         ]
       },
@@ -141,6 +144,7 @@ function enThemeConfig(): DefaultTheme.Config {
           { text: "Button", link: "/en/components/button" },
           { text: "Checkbox", link: "/en/components/checkbox" },
           { text: "Radio", link: "/en/components/radio" },
+          { text: "Select", link: "/en/components/select" },
           { text: "Switch", link: "/en/components/switch" },
           { text: "Input", link: "/en/components/input" },
           { text: "IconButton", link: "/en/components/icon-button" },

@@ -74,6 +74,12 @@ fn loads_and_lists_default_theme_resources() {
             .contains("input")
     );
     assert!(
+        Assets::load_text("themes/default/select.json")
+            .unwrap()
+            .unwrap()
+            .contains("select")
+    );
+    assert!(
         Assets
             .list("themes/default")
             .unwrap()
@@ -133,6 +139,33 @@ fn checkbox_icons_are_core_resources() {
 }
 
 #[test]
+fn select_indicator_is_a_core_resource() {
+    for path in [
+        "components/select/chevron-down.svg",
+        "components/select/chevron-up.svg",
+    ] {
+        let bytes = Assets.load(path).unwrap().unwrap();
+        let svg = std::str::from_utf8(bytes.as_ref()).unwrap();
+        assert!(svg.contains("viewBox=\"0 0 16 16\""));
+        assert!(svg.contains("currentColor"));
+    }
+    assert!(
+        Assets
+            .list("components/select")
+            .unwrap()
+            .iter()
+            .any(|path| path.as_ref() == "components/select/chevron-down.svg")
+    );
+    assert!(
+        Assets
+            .list("components/select")
+            .unwrap()
+            .iter()
+            .any(|path| path.as_ref() == "components/select/chevron-up.svg")
+    );
+}
+
+#[test]
 fn overrides_win_and_missing_entries_fall_back() {
     let assets = Assets::with_overrides(
         TestAssets::default().with_asset("components/button/loading.svg", b"override"),
@@ -182,6 +215,7 @@ fn list_merges_deduplicates_and_sorts() {
             "themes/default/light.json",
             "themes/default/radio.json",
             "themes/default/scrollbar.json",
+            "themes/default/select.json",
             "themes/default/switch.json",
             "themes/default/tooltip.json",
         ]
@@ -229,6 +263,18 @@ fn default_build_embeds_all_core_component_resources() {
     assert!(
         Assets
             .load("components/checkbox/check.svg")
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        Assets
+            .load("components/select/chevron-down.svg")
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        Assets
+            .load("components/select/chevron-up.svg")
             .unwrap()
             .is_some()
     );

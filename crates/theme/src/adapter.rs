@@ -240,6 +240,106 @@ pub struct RadioTokens {
     pub focus_width: Pixels,
 }
 
+/// Select Trigger 某个交互状态的 GPUI 样式 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SelectTriggerStateTokens {
+    /// Trigger 背景色。
+    pub background: Hsla,
+    /// 已选内容前景色。
+    pub foreground: Hsla,
+    /// Placeholder 前景色。
+    pub placeholder: Hsla,
+    /// Trigger 边框色。
+    pub border: Hsla,
+    /// 展开指示器颜色。
+    pub indicator: Hsla,
+}
+
+/// Select Option 某个交互状态的 GPUI 样式 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SelectOptionStateTokens {
+    /// Option 背景色。
+    pub background: Hsla,
+    /// 主标签前景色。
+    pub foreground: Hsla,
+    /// 描述前景色。
+    pub description: Hsla,
+    /// 选中指示器颜色。
+    pub indicator: Hsla,
+}
+
+/// Select 某个语义尺寸的 GPUI 尺寸 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SelectSizeTokens {
+    /// Trigger 高度。
+    pub height: Pixels,
+    /// Trigger 水平内边距。
+    pub padding_x: Pixels,
+    /// 主文本字号。
+    pub font_size: Pixels,
+    /// 主文本行高。
+    pub line_height: Pixels,
+    /// Trigger 圆角。
+    pub radius: Pixels,
+    /// Option 前置图标尺寸。
+    pub icon_size: Pixels,
+    /// 展开与选中指示器尺寸。
+    pub indicator_size: Pixels,
+    /// 相邻内容间距。
+    pub content_gap: Pixels,
+    /// Option 水平内边距。
+    pub option_padding_x: Pixels,
+    /// Option 垂直内边距。
+    pub option_padding_y: Pixels,
+    /// Option 描述字号。
+    pub description_font_size: Pixels,
+    /// Option 描述行高。
+    pub description_line_height: Pixels,
+    /// Group label 垂直内边距。
+    pub group_padding_y: Pixels,
+}
+
+/// Select 组件所需的公共 token。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SelectTokens {
+    /// Trigger 普通边框宽度。
+    pub border_width: Pixels,
+    /// Trigger focus-visible 边框宽度。
+    pub focus_width: Pixels,
+    /// Popup 背景色。
+    pub popup_background: Hsla,
+    /// Popup 边框色。
+    pub popup_border: Hsla,
+    /// Popup 边框宽度。
+    pub popup_border_width: Pixels,
+    /// Popup 圆角。
+    pub popup_radius: Pixels,
+    /// Popup 内容内边距。
+    pub popup_padding: Pixels,
+    /// Popup 阴影颜色。
+    pub popup_shadow_color: Hsla,
+    /// Popup 阴影垂直偏移。
+    pub popup_shadow_offset_y: Pixels,
+    /// Popup 阴影模糊半径。
+    pub popup_shadow_blur: Pixels,
+    /// Popup 阴影扩展半径。
+    pub popup_shadow_spread: Pixels,
+    /// Popup 与 Trigger 的间距。
+    pub popup_anchor_gap: Pixels,
+    /// Popup 距离视口边缘的安全距离。
+    pub popup_viewport_padding: Pixels,
+    /// Popup 在空间充足时的最大高度。
+    pub popup_max_height: Pixels,
+    /// Group label 前景色。
+    pub group_label: Hsla,
+    /// Loading 状态前景色。
+    pub status_loading: Hsla,
+    /// Empty 状态前景色。
+    pub status_empty: Hsla,
+    /// Error 状态前景色。
+    pub status_error: Hsla,
+}
+
 /// Switch 某个 visual/interaction state 的 GPUI 样式 token。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SwitchStateTokens {
@@ -407,6 +507,8 @@ pub struct ResolvedTheme {
     pub checkbox: CheckboxTokens,
     /// Radio 公共 token。
     pub radio: RadioTokens,
+    /// Select 公共 token。
+    pub select: SelectTokens,
     /// Switch 公共 token。
     pub switch: SwitchTokens,
     /// Tooltip 公共 token。
@@ -491,6 +593,86 @@ impl ResolvedTheme {
                     &tokens,
                     "radio.focus-width",
                     "foundation.border.focus",
+                )?,
+            },
+            select: SelectTokens {
+                border_width: optional_dimension(
+                    &tokens,
+                    "select.border-width",
+                    "foundation.border.width",
+                )?,
+                focus_width: optional_dimension(
+                    &tokens,
+                    "select.focus-width",
+                    "foundation.border.focus",
+                )?,
+                popup_background: optional_color(
+                    &tokens,
+                    "select.popup.background",
+                    "semantic.surface",
+                )?,
+                popup_border: optional_color(&tokens, "select.popup.border", "semantic.border")?,
+                popup_border_width: optional_dimension(
+                    &tokens,
+                    "select.popup.border-width",
+                    "foundation.border.width",
+                )?,
+                popup_radius: optional_dimension(
+                    &tokens,
+                    "select.popup.radius",
+                    "foundation.radius.md",
+                )?,
+                popup_padding: optional_dimension(
+                    &tokens,
+                    "select.popup.padding",
+                    "foundation.space.1",
+                )?,
+                popup_shadow_color: if tokens.get("select.popup.shadow-color").is_some() {
+                    color(&tokens, "select.popup.shadow-color")?
+                } else {
+                    color(&tokens, "semantic.foreground")?.opacity(0.16)
+                },
+                popup_shadow_offset_y: optional_dimension(
+                    &tokens,
+                    "select.popup.shadow-offset-y",
+                    "foundation.space.1",
+                )?,
+                popup_shadow_blur: optional_dimension(
+                    &tokens,
+                    "select.popup.shadow-blur",
+                    "foundation.space.2",
+                )?,
+                popup_shadow_spread: optional_dimension(
+                    &tokens,
+                    "select.popup.shadow-spread",
+                    "foundation.space.0",
+                )?,
+                popup_anchor_gap: optional_dimension(
+                    &tokens,
+                    "select.popup.anchor-gap",
+                    "foundation.space.1",
+                )?,
+                popup_viewport_padding: optional_dimension(
+                    &tokens,
+                    "select.popup.viewport-padding",
+                    "foundation.space.2",
+                )?,
+                popup_max_height: optional_dimension_value(
+                    &tokens,
+                    "select.popup.max-height",
+                    gpui::px(280.),
+                )?,
+                group_label: optional_color(&tokens, "select.group-label", "semantic.on-muted")?,
+                status_loading: optional_color(
+                    &tokens,
+                    "select.status.loading",
+                    "semantic.on-muted",
+                )?,
+                status_empty: optional_color(&tokens, "select.status.empty", "semantic.on-muted")?,
+                status_error: optional_color(
+                    &tokens,
+                    "select.status.error",
+                    "semantic.destructive",
                 )?,
             },
             switch: SwitchTokens {
@@ -958,6 +1140,138 @@ impl ResolvedTheme {
         })
     }
 
+    /// 读取 Select Trigger 的交互状态 token。
+    pub fn select_trigger_state(
+        &self,
+        state: &str,
+    ) -> Result<SelectTriggerStateTokens, ThemeError> {
+        let prefix = format!("select.trigger.{state}");
+        Ok(SelectTriggerStateTokens {
+            background: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.background"),
+                select_trigger_background_fallback(self.semantic, state),
+            )?,
+            foreground: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.foreground"),
+                select_trigger_foreground_fallback(self.semantic, state),
+            )?,
+            placeholder: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.placeholder"),
+                select_trigger_placeholder_fallback(self.semantic, state),
+            )?,
+            border: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.border"),
+                select_trigger_border_fallback(self.semantic, state),
+            )?,
+            indicator: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.indicator"),
+                select_trigger_indicator_fallback(self.semantic, state),
+            )?,
+        })
+    }
+
+    /// 读取 Select Option 的交互状态 token。
+    pub fn select_option_state(&self, state: &str) -> Result<SelectOptionStateTokens, ThemeError> {
+        let prefix = format!("select.option.{state}");
+        Ok(SelectOptionStateTokens {
+            background: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.background"),
+                select_option_background_fallback(self.semantic, state),
+            )?,
+            foreground: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.foreground"),
+                select_option_foreground_fallback(self.semantic, state),
+            )?,
+            description: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.description"),
+                select_option_description_fallback(self.semantic, state),
+            )?,
+            indicator: optional_color_value(
+                &self.tokens,
+                &format!("{prefix}.indicator"),
+                select_option_foreground_fallback(self.semantic, state),
+            )?,
+        })
+    }
+
+    /// 读取 Select 的语义尺寸 token。
+    pub fn select_size(&self, size: &str) -> Result<SelectSizeTokens, ThemeError> {
+        let prefix = format!("select.size.{size}");
+        let (height, padding_x, font_size, icon_size, option_padding_y) =
+            select_size_fallback(size);
+        Ok(SelectSizeTokens {
+            height: optional_dimension_value(&self.tokens, &format!("{prefix}.height"), height)?,
+            padding_x: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.padding-x"),
+                padding_x,
+            )?,
+            font_size: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.font-size"),
+                font_size,
+            )?,
+            line_height: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.line-height"),
+                "foundation.space.4",
+            )?,
+            radius: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.radius"),
+                "foundation.radius.md",
+            )?,
+            icon_size: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.icon-size"),
+                icon_size,
+            )?,
+            indicator_size: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.indicator-size"),
+                icon_size,
+            )?,
+            content_gap: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.content-gap"),
+                "foundation.space.2",
+            )?,
+            option_padding_x: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.option-padding-x"),
+                padding_x,
+            )?,
+            option_padding_y: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.option-padding-y"),
+                option_padding_y,
+            )?,
+            description_font_size: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.description-font-size"),
+                "foundation.font.size.xs",
+            )?,
+            description_line_height: optional_dimension(
+                &self.tokens,
+                &format!("{prefix}.description-line-height"),
+                "foundation.space.4",
+            )?,
+            group_padding_y: optional_dimension_value(
+                &self.tokens,
+                &format!("{prefix}.group-padding-y"),
+                option_padding_y,
+            )?,
+        })
+    }
+
     /// 读取 Switch state token。
     pub fn switch_state(
         &self,
@@ -1200,6 +1514,104 @@ fn optional_color_value(
         color(tokens, path)
     } else {
         Ok(fallback)
+    }
+}
+
+fn select_trigger_background_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    match state {
+        "hover" => semantic.secondary,
+        "pressed" => semantic.accent,
+        "disabled" => semantic.disabled_background,
+        _ => semantic.background,
+    }
+}
+
+fn select_trigger_foreground_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    if state == "disabled" {
+        semantic.disabled_foreground
+    } else {
+        semantic.foreground
+    }
+}
+
+fn select_trigger_placeholder_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    if state == "disabled" {
+        semantic.disabled_foreground
+    } else {
+        semantic.on_muted
+    }
+}
+
+fn select_trigger_border_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    match state {
+        "focus-visible" | "open" => semantic.ring,
+        "hover" | "pressed" => semantic.foreground,
+        "disabled" => semantic.disabled_border,
+        _ => semantic.input_border,
+    }
+}
+
+fn select_trigger_indicator_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    match state {
+        "normal" => semantic.on_muted,
+        "disabled" => semantic.disabled_foreground,
+        _ => semantic.foreground,
+    }
+}
+
+fn select_option_background_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    match state {
+        "hover" => semantic.secondary,
+        "active" => semantic.accent,
+        _ => semantic.surface,
+    }
+}
+
+fn select_option_foreground_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    match state {
+        "disabled" => semantic.disabled_foreground,
+        _ => semantic.foreground,
+    }
+}
+
+fn select_option_description_fallback(semantic: SemanticColors, state: &str) -> Hsla {
+    match state {
+        "disabled" => semantic.disabled_foreground,
+        "hover" | "active" => semantic.foreground,
+        _ => semantic.on_muted,
+    }
+}
+
+fn select_size_fallback(size: &str) -> (Pixels, Pixels, Pixels, Pixels, Pixels) {
+    match size {
+        "xs" => (
+            gpui::px(24.),
+            gpui::px(8.),
+            gpui::px(12.),
+            gpui::px(12.),
+            gpui::px(4.),
+        ),
+        "sm" => (
+            gpui::px(32.),
+            gpui::px(10.),
+            gpui::px(14.),
+            gpui::px(14.),
+            gpui::px(6.),
+        ),
+        "lg" => (
+            gpui::px(40.),
+            gpui::px(16.),
+            gpui::px(16.),
+            gpui::px(18.),
+            gpui::px(10.),
+        ),
+        _ => (
+            gpui::px(36.),
+            gpui::px(12.),
+            gpui::px(16.),
+            gpui::px(16.),
+            gpui::px(8.),
+        ),
     }
 }
 

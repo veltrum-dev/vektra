@@ -84,6 +84,11 @@
           }
         }
       }
+    },
+    "select": {
+      "type": "object",
+      "description": "Optional Select extension. When present it must contain complete trigger, option, popup, status, and size matrices; omitted extensions use semantic and foundation fallbacks.",
+      "required": ["border-width", "focus-width", "popup", "group-label", "status", "trigger", "option", "size"]
     }
   },
   "$defs": {
