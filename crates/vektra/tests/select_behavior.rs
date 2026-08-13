@@ -64,7 +64,9 @@ struct SelectView {
     requests: Vec<Plan>,
     accept: bool,
     disabled: bool,
+    free_disabled: bool,
     team_disabled: bool,
+    pro_disabled: bool,
     status: SelectStatus,
     show_select: bool,
     show_free: bool,
@@ -92,7 +94,9 @@ impl SelectView {
             requests: Vec::new(),
             accept,
             disabled: false,
+            free_disabled: false,
             team_disabled: false,
+            pro_disabled: false,
             status: SelectStatus::Ready,
             show_select: true,
             show_free: true,
@@ -138,24 +142,24 @@ impl Render for SelectView {
         };
         if self.reverse {
             if self.show_pro {
-                select = select.option(option("pro", Plan::Pro, "专业版", false));
+                select = select.option(option("pro", Plan::Pro, "专业版", self.pro_disabled));
             }
             if self.show_team {
                 select = select.option(option("team", Plan::Team, "团队版", self.team_disabled));
             }
             if self.show_free {
-                select = select.option(option("free", Plan::Free, "免费版", false));
+                select = select.option(option("free", Plan::Free, "免费版", self.free_disabled));
             }
         } else {
             if self.show_free {
-                select = select.option(option("free", Plan::Free, "免费版", false));
+                select = select.option(option("free", Plan::Free, "免费版", self.free_disabled));
             }
             let mut group = SelectGroup::new("paid", "付费方案");
             if self.show_team {
                 group = group.option(option("team", Plan::Team, "团队版", self.team_disabled));
             }
             if self.show_pro {
-                group = group.option(option("pro", Plan::Pro, "专业版", false));
+                group = group.option(option("pro", Plan::Pro, "专业版", self.pro_disabled));
             }
             select = select.group(group);
         }
@@ -356,6 +360,61 @@ fn arrows_home_end_skip_disabled_and_do_not_wrap(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
+fn empty_group_and_disabled_runs_never_enter_navigation(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|window, cx| {
+        let mut view = SelectView::new(None, true, window, cx);
+        view.show_team = false;
+        view.show_pro = false;
+        view
+    });
+    draw(cx);
+    focus_trigger(&view, cx);
+    key_down("down", cx);
+    draw(cx);
+    key_cycle("enter", cx);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.requests.clone()),
+        [Plan::Free]
+    );
+
+    view.update(cx, |view, cx| {
+        view.selected = None;
+        view.requests.clear();
+        view.show_team = true;
+        view.show_pro = true;
+        view.free_disabled = true;
+        view.team_disabled = true;
+        view.pro_disabled = false;
+        cx.notify();
+    });
+    draw(cx);
+    key_down("down", cx);
+    draw(cx);
+    key_cycle("enter", cx);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.requests.clone()),
+        [Plan::Pro]
+    );
+
+    view.update(cx, |view, cx| {
+        view.selected = None;
+        view.requests.clear();
+        view.free_disabled = true;
+        view.team_disabled = false;
+        view.pro_disabled = true;
+        cx.notify();
+    });
+    draw(cx);
+    key_down("down", cx);
+    draw(cx);
+    key_cycle("enter", cx);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.requests.clone()),
+        [Plan::Team]
+    );
+}
+
+#[gpui::test]
 fn escape_status_and_disabled_paths_never_request_values(cx: &mut TestAppContext) {
     let (view, cx) = cx.add_window_view(|window, cx| SelectView::new(None, true, window, cx));
     draw(cx);
@@ -483,21 +542,26 @@ fn transitive_duplicate_conflicts_stay_disabled_in_the_rendered_popup(cx: &mut T
 
 #[gpui::test]
 fn tab_and_shift_tab_close_without_trapping_focus(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        cx.bind_keys([
+            KeyBinding::new("tab", Tab, None),
+            KeyBinding::new("shift-tab", TabPrev, None),
+        ]);
+        cx.activate(true);
+    });
     let (view, cx) = cx.add_window_view(|window, cx| SelectView::new(None, true, window, cx));
     draw(cx);
     focus_trigger(&view, cx);
     key_cycle("enter", cx);
     draw(cx);
-    key_down("tab", cx);
-    cx.update(|window, cx| window.focus_next(cx));
+    cx.simulate_keystrokes("tab");
     draw(cx);
     assert!(cx.debug_bounds("vektra-select-popup").is_none());
 
     cx.update(|window, cx| window.focus_prev(cx));
     key_cycle("enter", cx);
     draw(cx);
-    key_down("shift-tab", cx);
-    cx.update(|window, cx| window.focus_prev(cx));
+    cx.simulate_keystrokes("shift-tab");
     draw(cx);
     assert!(cx.debug_bounds("vektra-select-popup").is_none());
     assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
@@ -645,8 +709,68 @@ fn host_status_transitions_clear_active_and_keep_selected_value(cx: &mut TestApp
     );
 }
 
+#[gpui::test]
+fn status_loading_to_ready_reinitializes_active_for_submission(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|window, cx| SelectView::new(None, true, window, cx));
+    draw(cx);
+    focus_trigger(&view, cx);
+    key_cycle("enter", cx);
+    draw(cx);
+
+    view.update(cx, |view, cx| {
+        view.status = SelectStatus::loading("正在加载");
+        cx.notify();
+    });
+    draw(cx);
+    view.update(cx, |view, cx| {
+        view.status = SelectStatus::Ready;
+        cx.notify();
+    });
+    draw(cx);
+
+    key_cycle("enter", cx);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.requests.clone()),
+        [Plan::Free]
+    );
+    assert_eq!(
+        view.read_with(cx, |view, _| view.selected),
+        Some(Plan::Free)
+    );
+    assert!(cx.debug_bounds("vektra-select-popup").is_none());
+}
+
+#[gpui::test]
+fn status_loading_to_ready_prefers_the_authoritative_selection(cx: &mut TestAppContext) {
+    let (view, cx) =
+        cx.add_window_view(|window, cx| SelectView::new(Some(Plan::Pro), true, window, cx));
+    draw(cx);
+    focus_trigger(&view, cx);
+    key_cycle("enter", cx);
+    draw(cx);
+
+    view.update(cx, |view, cx| {
+        view.status = SelectStatus::loading("正在加载");
+        cx.notify();
+    });
+    draw(cx);
+    view.update(cx, |view, cx| {
+        view.status = SelectStatus::Ready;
+        cx.notify();
+    });
+    draw(cx);
+
+    key_down("down", cx);
+    key_cycle("enter", cx);
+    assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(Plan::Pro));
+    assert!(cx.debug_bounds("vektra-select-popup").is_none());
+}
+
 struct LongSelectView {
     selected: Option<usize>,
+    option_count: usize,
+    descriptions: bool,
     focus_handle: FocusHandle,
 }
 
@@ -657,6 +781,8 @@ impl LongSelectView {
         window.focus(&focus_handle, cx);
         Self {
             selected: None,
+            option_count: 40,
+            descriptions: false,
             focus_handle,
         }
     }
@@ -671,12 +797,13 @@ impl Render for LongSelectView {
                 this.selected = Some(value);
                 cx.notify();
             });
-        for index in 0..40 {
-            select = select.option(SelectOption::new(
-                format!("long-{index}"),
-                index,
-                format!("选项 {index}"),
-            ));
+        for index in 0..self.option_count {
+            let mut option =
+                SelectOption::new(format!("long-{index}"), index, format!("选项 {index}"));
+            if self.descriptions {
+                option = option.description(format!("选项 {index} 的补充说明"));
+            }
+            select = select.option(option);
         }
         div()
             .track_focus(&self.focus_handle)
@@ -771,6 +898,50 @@ fn long_list_flips_stays_in_viewport_and_end_scrolls_active_visible(cx: &mut Tes
     let popup = cx.debug_bounds("vektra-select-popup").unwrap();
     assert!(popup.left() >= px(0.));
     assert!(popup.right() <= px(240.));
+}
+
+#[gpui::test]
+fn long_list_dynamic_data_and_height_keep_active_in_a_legal_scroll_range(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(LongSelectView::new);
+    cx.simulate_resize(size(px(360.), px(260.)));
+    draw(cx);
+    let root_focus = view.read_with(cx, |view, _| view.focus_handle.clone());
+    cx.update(|window, cx| {
+        window.focus(&root_focus, cx);
+        window.focus_next(cx);
+    });
+    key_down("down", cx);
+    draw(cx);
+    key_down("end", cx);
+    cx.update(|window, _| window.refresh());
+    draw(cx);
+    draw(cx);
+
+    view.update(cx, |view, cx| {
+        view.option_count = 10;
+        view.descriptions = true;
+        cx.notify();
+    });
+    draw(cx);
+    draw(cx);
+    let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+    let last = cx.debug_bounds("vektra-select-option-long-9").unwrap();
+    assert!(last.top() >= popup.top());
+    assert!(last.bottom() <= popup.bottom());
+
+    view.update(cx, |view, cx| {
+        view.option_count = 50;
+        cx.notify();
+    });
+    draw(cx);
+    key_down("end", cx);
+    cx.update(|window, _| window.refresh());
+    draw(cx);
+    draw(cx);
+    let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+    let last = cx.debug_bounds("vektra-select-option-long-49").unwrap();
+    assert!(last.top() >= popup.top());
+    assert!(last.bottom() <= popup.bottom());
 }
 
 #[gpui::test]

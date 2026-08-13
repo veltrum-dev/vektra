@@ -439,6 +439,7 @@ impl SelectInteractionState {
         next: Vec<OptionSnapshot>,
         ready: bool,
         enabled: bool,
+        preferred: Option<&ElementId>,
         cx: &mut Context<Self>,
     ) {
         if !enabled {
@@ -476,6 +477,19 @@ impl SelectInteractionState {
         }
 
         self.active_id = reconciled_active_id(&self.previous, &next, self.active_id.as_ref());
+        if self.open && self.active_id.is_none() {
+            self.active_id = preferred
+                .filter(|id| {
+                    next.iter()
+                        .any(|option| option.id == **id && !option.disabled)
+                })
+                .cloned()
+                .or_else(|| {
+                    next.iter()
+                        .find(|option| !option.disabled)
+                        .map(|option| option.id.clone())
+                });
+        }
         self.previous = next;
         if self.active_id != previous_active {
             self.pending_scroll = true;
@@ -659,7 +673,13 @@ where
             SelectInteractionState::new,
         );
         state.update(cx, |state, cx| {
-            state.reconcile(snapshots, self.status.is_ready(), !self.disabled, cx)
+            state.reconcile(
+                snapshots,
+                self.status.is_ready(),
+                !self.disabled,
+                selected_enabled_id.as_ref(),
+                cx,
+            )
         });
         let focus_state = focus::state_for(
             &self.id,
@@ -670,6 +690,17 @@ where
             cx,
         );
         let focus_handle = focus::handle(&focus_state, cx);
+        let blur_state = state.downgrade();
+        focus::set_observers(
+            &focus_state,
+            Rc::new(|_, _| {}),
+            Rc::new(move |_, cx| {
+                let _ = blur_state.update(cx, |state, cx| {
+                    state.close(cx);
+                });
+            }),
+            cx,
+        );
         let is_open = state.read(cx).open;
         let active_id = state.read(cx).active_id.clone();
         let trigger_bounds = state.read(cx).trigger_bounds.clone();
