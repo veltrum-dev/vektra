@@ -15,6 +15,7 @@ use gpui::{
     RenderOnce, Role, ScrollHandle, SharedString, Size, Stateful, StatefulInteractiveElement,
     Style, Styled, Subscription, WeakEntity, Window, deferred, div, point, prelude::FluentBuilder,
 };
+use std::hash::{Hash, Hasher};
 use std::{cell::Cell, rc::Rc};
 use vektra_theme::{ResolvedTheme, SelectSizeTokens, SelectTriggerStateTokens};
 
@@ -862,6 +863,7 @@ where
         });
 
         if is_open {
+            let popup_node_id = Rc::new(Cell::new(None));
             let popup = render_popup(
                 self.children,
                 self.status,
@@ -875,6 +877,7 @@ where
                 &theme,
                 trigger_bounds.clone(),
                 popup_name,
+                popup_node_id.clone(),
             );
             trigger = trigger.child(
                 deferred(SelectPopupOverlay {
@@ -887,6 +890,9 @@ where
                 })
                 .priority(1),
             );
+
+            return DisabledA11y::new(trigger, self.disabled, Some(trigger_bounds), None)
+                .controls(popup_node_id);
         }
 
         DisabledA11y::new(trigger, self.disabled, Some(trigger_bounds), None)
@@ -985,6 +991,7 @@ fn render_popup<T>(
     theme: &ResolvedTheme,
     trigger_bounds_cell: Rc<Cell<Bounds<Pixels>>>,
     popup_name: SharedString,
+    popup_node_id: Rc<Cell<Option<gpui::accesskit::NodeId>>>,
 ) -> impl IntoElement
 where
     T: Clone + PartialEq + 'static,
@@ -1096,7 +1103,7 @@ where
         );
     }
 
-    div()
+    let popup = div()
         .id("vektra-select-popup")
         .debug_selector(|| "vektra-select-popup".into())
         .role(Role::ListBox)
@@ -1134,7 +1141,9 @@ where
                 .vertical_scrollbar_for(&scroll_handle)
                 .scrollbar_id("vektra-select-scroll")
                 .scrollbar_aria_label("选项列表"),
-        )
+        );
+
+    DisabledA11y::new(popup, false, None, None).capture_node_id(popup_node_id)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1301,6 +1310,8 @@ struct DisabledA11y {
     disabled: bool,
     measured_bounds: Option<Rc<Cell<Bounds<Pixels>>>>,
     scroll_request: Option<ScrollRequest>,
+    controlled_node_id: Option<Rc<Cell<Option<gpui::accesskit::NodeId>>>>,
+    captured_node_id: Option<Rc<Cell<Option<gpui::accesskit::NodeId>>>>,
 }
 
 impl DisabledA11y {
@@ -1315,7 +1326,19 @@ impl DisabledA11y {
             disabled,
             measured_bounds,
             scroll_request,
+            controlled_node_id: None,
+            captured_node_id: None,
         }
+    }
+
+    fn controls(mut self, node_id: Rc<Cell<Option<gpui::accesskit::NodeId>>>) -> Self {
+        self.controlled_node_id = Some(node_id);
+        self
+    }
+
+    fn capture_node_id(mut self, node_id: Rc<Cell<Option<gpui::accesskit::NodeId>>>) -> Self {
+        self.captured_node_id = Some(node_id);
+        self
     }
 }
 
@@ -1350,6 +1373,15 @@ impl Element for DisabledA11y {
         } else {
             node.clear_disabled();
         }
+        if let Some(controlled_node_id) = self
+            .controlled_node_id
+            .as_ref()
+            .and_then(|node_id| node_id.get())
+        {
+            node.set_controls([controlled_node_id]);
+        } else {
+            node.clear_controls();
+        }
     }
 
     fn a11y_synthetic_children(
@@ -1367,6 +1399,9 @@ impl Element for DisabledA11y {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, Self::RequestLayoutState) {
+        if let Some(captured_node_id) = self.captured_node_id.as_ref() {
+            captured_node_id.set(global_id.map(accesskit_node_id));
+        }
         self.inner
             .request_layout(global_id, inspector_id, window, cx)
     }
@@ -1429,6 +1464,12 @@ impl Element for DisabledA11y {
             cx,
         );
     }
+}
+
+fn accesskit_node_id(global_id: &GlobalElementId) -> gpui::accesskit::NodeId {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    global_id.hash(&mut hasher);
+    gpui::accesskit::NodeId(hasher.finish())
 }
 
 struct SelectPopupOverlay {

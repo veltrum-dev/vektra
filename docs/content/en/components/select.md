@@ -119,7 +119,7 @@ Select implements [`Changeable<T>`](/en/api/changeable), [`Disableable`](/en/api
 
 The trigger is the only real focus target and normal Tab stop. While open, focus stays on it and the active option is reported through GPUI/AccessKit active-descendant semantics. Submitting an enabled option closes and restores trigger focus. Clicking the trigger again, clicking outside, Escape, Tab/Shift+Tab, or window deactivation closes the popup. Internal clicks, wheel input, and Scrollbar interaction are not treated as outside clicks.
 
-The trigger reports `ComboBox`, name, description, expanded, and disabled. Popup, group, label, and option report `ListBox`, `Group`, `Label`, and `ListBoxOption`; options report selected and disabled. Loading/empty use `Status`, and error uses `Alert`. The locked GPUI revision has no trigger-to-popup controls/owns builder, so the component reports expanded and active-descendant without inventing an unsupported relation.
+The trigger reports `ComboBox`, name, description, expanded, and disabled. Popup, group, label, and option report `ListBox`, `Group`, `Label`, and `ListBoxOption`; options report selected and disabled. Loading/empty use `Status`, and error uses `Alert`. While the popup is open, the trigger uses AccessKit `controls` to reference the real `ListBox` node from that frame. The keyboard-active option remains exposed through active-descendant and is not conflated with the business selection.
 
 Disabled, expanded, selected, name, description, and value mappings have deterministic AccessKit node assertions. Roles, active-descendant, and focus paths are covered by locked-GPUI compilation and interaction tests. GPUI's regular test platform does not activate a complete assistive-technology tree, so VoiceOver, NVDA, Narrator, Orca, and platform announcement behavior have not been manually verified.
 
@@ -127,7 +127,7 @@ Disabled, expanded, selected, name, description, and value mappings have determi
 
 Light, Dark, and System resolve dedicated Select trigger, popup, option, group, status, and `Xs/Sm/Md/Lg` tokens. The scroll area keeps using shared Scrollbar tokens. No arbitrary color, radius, or spacing overrides are exposed.
 
-The code targets GPUI-supported macOS, Windows, Linux, and Web/WASM. Local compilation, deterministic interaction tests, and the shared WASM build are covered. Windows/Linux behavior, real high-DPI pixel parity, screen readers, and large-list performance are not manually verified.
+The code targets GPUI-supported macOS, Windows, Linux, and Web/WASM. Local compilation, deterministic interaction tests, popup constraints under 1.25x/1.5x/2x test scaling, and the shared WASM build are covered. Linux behavior, physical-display high-DPI pixel parity, screen readers, and large-list performance are not manually verified.
 
 ## Known limitations
 

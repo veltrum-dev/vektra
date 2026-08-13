@@ -1,5 +1,6 @@
 use super::*;
 use gpui::{Element, ElementId, InteractiveElement, Role, div};
+use std::{cell::Cell, rc::Rc};
 
 #[derive(Clone, PartialEq)]
 enum Value {
@@ -70,6 +71,26 @@ fn disabled_accessibility_wrapper_writes_accesskit_state() {
     wrapper.write_a11y_info(&mut node);
     assert!(node.is_disabled());
     assert_eq!(node.is_expanded(), Some(false));
+}
+
+#[test]
+fn accessibility_wrapper_associates_an_open_trigger_with_its_popup() {
+    let popup_id = gpui::accesskit::NodeId(42);
+    let wrapper = DisabledA11y::new(
+        div()
+            .id("trigger-with-popup")
+            .role(Role::ComboBox)
+            .aria_expanded(true),
+        false,
+        None,
+        None,
+    )
+    .controls(Rc::new(Cell::new(Some(popup_id))));
+    let mut node = gpui::accesskit::Node::new(Role::ComboBox);
+
+    wrapper.write_a11y_info(&mut node);
+
+    assert_eq!(node.controls(), &[popup_id]);
 }
 
 #[test]

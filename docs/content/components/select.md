@@ -119,7 +119,7 @@ Select 实现 [`Changeable<T>`](/api/changeable)、[`Disableable`](/api/disablea
 
 Trigger 是唯一真实焦点和普通 Tab stop；Popup 打开时焦点仍留在 Trigger，option 通过 GPUI/AccessKit 的 active-descendant 语义报告。点击可用 option 后关闭并恢复 Trigger 焦点；再次点击 Trigger、外部点击、Escape、Tab/Shift+Tab 或窗口失活都会关闭 Popup。Popup 内点击、滚轮与 Scrollbar 交互不会被当作外部点击。
 
-Trigger 报告 `ComboBox`、名称、描述、expanded 与 disabled；Popup、Group、Label、Option 分别报告 `ListBox`、`Group`、`Label`、`ListBoxOption`，option 报告 selected 与 disabled。Loading/Empty 使用 `Status`，Error 使用 `Alert`。锁定 GPUI 尚未暴露 Trigger 到 Popup 的 controls/owns 关联 builder，因此当前只报告 expanded 与 active-descendant，不伪造关联属性。
+Trigger 报告 `ComboBox`、名称、描述、expanded 与 disabled；Popup、Group、Label、Option 分别报告 `ListBox`、`Group`、`Label`、`ListBoxOption`，option 报告 selected 与 disabled。Loading/Empty 使用 `Status`，Error 使用 `Alert`。Popup 打开时，Trigger 通过 AccessKit `controls` 关联到本帧真实的 `ListBox` 节点；键盘 active option 继续通过 active-descendant 暴露，不会与业务 selected 混用。
 
 disabled、expanded、selected、名称、描述和值映射具有确定性 AccessKit 节点断言；角色、active-descendant 与焦点路径由锁定 GPUI API 的编译和交互测试覆盖。GPUI 的普通测试平台不会激活完整辅助技术树，因此真实 VoiceOver、NVDA、Narrator、Orca 以及各平台朗读体验尚未人工验证。
 
@@ -127,7 +127,7 @@ disabled、expanded、selected、名称、描述和值映射具有确定性 Acce
 
 Light、Dark 与 System 都解析 Select 专用 Trigger、Popup、Option、group、status 和 `Xs/Sm/Md/Lg` token；Scrollbar 继续使用共享 Scrollbar token。组件不开放任意颜色、圆角或间距透传。
 
-代码目标覆盖 GPUI 支持的 macOS、Windows、Linux 与 Web/WASM。当前完成了本机编译、确定性交互测试与共享 WASM 构建；Windows/Linux、真实高 DPI 像素一致性、屏幕阅读器与大列表性能均未人工验证。
+代码目标覆盖 GPUI 支持的 macOS、Windows、Linux 与 Web/WASM。当前完成了本机编译、确定性交互测试、1.25x/1.5x/2x 测试缩放下的弹层约束与共享 WASM 构建；Linux、物理高 DPI 屏幕的像素一致性、屏幕阅读器与大列表性能仍未人工验证。
 
 ## 已知限制
 

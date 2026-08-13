@@ -3,7 +3,8 @@ mod shared;
 
 use gpui::{
     App, AppContext, Bounds, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
-    ParentElement, Render, Styled, Window, WindowBounds, WindowOptions, actions, div, px, size,
+    ParentElement, Render, Styled, TitlebarOptions, Window, WindowBounds, WindowOptions, actions,
+    div, px, size,
 };
 use gpui_platform::application;
 use vektra::{Select, SelectGroup, SelectOption, current_theme};
@@ -152,6 +153,10 @@ fn main() {
             cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
+                    titlebar: Some(TitlebarOptions {
+                        title: Some("Vektra Select".into()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
                 |window, cx| cx.new(|cx| SelectExample::new(window, cx)),

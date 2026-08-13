@@ -953,6 +953,51 @@ fn long_list_flips_stays_in_viewport_and_end_scrolls_active_visible(cx: &mut Tes
 }
 
 #[gpui::test]
+fn popup_placement_survives_fractional_scale_factors_and_resizes(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(LongSelectView::new);
+    draw(cx);
+    let root_focus = view.read_with(cx, |view, _| view.focus_handle.clone());
+    cx.update(|window, cx| {
+        window.focus(&root_focus, cx);
+        window.focus_next(cx);
+    });
+
+    for scale_factor in [1.0, 1.25, 1.5, 2.0] {
+        cx.simulate_resize(size(px(360.), px(260.)));
+        cx.update(|window, _| window.set_scale_factor(scale_factor));
+        draw(cx);
+        key_down("down", cx);
+        draw(cx);
+
+        cx.update(|window, _| assert_eq!(window.scale_factor(), scale_factor));
+        let trigger = cx.debug_bounds("vektra-select-trigger").unwrap();
+        let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+        assert!(popup.top() < trigger.top());
+        assert!(popup.left() >= px(0.));
+        assert!(popup.right() <= px(360.));
+        assert!(popup.top() >= px(0.));
+        assert!(popup.bottom() <= px(260.));
+        assert!(popup.size.width > px(0.));
+        assert!(popup.size.height > px(0.));
+
+        cx.simulate_resize(size(px(240.), px(220.)));
+        cx.update(|window, _| window.set_scale_factor(scale_factor));
+        draw(cx);
+        draw(cx);
+        cx.update(|window, _| assert_eq!(window.scale_factor(), scale_factor));
+        let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+        assert!(popup.left() >= px(0.));
+        assert!(popup.right() <= px(240.));
+        assert!(popup.top() >= px(0.));
+        assert!(popup.bottom() <= px(220.));
+
+        key_down("escape", cx);
+        draw(cx);
+        assert!(cx.debug_bounds("vektra-select-popup").is_none());
+    }
+}
+
+#[gpui::test]
 fn long_list_dynamic_data_and_height_keep_active_in_a_legal_scroll_range(cx: &mut TestAppContext) {
     let (view, cx) = cx.add_window_view(LongSelectView::new);
     cx.simulate_resize(size(px(360.), px(260.)));
