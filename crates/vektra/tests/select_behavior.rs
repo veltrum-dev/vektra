@@ -1016,11 +1016,46 @@ fn window_deactivation_and_trigger_removal_are_safe(cx: &mut TestAppContext) {
 }
 
 #[gpui::test]
-fn select_renders_in_light_dark_and_system_modes(cx: &mut TestAppContext) {
-    let (_, cx) = cx.add_window_view(|window, cx| SelectView::new(None, true, window, cx));
+fn long_list_keeps_active_and_selected_visible_in_all_theme_modes(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(LongSelectView::new);
+    cx.simulate_resize(size(px(360.), px(260.)));
+    draw(cx);
+    let root_focus = view.read_with(cx, |view, _| view.focus_handle.clone());
+    cx.update(|window, cx| {
+        window.focus(&root_focus, cx);
+        window.focus_next(cx);
+    });
+
     for mode in [ThemeMode::Light, ThemeMode::Dark, ThemeMode::System] {
         cx.update(|_, cx| set_theme_mode(mode, cx));
         draw(cx);
-        assert!(cx.debug_bounds("vektra-select-trigger").is_some());
+
+        key_down("down", cx);
+        draw(cx);
+        key_down("end", cx);
+        cx.update(|window, _| window.refresh());
+        draw(cx);
+        draw(cx);
+        let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+        let last = cx.debug_bounds("vektra-select-option-long-39").unwrap();
+        assert!(last.top() >= popup.top());
+        assert!(last.bottom() <= popup.bottom());
+
+        cx.simulate_click(last.center(), Modifiers::none());
+        draw(cx);
+        assert_eq!(view.read_with(cx, |view, _| view.selected), Some(39));
+
+        let trigger = cx.debug_bounds("vektra-select-trigger").unwrap();
+        cx.simulate_click(trigger.center(), Modifiers::none());
+        draw(cx);
+        draw(cx);
+        let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+        let selected = cx.debug_bounds("vektra-select-option-long-39").unwrap();
+        assert!(selected.top() >= popup.top());
+        assert!(selected.bottom() <= popup.bottom());
+
+        cx.simulate_click(trigger.center(), Modifiers::none());
+        draw(cx);
+        assert!(cx.debug_bounds("vektra-select-popup").is_none());
     }
 }
