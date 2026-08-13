@@ -415,28 +415,80 @@ fn empty_group_and_disabled_runs_never_enter_navigation(cx: &mut TestAppContext)
 }
 
 #[gpui::test]
-fn escape_status_and_disabled_paths_never_request_values(cx: &mut TestAppContext) {
+fn non_ready_statuses_are_inert_and_close_with_mouse_keyboard_and_focus(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        cx.bind_keys([
+            KeyBinding::new("tab", Tab, None),
+            KeyBinding::new("shift-tab", TabPrev, None),
+        ]);
+        cx.activate(true);
+    });
     let (view, cx) = cx.add_window_view(|window, cx| SelectView::new(None, true, window, cx));
     draw(cx);
-    focus_trigger(&view, cx);
-    key_cycle("enter", cx);
-    draw(cx);
-    key_down("escape", cx);
-    draw(cx);
-    assert!(cx.debug_bounds("vektra-select-popup").is_none());
-    assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
 
-    view.update(cx, |view, cx| {
-        view.status = SelectStatus::loading("正在加载");
-        cx.notify();
-    });
-    draw(cx);
-    key_cycle("enter", cx);
-    draw(cx);
-    assert!(cx.debug_bounds("vektra-select-status").is_some());
-    key_down("down", cx);
-    key_cycle("enter", cx);
-    assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+    for status in [
+        SelectStatus::loading("正在加载"),
+        SelectStatus::empty("暂无方案"),
+        SelectStatus::error("加载失败"),
+    ] {
+        let root_focus = view.read_with(cx, |view, _| view.root_focus.clone());
+        cx.update(|window, cx| window.focus(&root_focus, cx));
+        view.update(cx, |view, cx| {
+            view.status = status;
+            view.requests.clear();
+            view.focus_events.clear();
+            cx.notify();
+        });
+        draw(cx);
+        focus_trigger(&view, cx);
+
+        let trigger = cx.debug_bounds("vektra-select-trigger").unwrap();
+        cx.simulate_click(trigger.center(), Modifiers::none());
+        draw(cx);
+        assert_eq!(
+            view.read_with(cx, |view, _| view.focus_events.clone()),
+            ["focus"]
+        );
+        assert!(cx.debug_bounds("vektra-select-status").is_some());
+        assert!(cx.debug_bounds("vektra-select-popup").is_some());
+        assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+        cx.simulate_mouse_down(
+            point(px(500.), px(500.)),
+            MouseButton::Left,
+            Modifiers::none(),
+        );
+        draw(cx);
+        assert!(cx.debug_bounds("vektra-select-popup").is_none());
+
+        key_cycle("enter", cx);
+        draw(cx);
+        assert!(cx.debug_bounds("vektra-select-status").is_some());
+        for key in ["down", "up", "home", "end"] {
+            key_down(key, cx);
+        }
+        assert!(cx.debug_bounds("vektra-select-popup").is_some());
+        key_cycle("enter", cx);
+        draw(cx);
+        assert!(cx.debug_bounds("vektra-select-popup").is_none());
+        assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+
+        key_cycle("enter", cx);
+        draw(cx);
+        key_down("escape", cx);
+        draw(cx);
+        assert!(cx.debug_bounds("vektra-select-popup").is_none());
+
+        key_cycle("enter", cx);
+        draw(cx);
+        cx.simulate_keystrokes("tab");
+        draw(cx);
+        assert!(cx.debug_bounds("vektra-select-popup").is_none());
+        assert_eq!(
+            view.read_with(cx, |view, _| view.focus_events.clone()),
+            ["focus", "blur"]
+        );
+        assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+    }
 
     view.update(cx, |view, cx| {
         view.disabled = true;
