@@ -4,11 +4,15 @@ mod support;
 use serde_json::Value;
 use support::assert_contrast_at_least;
 use vektra_assets::Assets;
-use vektra_theme::{ResolvedTheme, ResolvedThemeMode, default_theme, dtcg, profile};
+use vektra_theme::{
+    ResolvedTheme, ResolvedThemeMode, SelectOptionState, SelectTriggerState, ThemeError, ThemeSize,
+    default_theme, dtcg, profile,
+};
 
 const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const BUTTON: &str = "themes/default/button.json";
+const INPUT: &str = "themes/default/input.json";
 const SELECT: &str = "themes/default/select.json";
 
 #[test]
@@ -16,39 +20,57 @@ fn default_select_tokens_resolve_for_all_modes_states_and_sizes() {
     for mode in [ResolvedThemeMode::Light, ResolvedThemeMode::Dark] {
         let theme = default_theme(mode);
         assert_ne!(
-            theme.select_trigger_state("normal").unwrap().background,
-            theme.select_trigger_state("hover").unwrap().background
+            theme
+                .select_trigger_state(SelectTriggerState::Normal)
+                .background,
+            theme
+                .select_trigger_state(SelectTriggerState::Hover)
+                .background
         );
         assert_ne!(
-            theme.select_trigger_state("hover").unwrap().background,
-            theme.select_trigger_state("pressed").unwrap().background
+            theme
+                .select_trigger_state(SelectTriggerState::Hover)
+                .background,
+            theme
+                .select_trigger_state(SelectTriggerState::Pressed)
+                .background
         );
         assert_ne!(
-            theme.select_option_state("normal").unwrap().background,
-            theme.select_option_state("active").unwrap().background
+            theme
+                .select_option_state(SelectOptionState::Normal)
+                .background,
+            theme
+                .select_option_state(SelectOptionState::Active)
+                .background
         );
         for state in [
-            "normal",
-            "hover",
-            "pressed",
-            "focus-visible",
-            "open",
-            "disabled",
+            SelectTriggerState::Normal,
+            SelectTriggerState::Hover,
+            SelectTriggerState::Pressed,
+            SelectTriggerState::FocusVisible,
+            SelectTriggerState::Open,
+            SelectTriggerState::Disabled,
         ] {
-            let state = theme.select_trigger_state(state).unwrap();
+            let state = theme.select_trigger_state(state);
             assert_ne!(state.foreground, state.background);
         }
-        for state in ["normal", "hover", "active", "selected", "disabled"] {
-            let state = theme.select_option_state(state).unwrap();
+        for state in [
+            SelectOptionState::Normal,
+            SelectOptionState::Hover,
+            SelectOptionState::Active,
+            SelectOptionState::Selected,
+            SelectOptionState::Disabled,
+        ] {
+            let state = theme.select_option_state(state);
             assert_ne!(state.foreground, state.background);
         }
-        for (name, height) in [
-            ("xs", gpui::px(24.)),
-            ("sm", gpui::px(32.)),
-            ("md", gpui::px(36.)),
-            ("lg", gpui::px(40.)),
+        for (size, height) in [
+            (ThemeSize::Xs, gpui::px(24.)),
+            (ThemeSize::Sm, gpui::px(32.)),
+            (ThemeSize::Md, gpui::px(36.)),
+            (ThemeSize::Lg, gpui::px(40.)),
         ] {
-            let size = theme.select_size(name).unwrap();
+            let size = theme.select_size(size);
             assert_eq!(size.height, height);
             assert!(size.line_height >= size.font_size);
         }
@@ -63,25 +85,36 @@ fn default_select_text_and_boundaries_meet_contrast_requirements() {
     for mode in [ResolvedThemeMode::Light, ResolvedThemeMode::Dark] {
         let theme = default_theme(mode);
         let page = theme.semantic.background;
-        for state in ["normal", "hover", "pressed", "focus-visible", "open"] {
-            let tokens = theme.select_trigger_state(state).unwrap();
+        for (name, state) in [
+            ("normal", SelectTriggerState::Normal),
+            ("hover", SelectTriggerState::Hover),
+            ("pressed", SelectTriggerState::Pressed),
+            ("focus-visible", SelectTriggerState::FocusVisible),
+            ("open", SelectTriggerState::Open),
+        ] {
+            let tokens = theme.select_trigger_state(state);
             assert_contrast_at_least(
-                &format!("{mode:?} Select trigger {state} text"),
+                &format!("{mode:?} Select trigger {name} text"),
                 tokens.foreground,
                 tokens.background,
                 4.5,
             );
             assert_contrast_at_least(
-                &format!("{mode:?} Select trigger {state} boundary"),
+                &format!("{mode:?} Select trigger {name} boundary"),
                 tokens.border,
                 page,
                 3.,
             );
         }
-        for state in ["normal", "hover", "active", "selected"] {
-            let tokens = theme.select_option_state(state).unwrap();
+        for (name, state) in [
+            ("normal", SelectOptionState::Normal),
+            ("hover", SelectOptionState::Hover),
+            ("active", SelectOptionState::Active),
+            ("selected", SelectOptionState::Selected),
+        ] {
+            let tokens = theme.select_option_state(state);
             assert_contrast_at_least(
-                &format!("{mode:?} Select option {state} text"),
+                &format!("{mode:?} Select option {name} text"),
                 tokens.foreground,
                 tokens.background,
                 4.5,
@@ -103,21 +136,12 @@ fn default_select_text_and_boundaries_meet_contrast_requirements() {
 }
 
 #[test]
-fn themes_without_select_extension_use_semantic_fallbacks() {
-    let tokens = dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON)]).unwrap();
-    profile::validate(&tokens).unwrap();
-    let theme = ResolvedTheme::from_tokens(ResolvedThemeMode::Light, tokens).unwrap();
-    assert_eq!(
-        theme.select_trigger_state("normal").unwrap().border,
-        theme.semantic.input_border
-    );
-    assert_eq!(
-        theme.select_option_state("selected").unwrap().background,
-        theme.semantic.surface
-    );
-    assert_eq!(theme.select_size("md").unwrap().height, gpui::px(36.));
-    assert_eq!(theme.select.popup_max_height, gpui::px(280.));
-    assert_eq!(theme.select.popup_padding, gpui::px(4.));
+fn themes_without_select_extension_are_rejected_at_construction() {
+    let tokens =
+        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &load(INPUT)])
+            .unwrap();
+    assert!(profile::validate(&tokens).is_err());
+    assert!(ResolvedTheme::from_tokens(ResolvedThemeMode::Light, tokens).is_err());
 }
 
 #[test]
@@ -128,9 +152,53 @@ fn partial_select_extension_is_rejected() {
         .unwrap()
         .remove("indicator");
     let select = serde_json::to_string(&select).unwrap();
-    let tokens =
-        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &select]).unwrap();
+    let tokens = dtcg::parse_token_sets(&[
+        &load(FOUNDATION),
+        &load(LIGHT),
+        &load(BUTTON),
+        &load(INPUT),
+        &select,
+    ])
+    .unwrap();
     assert!(profile::validate(&tokens).is_err());
+}
+
+#[test]
+fn wrong_select_token_type_is_rejected_by_theme_construction() {
+    let mut select: Value = serde_json::from_str(&load(SELECT)).unwrap();
+    select["select"]["group-label"]["$type"] = Value::from("dimension");
+    select["select"]["group-label"]["$value"] = Value::from("{foundation.border.width}");
+    let select = serde_json::to_string(&select).unwrap();
+    let tokens = dtcg::parse_token_sets(&[
+        &load(FOUNDATION),
+        &load(LIGHT),
+        &load(BUTTON),
+        &load(INPUT),
+        &select,
+    ])
+    .unwrap();
+
+    assert!(matches!(
+        ResolvedTheme::from_tokens(ResolvedThemeMode::Light, tokens),
+        Err(ThemeError::TypeMismatch { path, .. }) if path == "select.group-label"
+    ));
+}
+
+#[test]
+fn invalid_select_token_reference_is_rejected_during_loading() {
+    let mut select: Value = serde_json::from_str(&load(SELECT)).unwrap();
+    select["select"]["group-label"]["$value"] = Value::from("{select.missing-color}");
+    let select = serde_json::to_string(&select).unwrap();
+    assert!(matches!(
+        dtcg::parse_token_sets(&[
+            &load(FOUNDATION),
+            &load(LIGHT),
+            &load(BUTTON),
+            &load(INPUT),
+            &select,
+        ]),
+        Err(ThemeError::MissingReference { reference, .. }) if reference == "select.missing-color"
+    ));
 }
 
 fn load(path: &str) -> String {

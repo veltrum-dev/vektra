@@ -113,11 +113,15 @@ Password 默认按 grapheme 使用固定字符掩码。示例由宿主控制显�
 
 `InputState::value()` 始终返回真实值。用户输入、删除、显示态 cut、paste、undo、redo、IME commit 与内置 clear 仅在值实际变化时发送一次 `Changed`；IME preedit 保持静默。非组合状态下按 Enter 发送 `Submitted`。`set_value`、`clear` 与 `reset` 是程序化操作，不发送用户语义事件。
 
+`set_value` 表示宿主同步权威值：值实际变化时会结束组合并清空旧的 undo/redo 历史，之后撤销不会跨过这次外部同步边界。`clear` 沿用相同语义；`reset` 还会重置选区、组合、滚动与布局缓存。IME 返回的 UTF-16 选区会依据更新后的完整文本归一到 grapheme 边界。
+
 ## 键盘与无障碍
 
 - 左右方向键按 grapheme 移动；平台单词修饰键按词移动。Home/End、Shift 选择、Backspace/Delete、Select All 与 Undo/Redo 均可用。
+- macOS 使用 Option+Backspace/Delete 按词删除、Command+Backspace/Delete 删除到行首/行尾；Windows/Linux 使用各平台已有的 Control 修饰键规则。
 - 只接受明确支持的修饰键组合；未识别组合继续冒泡。
 - 实际 editor 节点使用对应 `InputType` 角色；prefix、suffix 与 attached suffix 保持独立无障碍子树。
+- AccessKit 的可选择字符单位与编辑器一致，使用扩展 grapheme；ZWJ emoji 与组合字符不会暴露字素内部停点。
 - Password 隐藏态的绘制文本、无障碍 value 与 synthetic text runs 只包含掩码，不包含明文。
 
 ## API
@@ -138,6 +142,8 @@ Input 实现 [`Changeable<SharedString>`](/api/changeable)、[`Focusable`](/api/
 ## 主题、响应式与跨平台
 
 Light、Dark 与 System 通过当前主题解析边框、表面、文字、placeholder、selection、caret 与状态颜色。Input 在可用宽度内收缩，slot 过多时编辑区会被压缩。组件使用 GPUI 跨平台文本与输入法接口；平台快捷键遵循 macOS 与 Windows/Linux 的各自约定。
+
+自定义主题现在必须在 `ResolvedTheme::from_tokens` 构造阶段完整提供并验证所有 Input token；缺键、类型错误或无效引用会直接返回 `ThemeError`，不再从旧主题静默回退。迁移自定义主题时补齐四种 variant、七种 visual state 与四种 size，并把字符串访问改为不可失败的 `input_state(InputVariantKind, InputVisualState)` 和 `input_size(ThemeSize)`。
 
 ## 已知限制
 

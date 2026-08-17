@@ -5,6 +5,8 @@ use vektra_theme::{ResolvedTheme, ResolvedThemeMode, default_theme, dtcg, profil
 const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const BUTTON: &str = "themes/default/button.json";
+const INPUT: &str = "themes/default/input.json";
+const SELECT: &str = "themes/default/select.json";
 const TOOLTIP: &str = "themes/default/tooltip.json";
 
 #[test]
@@ -27,7 +29,9 @@ fn themes_without_tooltip_extension_use_semantic_fallbacks() {
     let foundation = load(FOUNDATION);
     let light = load(LIGHT);
     let button = load(BUTTON);
-    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button]).unwrap();
+    let input = load(INPUT);
+    let select = load(SELECT);
+    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button, &input, &select]).unwrap();
     profile::validate(&tokens).unwrap();
     let theme = ResolvedTheme::from_tokens(ResolvedThemeMode::Light, tokens).unwrap();
 
@@ -43,6 +47,8 @@ fn legacy_complete_tooltip_extension_uses_new_geometry_fallbacks() {
     let foundation = load(FOUNDATION);
     let light = load(LIGHT);
     let button = load(BUTTON);
+    let input = load(INPUT);
+    let select = load(SELECT);
     let mut tooltip: Value = serde_json::from_str(&load(TOOLTIP)).unwrap();
     for field in [
         "anchor-gap",
@@ -58,7 +64,8 @@ fn legacy_complete_tooltip_extension_uses_new_geometry_fallbacks() {
         tooltip["tooltip"].as_object_mut().unwrap().remove(field);
     }
     let tooltip = serde_json::to_string(&tooltip).unwrap();
-    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button, &tooltip]).unwrap();
+    let tokens =
+        dtcg::parse_token_sets(&[&foundation, &light, &button, &input, &select, &tooltip]).unwrap();
 
     profile::validate(&tokens).unwrap();
     let theme = ResolvedTheme::from_tokens(ResolvedThemeMode::Light, tokens).unwrap();
@@ -73,13 +80,16 @@ fn partial_tooltip_extension_is_rejected() {
     let foundation = load(FOUNDATION);
     let light = load(LIGHT);
     let button = load(BUTTON);
+    let input = load(INPUT);
+    let select = load(SELECT);
     let mut tooltip: Value = serde_json::from_str(&load(TOOLTIP)).unwrap();
     tooltip["tooltip"]
         .as_object_mut()
         .unwrap()
         .remove("max-width");
     let tooltip = serde_json::to_string(&tooltip).unwrap();
-    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button, &tooltip]).unwrap();
+    let tokens =
+        dtcg::parse_token_sets(&[&foundation, &light, &button, &input, &select, &tooltip]).unwrap();
 
     assert!(profile::validate(&tokens).is_err());
 }

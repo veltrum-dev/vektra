@@ -1,5 +1,6 @@
 use super::*;
 use gpui::{AppContext as _, Modifiers, TestAppContext};
+use unicode_segmentation::UnicodeSegmentation as _;
 
 struct CaretTestView {
     state: Entity<InputState>,
@@ -478,8 +479,8 @@ fn caret_color_builder_overrides_normal_and_invalid_theme_tokens(cx: &mut TestAp
     let state = view.read_with(cx, |view, _| view.state.clone());
     cx.update(|window, cx| {
         let theme = theme::current_theme(window, cx);
-        let normal = theme.input_state("outline", "normal").unwrap();
-        let invalid = theme.input_state("outline", "invalid").unwrap();
+        let normal = theme.input_state(InputVariantKind::Outline, InputVisualState::Normal);
+        let invalid = theme.input_state(InputVariantKind::Outline, InputVisualState::Invalid);
         let custom = gpui::Hsla::red();
         let input = Input::new("custom-caret", state).caret_color(custom);
 
@@ -619,12 +620,98 @@ fn accessibility_runs_chunk_long_unicode_text_and_preserve_selection() {
 }
 
 #[test]
-fn variants_expose_stable_theme_keys() {
+fn accessibility_runs_use_extended_graphemes_as_selectable_units() {
+    let family = "👨‍👩‍👧‍👦";
+    let combining = "e\u{301}";
+    let text = format!("{family} {combining} one 中");
+    let (runs, selection) = build_a11y_text_runs(&text, 0, text.len(), accesskit::NodeId);
+
+    assert_eq!(runs.len(), 1);
+    assert_eq!(
+        runs[0].1.character_lengths(),
+        &[
+            u8::try_from(family.len()).unwrap(),
+            1,
+            u8::try_from(combining.len()).unwrap(),
+            1,
+            1,
+            1,
+            1,
+            1,
+            u8::try_from("中".len()).unwrap(),
+        ]
+    );
+    assert_eq!(runs[0].1.word_starts(), &[2, 4, 8]);
+    assert_eq!(selection.anchor.character_index, 0);
+    assert_eq!(selection.focus.character_index, 9);
+}
+
+#[test]
+fn accessibility_selection_and_links_remain_correct_across_grapheme_chunks() {
+    let prefix = "a".repeat(MAX_CHARS_PER_TEXT_RUN - 1);
+    let family = "👩🏽‍💻";
+    let combining = "e\u{301}";
+    let text = format!("{prefix}{family}{combining}z");
+    let family_start = prefix.len();
+    let family_end = family_start + family.len();
+    let combining_end = family_end + combining.len();
+    let (runs, selection) =
+        build_a11y_text_runs(&text, family_start, combining_end, accesskit::NodeId);
+
+    assert_eq!(runs.len(), 2);
+    assert_eq!(runs[0].1.character_lengths().len(), MAX_CHARS_PER_TEXT_RUN);
+    assert_eq!(runs[1].1.character_lengths().len(), 2);
+    assert_eq!(runs[0].1.next_on_line(), Some(accesskit::NodeId(1)));
+    assert_eq!(runs[1].1.previous_on_line(), Some(accesskit::NodeId(0)));
+    assert_eq!(selection.anchor.node, accesskit::NodeId(0));
+    assert_eq!(selection.anchor.character_index, MAX_CHARS_PER_TEXT_RUN - 1);
+    assert_eq!(selection.focus.node, accesskit::NodeId(1));
+    assert_eq!(selection.focus.character_index, 1);
+}
+
+#[test]
+fn accessibility_safely_segments_a_pathologically_long_grapheme() {
+    let text = format!("a{}", "\u{301}".repeat(200));
+    assert_eq!(text.graphemes(true).count(), 1);
+    let (runs, selection) = build_a11y_text_runs(&text, 0, text.len(), accesskit::NodeId);
+    let lengths = runs
+        .iter()
+        .flat_map(|(_, node)| node.character_lengths().iter().copied())
+        .collect::<Vec<_>>();
+
+    assert_eq!(lengths.len(), 2);
+    assert_eq!(
+        lengths
+            .iter()
+            .map(|length| usize::from(*length))
+            .sum::<usize>(),
+        text.len()
+    );
+    assert!(lengths.iter().all(|length| *length > 0));
+    assert_eq!(selection.anchor.character_index, 0);
+    assert_eq!(selection.focus.character_index, lengths.len());
+    assert_eq!(next_grapheme_boundary(&text, 0), text.len());
+}
+
+#[test]
+fn variants_map_to_strong_theme_variants() {
     assert_eq!(InputVariant::default(), InputVariant::Outline);
-    assert_eq!(InputVariant::Outline.token_key(), "outline");
-    assert_eq!(InputVariant::Filled.token_key(), "filled");
-    assert_eq!(InputVariant::Borderless.token_key(), "borderless");
-    assert_eq!(InputVariant::Underline.token_key(), "underline");
+    assert_eq!(
+        InputVariant::Outline.theme_variant(),
+        InputVariantKind::Outline
+    );
+    assert_eq!(
+        InputVariant::Filled.theme_variant(),
+        InputVariantKind::Filled
+    );
+    assert_eq!(
+        InputVariant::Borderless.theme_variant(),
+        InputVariantKind::Borderless
+    );
+    assert_eq!(
+        InputVariant::Underline.theme_variant(),
+        InputVariantKind::Underline
+    );
 }
 
 #[gpui::test]

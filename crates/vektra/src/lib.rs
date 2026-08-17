@@ -43,9 +43,11 @@ pub use tooltip::{Tooltip, TooltipPlacement};
 pub use traits::{Changeable, Clickable, Disableable, Focusable, Sizable};
 pub use vektra_macros::IntoIconSource;
 pub use vektra_theme::{
-    InputSizeTokens, InputStateTokens, InputTokens, RadioSizeTokens, RadioStateTokens, RadioTokens,
-    ResolvedTheme, ResolvedThemeMode, ScrollbarTokens, SelectOptionStateTokens, SelectSizeTokens,
-    SelectTokens, SelectTriggerStateTokens, SemanticColors, ThemeMode, TooltipTokens,
+    InputSizeTokens, InputStateTokens, InputTokens, InputVariantKind, InputVisualState,
+    RadioSizeTokens, RadioStateTokens, RadioTokens, ResolvedTheme, ResolvedThemeMode,
+    ScrollbarTokens, SelectOptionState, SelectOptionStateTokens, SelectSizeTokens, SelectTokens,
+    SelectTriggerState, SelectTriggerStateTokens, SemanticColors, ThemeMode, ThemeSize,
+    TooltipTokens,
 };
 
 /// Vektra 自带资源。

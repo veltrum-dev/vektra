@@ -32,7 +32,7 @@ Group labels provide visible and accessible grouping only. They never enter acti
 
 </VektraExample>
 
-`SelectStatus` is mutually exclusive. `Ready` shows options, while `Loading`, `Empty`, and `Error` show host-supplied text. Select never starts a request, waits, retries, or changes status itself. Status content is not an option and cannot emit selection.
+`SelectStatus` is mutually exclusive. `Ready` shows options, while `Loading`, `Empty`, and `Error` show host-supplied text. Select never starts a request, waits, retries, or changes status itself. Status content is not an option and cannot emit selection. A non-Ready popup can still open by keyboard or pointer so its status message remains reachable, but arrows, paging, typeahead, and Enter submission cannot establish an active option or request a value.
 
 ## Keyboard navigation
 
@@ -48,10 +48,12 @@ Group labels provide visible and accessible grouping only. They never enter acti
 | ArrowDown | Open at the enabled selected option or first enabled option | Move to the next enabled option without wrapping |
 | ArrowUp | Open at the enabled selected option or last enabled option | Move to the previous enabled option without wrapping |
 | Home / End | Propagate normally | Move to the first / last enabled option |
+| PageUp / PageDown | Propagate normally | Move by the popup's currently measured visible page and clamp at the ends |
+| Printable text | In Ready, open and cycle from after the current option by accessible name | Accumulate a short-lived prefix; repeated characters cycle options with that initial |
 | Escape | Propagate normally | Close without changing value; focus stays on the trigger |
 | Tab / Shift+Tab | Traverse normally | Close and continue normal focus traversal |
 
-Unsupported modifiers and unknown keys propagate. Enter and Space use GPUI's complete KeyDown/KeyUp activation cycle; one interaction emits at most one value request.
+Unsupported modifiers and unknown keys propagate. Typeahead considers enabled canonical options only, applies a Unicode case-insensitive prefix match, and clears its buffer after a short pause; no match preserves the current active option. Enter and Space use GPUI's complete KeyDown/KeyUp activation cycle; one interaction emits at most one value request.
 
 ## Long lists, narrow windows, and resize
 
@@ -61,7 +63,7 @@ Unsupported modifiers and unknown keys propagate. Enter and Space use GPUI's com
 
 </VektraExample>
 
-The popup prefers opening below, flips above when needed, and is constrained by viewport padding and maximum height. Overflow reuses the Vektra Scrollbar. Arrow, Home, End, and initial opening keep the active option visible. Trigger and viewport geometry are measured again after layout and window resize; narrow windows constrain the popup horizontally.
+The popup prefers opening below, flips above when needed, and is constrained by viewport padding and maximum height. Overflow reuses the Vektra Scrollbar. Arrow, Home, End, PageUp, PageDown, typeahead, and initial opening keep the active option visible. Paging uses the current ScrollArea viewport and measured option bounds rather than a fixed item count. Trigger and viewport geometry are measured again after layout and window resize; narrow windows constrain the popup horizontally.
 
 The implementation is not virtualized and makes no unbounded option-count performance promise. Large-data work is tracked in [Issue #6](https://github.com/veltrum-dev/vektra/issues/6).
 
@@ -119,13 +121,15 @@ Select implements [`Changeable<T>`](/en/api/changeable), [`Disableable`](/en/api
 
 The trigger is the only real focus target and normal Tab stop. While open, focus stays on it and the active option is reported through GPUI/AccessKit active-descendant semantics. Submitting an enabled option closes and restores trigger focus. Clicking the trigger again, clicking outside, Escape, Tab/Shift+Tab, or window deactivation closes the popup. Internal clicks, wheel input, and Scrollbar interaction are not treated as outside clicks.
 
-The trigger reports `ComboBox`, name, description, expanded, and disabled. Popup, group, label, and option report `ListBox`, `Group`, `Label`, and `ListBoxOption`; options report selected and disabled. Loading/empty use `Status`, and error uses `Alert`. While the popup is open, the trigger uses AccessKit `controls` to reference the real `ListBox` node from that frame. The keyboard-active option remains exposed through active-descendant and is not conflated with the business selection.
+The trigger reports `ComboBox`, name, description, expanded, and disabled. When unselected it reports only a placeholder rather than duplicating it as a value; once selected, its value is the option's accessible name. Popup, group, label, and option report `ListBox`, `Group`, `Label`, and `ListBoxOption`; options report selected, disabled, and `posinset`/`setsize` across every rendered option, including disabled and duplicate-conflict options. Loading/empty use `Status`, and error uses `Alert`. While the popup is open, the trigger uses AccessKit `controls` to reference the real `ListBox` node in the same first frame. The keyboard-active option remains exposed through active-descendant and is not conflated with the business selection.
 
 Disabled, expanded, selected, name, description, and value mappings have deterministic AccessKit node assertions. Roles, active-descendant, and focus paths are covered by locked-GPUI compilation and interaction tests. GPUI's regular test platform does not activate a complete assistive-technology tree, so VoiceOver, NVDA, Narrator, Orca, and platform announcement behavior have not been manually verified.
 
 ## Themes and cross-platform status
 
 Light, Dark, and System resolve dedicated Select trigger, popup, option, group, status, and `Xs/Sm/Md/Lg` tokens. The scroll area keeps using shared Scrollbar tokens. No arbitrary color, radius, or spacing overrides are exposed.
+
+Custom themes must now pass complete Select tokens through `ResolvedTheme::from_tokens`. Missing keys, wrong types, or invalid references return `ThemeError`; the legacy missing-extension fallback is gone. Migrate by supplying all six trigger states, five option states, and four sizes, then replace string access with infallible `select_trigger_state(SelectTriggerState)`, `select_option_state(SelectOptionState)`, and `select_size(ThemeSize)` calls.
 
 The code targets GPUI-supported macOS, Windows, Linux, and Web/WASM. Local compilation, deterministic interaction tests, popup constraints under 1.25x/1.5x/2x test scaling, and the shared WASM build are covered. Linux behavior, physical-display high-DPI pixel parity, screen readers, and large-list performance are not manually verified.
 

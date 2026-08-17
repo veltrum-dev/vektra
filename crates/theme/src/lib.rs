@@ -11,10 +11,11 @@ pub mod profile;
 
 pub use adapter::{
     ButtonSizeTokens, ButtonStateTokens, CheckboxSizeTokens, CheckboxStateTokens, CheckboxTokens,
-    IconTokens, InputSizeTokens, InputStateTokens, InputTokens, RadioSizeTokens, RadioStateTokens,
-    RadioTokens, ResolvedTheme, ScrollbarTokens, SelectOptionStateTokens, SelectSizeTokens,
-    SelectTokens, SelectTriggerStateTokens, SemanticColors, SwitchSizeTokens, SwitchStateTokens,
-    SwitchTokens, TooltipTokens,
+    IconTokens, InputSizeTokens, InputStateTokens, InputTokens, InputVariantKind, InputVisualState,
+    RadioSizeTokens, RadioStateTokens, RadioTokens, ResolvedTheme, ScrollbarTokens,
+    SelectOptionState, SelectOptionStateTokens, SelectSizeTokens, SelectTokens, SelectTriggerState,
+    SelectTriggerStateTokens, SemanticColors, SwitchSizeTokens, SwitchStateTokens, SwitchTokens,
+    ThemeSize, TooltipTokens,
 };
 pub use default_theme::{default_theme, default_tokens};
 pub use error::ThemeError;

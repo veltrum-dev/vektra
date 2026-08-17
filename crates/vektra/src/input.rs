@@ -1,5 +1,15 @@
 //! 支持 IME 的单行文本 Input 组件。
 
+mod a11y;
+mod display;
+mod element;
+mod text;
+
+use a11y::*;
+use display::DisplayText;
+use element::InputTextElement;
+use text::*;
+
 use crate::{
     ComponentSize, Icon, IconButton, IconButtonVariant, IconSource, Tooltip, TooltipPlacement,
     component_size, theme,
@@ -18,12 +28,14 @@ use gpui::{
     prelude::FluentBuilder,
     px, relative, size,
 };
-use std::{ops::Range, rc::Rc, time::Duration};
-use unicode_segmentation::UnicodeSegmentation as _;
-use vektra_theme::{InputSizeTokens, InputStateTokens, ResolvedTheme};
+use std::{collections::VecDeque, ops::Range, rc::Rc, time::Duration};
+use vektra_theme::{
+    InputSizeTokens, InputStateTokens, InputVariantKind, InputVisualState, ResolvedTheme,
+};
 
 const MAX_HISTORY_ENTRIES: usize = 100;
 const MAX_CHARS_PER_TEXT_RUN: usize = 255;
+const _: () = assert!(MAX_CHARS_PER_TEXT_RUN <= 255);
 const CARET_BLINK_INTERVAL: Duration = Duration::from_millis(500);
 const PASSWORD_MASK: char = '•';
 
@@ -46,12 +58,12 @@ pub enum InputVariant {
 }
 
 impl InputVariant {
-    const fn token_key(self) -> &'static str {
+    const fn theme_variant(self) -> InputVariantKind {
         match self {
-            Self::Outline => "outline",
-            Self::Filled => "filled",
-            Self::Borderless => "borderless",
-            Self::Underline => "underline",
+            Self::Outline => InputVariantKind::Outline,
+            Self::Filled => InputVariantKind::Filled,
+            Self::Borderless => InputVariantKind::Borderless,
+            Self::Underline => InputVariantKind::Underline,
         }
     }
 }
@@ -193,65 +205,6 @@ impl InputRuntime {
     }
 }
 
-#[derive(Clone)]
-struct DisplayText {
-    text: String,
-    masked: bool,
-    real_boundaries: Vec<usize>,
-    display_boundaries: Vec<usize>,
-}
-
-impl DisplayText {
-    fn new(value: &str, password_hidden: bool) -> Self {
-        let real_boundaries = value
-            .grapheme_indices(true)
-            .map(|(offset, _)| offset)
-            .chain(std::iter::once(value.len()))
-            .collect::<Vec<_>>();
-        if !password_hidden {
-            return Self {
-                text: value.to_owned(),
-                masked: false,
-                display_boundaries: real_boundaries.clone(),
-                real_boundaries,
-            };
-        }
-
-        let grapheme_count = real_boundaries.len().saturating_sub(1);
-        let text = std::iter::repeat_n(PASSWORD_MASK, grapheme_count).collect::<String>();
-        let mask_len = PASSWORD_MASK.len_utf8();
-        let display_boundaries = (0..=grapheme_count).map(|index| index * mask_len).collect();
-        Self {
-            text,
-            masked: true,
-            real_boundaries,
-            display_boundaries,
-        }
-    }
-
-    fn display_offset(&self, real_offset: usize) -> usize {
-        if !self.masked {
-            return real_offset.min(self.text.len());
-        }
-        nearest_paired_boundary(real_offset, &self.real_boundaries, &self.display_boundaries)
-    }
-
-    fn real_offset(&self, display_offset: usize) -> usize {
-        if !self.masked {
-            return display_offset.min(self.text.len());
-        }
-        nearest_paired_boundary(
-            display_offset,
-            &self.display_boundaries,
-            &self.real_boundaries,
-        )
-    }
-
-    fn display_range(&self, range: Range<usize>) -> Range<usize> {
-        self.display_offset(range.start)..self.display_offset(range.end)
-    }
-}
-
 /// 调用方持有的单行文本编辑状态。
 ///
 /// `InputState` 管理文本、UTF-8/UTF-16 索引、选区、IME marked range、撤销历史、
@@ -263,8 +216,8 @@ pub struct InputState {
     selection_reversed: bool,
     marked_range: Option<Range<usize>>,
     composition_snapshot: Option<EditSnapshot>,
-    undo_stack: Vec<EditSnapshot>,
-    redo_stack: Vec<EditSnapshot>,
+    undo_stack: VecDeque<EditSnapshot>,
+    redo_stack: VecDeque<EditSnapshot>,
     focus_handle: FocusHandle,
     focus_subscription: Option<Subscription>,
     blur_subscription: Option<Subscription>,
@@ -295,8 +248,8 @@ impl InputState {
             selection_reversed: false,
             marked_range: None,
             composition_snapshot: None,
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
+            undo_stack: VecDeque::new(),
+            redo_stack: VecDeque::new(),
             focus_handle: cx.focus_handle(),
             focus_subscription: None,
             blur_subscription: None,
@@ -327,22 +280,20 @@ impl InputState {
 
     /// 程序化替换文本，不发送 [`InputEvent::Changed`]。
     ///
-    /// 该操作会安全结束 IME 组合，把光标放在新值末尾，并保留可供后续 undo 的既有
-    /// 编辑历史。换行会转换为空格，文本不会被 trim。
+    /// 该操作表示外部状态同步：值实际变化时会清空用户 undo/redo 历史，避免撤销穿越
+    /// 程序化同步边界。它会安全结束 IME 组合并把光标放在新值末尾；换行会转换为空格，
+    /// 文本不会被 trim。
     pub fn set_value(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
         let value = normalize_single_line(value.into().as_ref());
         if self.value == value && self.marked_range.is_none() {
             return;
         }
         if self.value != value {
-            let before = self
-                .composition_snapshot
-                .clone()
-                .unwrap_or_else(|| self.snapshot());
-            self.push_undo(before);
+            self.undo_stack.clear();
             self.redo_stack.clear();
         }
         self.value = value;
+        self.invalidate_display_cache();
         let caret = self.value.len();
         self.selection = caret..caret;
         self.selection_reversed = false;
@@ -361,6 +312,7 @@ impl InputState {
     /// 该操作不发送 [`InputEvent::Changed`]。
     pub fn reset(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.value = normalize_single_line(value.into().as_ref());
+        self.invalidate_display_cache();
         let caret = self.value.len();
         self.selection = caret..caret;
         self.selection_reversed = false;
@@ -368,8 +320,6 @@ impl InputState {
         self.undo_stack.clear();
         self.redo_stack.clear();
         self.scroll_x = Pixels::ZERO;
-        self.last_layout = None;
-        self.last_display = None;
         self.last_bounds = None;
         self.is_selecting = false;
         self.restart_caret_blink(cx);
@@ -440,18 +390,23 @@ impl InputState {
         }
     }
 
+    fn invalidate_display_cache(&mut self) {
+        self.last_layout = None;
+        self.last_display = None;
+    }
+
     fn push_undo(&mut self, snapshot: EditSnapshot) {
         if self.undo_stack.len() == MAX_HISTORY_ENTRIES {
-            self.undo_stack.remove(0);
+            self.undo_stack.pop_front();
         }
-        self.undo_stack.push(snapshot);
+        self.undo_stack.push_back(snapshot);
     }
 
     fn push_redo(&mut self, snapshot: EditSnapshot) {
         if self.redo_stack.len() == MAX_HISTORY_ENTRIES {
-            self.redo_stack.remove(0);
+            self.redo_stack.pop_front();
         }
-        self.redo_stack.push(snapshot);
+        self.redo_stack.push_back(snapshot);
     }
 
     fn apply_snapshot(
@@ -462,6 +417,9 @@ impl InputState {
     ) {
         let changed = self.value != snapshot.value;
         self.value = snapshot.value;
+        if changed {
+            self.invalidate_display_cache();
+        }
         self.selection = normalize_selection(&self.value, snapshot.selection);
         self.selection_reversed = snapshot.selection_reversed && !self.selection.is_empty();
         self.end_composition();
@@ -477,7 +435,7 @@ impl InputState {
         if !self.can_edit() {
             return;
         }
-        let Some(snapshot) = self.undo_stack.pop() else {
+        let Some(snapshot) = self.undo_stack.pop_back() else {
             return;
         };
         self.push_redo(self.snapshot());
@@ -488,7 +446,7 @@ impl InputState {
         if !self.can_edit() {
             return;
         }
-        let Some(snapshot) = self.redo_stack.pop() else {
+        let Some(snapshot) = self.redo_stack.pop_back() else {
             return;
         };
         self.push_undo(self.snapshot());
@@ -624,12 +582,7 @@ impl InputState {
         }
         let range = normalize_selection(&self.value, range);
         let text = normalize_single_line(text);
-        let next = format!(
-            "{}{}{}",
-            &self.value[..range.start],
-            text,
-            &self.value[range.end..]
-        );
+        let next = replace_text(&self.value, range.clone(), &text);
         if next == self.value {
             self.selection = range.start + text.len()..range.start + text.len();
             self.selection_reversed = false;
@@ -641,6 +594,7 @@ impl InputState {
         self.push_undo(self.snapshot());
         self.redo_stack.clear();
         self.value = next;
+        self.invalidate_display_cache();
         let caret = range.start + text.len();
         self.selection = caret..caret;
         self.selection_reversed = false;
@@ -1092,13 +1046,9 @@ impl EntityInputHandler for InputState {
             .unwrap_or_else(|| self.snapshot());
         let range = normalize_selection(&self.value, range);
         let text = normalize_single_line(text);
-        let next = format!(
-            "{}{}{}",
-            &self.value[..range.start],
-            text,
-            &self.value[range.end..]
-        );
+        let next = replace_text(&self.value, range.clone(), &text);
         self.value = next;
+        self.invalidate_display_cache();
         let caret = range.start + text.len();
         self.selection = caret..caret;
         self.selection_reversed = false;
@@ -1133,21 +1083,18 @@ impl EntityInputHandler for InputState {
             .unwrap_or_else(|| self.selection.clone());
         let range = normalize_selection(&self.value, range);
         let new_text = normalize_single_line(new_text);
-        self.value = format!(
-            "{}{}{}",
-            &self.value[..range.start],
-            new_text,
-            &self.value[range.end..]
-        );
+        self.value = replace_text(&self.value, range.clone(), &new_text);
+        self.invalidate_display_cache();
         self.marked_range =
             (!new_text.is_empty()).then_some(range.start..range.start + new_text.len());
-        self.selection = new_selected_range_utf16
+        let selection = new_selected_range_utf16
             .map(|selection| range_from_utf16(&new_text, selection))
             .map(|selection| range.start + selection.start..range.start + selection.end)
             .unwrap_or_else(|| {
                 let caret = range.start + new_text.len();
                 caret..caret
             });
+        self.selection = normalize_selection(&self.value, selection);
         self.selection_reversed = false;
         self.restart_caret_blink(cx);
         cx.notify();
@@ -1160,8 +1107,15 @@ impl EntityInputHandler for InputState {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
+        let current_display = self.display_text();
         let line = self.last_layout.as_ref()?;
         let display = self.last_display.as_ref()?;
+        if display != &current_display
+            || line.len() != current_display.text.len()
+            || line.text.as_ref() != current_display.text
+        {
+            return None;
+        }
         let range = display.display_range(range_from_utf16(&self.value, range_utf16));
         Some(Bounds::from_corners(
             point(
@@ -1215,9 +1169,7 @@ impl Render for InputState {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.ensure_focus_subscriptions(window, cx);
         let theme = theme::current_theme(window, cx);
-        let size = theme
-            .input_size(self.runtime.size.token_key())
-            .expect("Vektra 默认 Input size token 必须通过测试保持有效");
+        let size = theme.input_size(self.runtime.size.theme_size());
         let editor_focused = self.focus_handle.is_focused(window);
         if self.editor_focused != editor_focused {
             self.editor_focused = editor_focused;
@@ -1226,22 +1178,20 @@ impl Render for InputState {
             self.sync_caret_blink(cx);
         }
         let focus_visible = editor_focused && window.last_input_was_keyboard();
-        let state_key = if self.runtime.disabled {
-            "disabled"
+        let state = if self.runtime.disabled {
+            InputVisualState::Disabled
         } else if self.runtime.invalid && focus_visible {
-            "invalid-focus-visible"
+            InputVisualState::InvalidFocusVisible
         } else if self.runtime.invalid {
-            "invalid"
+            InputVisualState::Invalid
         } else if focus_visible {
-            "focus-visible"
+            InputVisualState::FocusVisible
         } else if self.runtime.read_only {
-            "read-only"
+            InputVisualState::ReadOnly
         } else {
-            "normal"
+            InputVisualState::Normal
         };
-        let visible = theme
-            .input_state(self.runtime.variant.token_key(), state_key)
-            .expect("Vektra 默认 Input state token 必须通过测试保持有效");
+        let visible = theme.input_state(self.runtime.variant.theme_variant(), state);
         let focus_handle = self
             .focus_handle
             .clone()
@@ -1320,225 +1270,6 @@ impl Render for InputState {
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
             .child(text_element)
-    }
-}
-
-struct InputTextElement {
-    state: Entity<InputState>,
-    placeholder: SharedString,
-    colors: InputStateTokens,
-    caret_color: Hsla,
-    caret_width: Pixels,
-    caret_opacity: f32,
-}
-
-struct InputTextPrepaint {
-    line: ShapedLine,
-    line_height: Pixels,
-    selection: Option<PaintQuad>,
-    caret: Option<PaintQuad>,
-    display_origin: Point<Pixels>,
-}
-
-impl IntoElement for InputTextElement {
-    type Element = Self;
-
-    fn into_element(self) -> Self::Element {
-        self
-    }
-}
-
-impl Element for InputTextElement {
-    type RequestLayoutState = ();
-    type PrepaintState = InputTextPrepaint;
-
-    fn id(&self) -> Option<ElementId> {
-        None
-    }
-
-    fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
-        None
-    }
-
-    fn request_layout(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> (LayoutId, Self::RequestLayoutState) {
-        let mut style = Style::default();
-        style.size.width = relative(1.).into();
-        style.size.height = relative(1.).into();
-        (window.request_layout(style, [], cx), ())
-    }
-
-    fn prepaint(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        bounds: Bounds<Pixels>,
-        _: &mut Self::RequestLayoutState,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Self::PrepaintState {
-        let (display, selection, cursor, marked_range, old_scroll, focused, disabled, read_only) = {
-            let state = self.state.read(cx);
-            let display = state.display_text();
-            (
-                display.clone(),
-                display.display_range(state.selection.clone()),
-                display.display_offset(state.cursor_offset()),
-                state
-                    .marked_range
-                    .clone()
-                    .map(|range| display.display_range(range)),
-                state.scroll_x,
-                state.focus_handle.is_focused(window),
-                state.runtime.disabled,
-                state.runtime.read_only,
-            )
-        };
-        let content = SharedString::from(display.text.clone());
-        let is_placeholder = content.is_empty();
-        let display_text = if is_placeholder {
-            self.placeholder.clone()
-        } else {
-            content
-        };
-        let base_run = TextRun {
-            len: display_text.len(),
-            font: window.text_style().font(),
-            color: if is_placeholder {
-                self.colors.placeholder
-            } else {
-                self.colors.foreground
-            },
-            background_color: None,
-            underline: None,
-            strikethrough: None,
-        };
-        let runs = marked_text_runs(base_run, marked_range.as_ref());
-        let font_size = window.text_style().font_size.to_pixels(window.rem_size());
-        let line = window
-            .text_system()
-            .shape_line(display_text, font_size, &runs, None);
-        let target = marked_range
-            .as_ref()
-            .map(|range| range.end)
-            .unwrap_or(cursor);
-        let scroll_content_width = line.width()
-            + if selection.is_empty() {
-                self.caret_width
-            } else {
-                Pixels::ZERO
-            };
-        let scroll_x = ensure_x_visible(
-            old_scroll,
-            line.x_for_index(target),
-            scroll_content_width,
-            bounds.size.width,
-        );
-        let scroll_x = ensure_x_visible(
-            scroll_x,
-            line.x_for_index(target) + self.caret_width,
-            scroll_content_width,
-            bounds.size.width,
-        );
-        let line_height = window
-            .pixel_snap(window.line_height())
-            .max(Pixels::ZERO)
-            .min(bounds.size.height);
-        let line_top = window.pixel_snap(bounds.top() + (bounds.size.height - line_height) / 2.);
-        let line_bounds = Bounds::new(
-            point(bounds.left(), line_top),
-            size(bounds.size.width, line_height),
-        );
-        let display_origin = point(bounds.left() - scroll_x, line_bounds.top());
-        self.state.update(cx, |state, _| {
-            state.scroll_x = scroll_x;
-            state.last_layout = Some(line.clone());
-            state.last_display = Some(display);
-            state.last_bounds = Some(bounds);
-        });
-
-        let selection_quad = (!selection.is_empty()).then(|| {
-            fill(
-                Bounds::from_corners(
-                    point(
-                        display_origin.x + line.x_for_index(selection.start),
-                        line_bounds.top(),
-                    ),
-                    point(
-                        display_origin.x + line.x_for_index(selection.end),
-                        line_bounds.bottom(),
-                    ),
-                ),
-                self.colors.selection,
-            )
-        });
-        let caret = (selection.is_empty() && focused && !disabled && !read_only).then(|| {
-            let caret_bounds = caret_bounds(
-                line_bounds,
-                display_origin.x + line.x_for_index(cursor),
-                self.caret_width,
-                line.ascent,
-                line.descent,
-                window.scale_factor(),
-            );
-            fill(caret_bounds, self.caret_color.opacity(self.caret_opacity))
-        });
-        #[cfg(test)]
-        self.state.update(cx, |state, _| {
-            state.last_caret = caret
-                .as_ref()
-                .map(|caret| (caret.bounds, self.caret_opacity));
-        });
-
-        InputTextPrepaint {
-            line,
-            line_height,
-            selection: selection_quad,
-            caret,
-            display_origin,
-        }
-    }
-
-    fn paint(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        bounds: Bounds<Pixels>,
-        _: &mut Self::RequestLayoutState,
-        prepaint: &mut Self::PrepaintState,
-        window: &mut Window,
-        cx: &mut App,
-    ) {
-        let focus_handle = self.state.read(cx).focus_handle.clone();
-        window.handle_input(
-            &focus_handle,
-            ElementInputHandler::new(bounds, self.state.clone()),
-            cx,
-        );
-        window.with_content_mask(Some(ContentMask { bounds }), |window| {
-            if let Some(selection) = prepaint.selection.take() {
-                window.paint_quad(selection);
-            }
-            prepaint
-                .line
-                .paint(
-                    prepaint.display_origin,
-                    prepaint.line_height,
-                    TextAlign::Left,
-                    None,
-                    window,
-                    cx,
-                )
-                .expect("锁定 GPUI 应能绘制已经成功 shape 的 Input 单行文本");
-            if let Some(caret) = prepaint.caret.take() {
-                window.paint_quad(caret);
-            }
-        });
     }
 }
 
@@ -1880,9 +1611,7 @@ impl RenderOnce for Input {
         });
 
         let theme = theme::current_theme(window, cx);
-        let size = theme
-            .input_size(resolved_size.token_key())
-            .expect("Vektra 默认 Input size token 必须通过测试保持有效");
+        let size = theme.input_size(resolved_size.theme_size());
         let states = ResolvedInputStates::new(&theme, variant);
         let base = if disabled {
             states.disabled
@@ -2100,20 +1829,16 @@ struct ResolvedInputStates {
 
 impl ResolvedInputStates {
     fn new(theme: &ResolvedTheme, variant: InputVariant) -> Self {
-        let variant = variant.token_key();
-        let state = |key| {
-            theme
-                .input_state(variant, key)
-                .expect("Vektra 默认 Input state token 必须通过测试保持有效")
-        };
+        let variant = variant.theme_variant();
+        let state = |state| theme.input_state(variant, state);
         Self {
-            normal: state("normal"),
-            hover: state("hover"),
-            focused: state("focus-visible"),
-            invalid: state("invalid"),
-            invalid_focused: state("invalid-focus-visible"),
-            read_only: state("read-only"),
-            disabled: state("disabled"),
+            normal: state(InputVisualState::Normal),
+            hover: state(InputVisualState::Hover),
+            focused: state(InputVisualState::FocusVisible),
+            invalid: state(InputVisualState::Invalid),
+            invalid_focused: state(InputVisualState::InvalidFocusVisible),
+            read_only: state(InputVisualState::ReadOnly),
+            disabled: state(InputVisualState::Disabled),
         }
     }
 }
@@ -2291,148 +2016,6 @@ fn horizontal_target(state: &InputState, right: bool, kind: HorizontalMovement) 
     }
 }
 
-fn normalize_single_line(value: &str) -> String {
-    let mut output = String::with_capacity(value.len());
-    let mut chars = value.chars().peekable();
-    while let Some(ch) = chars.next() {
-        match ch {
-            '\r' => {
-                if chars.peek() == Some(&'\n') {
-                    chars.next();
-                }
-                output.push(' ');
-            }
-            '\n' => output.push(' '),
-            _ => output.push(ch),
-        }
-    }
-    output
-}
-
-fn utf16_to_utf8(text: &str, offset: usize) -> usize {
-    let mut utf16 = 0;
-    for (byte, ch) in text.char_indices() {
-        if utf16 >= offset {
-            return byte;
-        }
-        let next = utf16 + ch.len_utf16();
-        if offset < next {
-            return byte;
-        }
-        utf16 = next;
-    }
-    text.len()
-}
-
-fn utf8_to_utf16(text: &str, offset: usize) -> usize {
-    let offset = offset.min(text.len());
-    text.char_indices()
-        .take_while(|(byte, _)| *byte < offset)
-        .map(|(_, ch)| ch.len_utf16())
-        .sum()
-}
-
-fn range_from_utf16(text: &str, range: Range<usize>) -> Range<usize> {
-    normalize_selection(
-        text,
-        utf16_to_utf8(text, range.start)..utf16_to_utf8(text, range.end),
-    )
-}
-
-fn range_to_utf16(text: &str, range: Range<usize>) -> Range<usize> {
-    utf8_to_utf16(text, range.start)..utf8_to_utf16(text, range.end)
-}
-
-fn previous_grapheme_boundary(text: &str, offset: usize) -> usize {
-    text.grapheme_indices(true)
-        .map(|(index, _)| index)
-        .take_while(|index| *index < offset)
-        .last()
-        .unwrap_or(0)
-}
-
-fn next_grapheme_boundary(text: &str, offset: usize) -> usize {
-    text.grapheme_indices(true)
-        .map(|(index, _)| index)
-        .find(|index| *index > offset)
-        .unwrap_or(text.len())
-}
-
-fn nearest_paired_boundary(offset: usize, from: &[usize], to: &[usize]) -> usize {
-    debug_assert_eq!(from.len(), to.len());
-    debug_assert!(!from.is_empty());
-    let index = match from.binary_search(&offset) {
-        Ok(index) => index,
-        Err(0) => 0,
-        Err(index) if index == from.len() => from.len() - 1,
-        Err(index) => {
-            let before = index - 1;
-            if offset - from[before] <= from[index] - offset {
-                before
-            } else {
-                index
-            }
-        }
-    };
-    to[index]
-}
-
-fn previous_word_boundary(text: &str, offset: usize) -> usize {
-    text.split_word_bound_indices()
-        .filter(|(_, segment)| segment.unicode_words().next().is_some())
-        .map(|(start, _)| start)
-        .take_while(|start| *start < offset)
-        .last()
-        .unwrap_or(0)
-}
-
-fn next_word_boundary(text: &str, offset: usize) -> usize {
-    text.split_word_bound_indices()
-        .filter(|(_, segment)| segment.unicode_words().next().is_some())
-        .map(|(start, segment)| start + segment.len())
-        .find(|end| *end > offset)
-        .unwrap_or(text.len())
-}
-
-fn nearest_grapheme_boundary(text: &str, offset: usize) -> usize {
-    let offset = offset.min(text.len());
-    if offset == text.len()
-        || text
-            .grapheme_indices(true)
-            .any(|(index, _)| index == offset)
-    {
-        return offset;
-    }
-    let before = previous_grapheme_boundary(text, offset + 1);
-    let after = next_grapheme_boundary(text, before);
-    if offset - before <= after.saturating_sub(offset) {
-        before
-    } else {
-        after
-    }
-}
-
-fn normalize_selection(text: &str, range: Range<usize>) -> Range<usize> {
-    let start = nearest_grapheme_boundary(text, range.start.min(text.len()));
-    let end = nearest_grapheme_boundary(text, range.end.min(text.len()));
-    start.min(end)..start.max(end)
-}
-
-fn word_range_at(text: &str, offset: usize) -> Range<usize> {
-    if text.is_empty() {
-        return 0..0;
-    }
-    let offset = offset.min(text.len().saturating_sub(1));
-    if let Some((start, word)) = text
-        .unicode_word_indices()
-        .find(|(start, word)| offset >= *start && offset < *start + word.len())
-    {
-        return start..start + word.len();
-    }
-    let start = nearest_grapheme_boundary(text, offset);
-    start..next_grapheme_boundary(text, start)
-}
-
 fn ensure_x_visible(
     scroll_x: Pixels,
     target_x: Pixels,
@@ -2476,104 +2059,6 @@ fn marked_text_runs(base: TextRun, marked_range: Option<&Range<usize>>) -> Vec<T
     .into_iter()
     .filter(|run| run.len > 0)
     .collect()
-}
-
-fn char_index_for_byte(text: &str, byte_offset: usize) -> usize {
-    text.char_indices()
-        .take_while(|(byte, _)| *byte < byte_offset.min(text.len()))
-        .count()
-}
-
-fn a11y_text_position(
-    char_index: usize,
-    synthetic_node_id: impl Fn(u64) -> accesskit::NodeId,
-) -> accesskit::TextPosition {
-    let chunk_index = if char_index > 0 && char_index.is_multiple_of(MAX_CHARS_PER_TEXT_RUN) {
-        char_index / MAX_CHARS_PER_TEXT_RUN - 1
-    } else {
-        char_index / MAX_CHARS_PER_TEXT_RUN
-    };
-    accesskit::TextPosition {
-        node: synthetic_node_id(chunk_index as u64),
-        character_index: char_index - chunk_index * MAX_CHARS_PER_TEXT_RUN,
-    }
-}
-
-fn build_a11y_text_runs(
-    text: &str,
-    selection_tail: usize,
-    selection_head: usize,
-    synthetic_node_id: impl Fn(u64) -> accesskit::NodeId,
-) -> (
-    Vec<(accesskit::NodeId, accesskit::Node)>,
-    accesskit::TextSelection,
-) {
-    let chars: Vec<char> = text.chars().collect();
-    let total_chars = chars.len();
-    let num_chunks = total_chars.div_ceil(MAX_CHARS_PER_TEXT_RUN).max(1);
-    let mut word_starts = Vec::new();
-    let mut was_word = false;
-    for (index, ch) in chars.iter().enumerate() {
-        let is_word = ch.is_alphanumeric() || *ch == '_';
-        if is_word && !was_word {
-            word_starts.push(index);
-        }
-        was_word = is_word;
-    }
-
-    let mut runs = Vec::with_capacity(num_chunks);
-    for chunk_index in 0..num_chunks {
-        let char_start = chunk_index * MAX_CHARS_PER_TEXT_RUN;
-        let char_end = (char_start + MAX_CHARS_PER_TEXT_RUN).min(total_chars);
-        let chunk = &chars[char_start..char_end];
-        let mut node = accesskit::Node::new(accesskit::Role::TextRun);
-        node.set_text_direction(accesskit::TextDirection::LeftToRight);
-        node.set_value(chunk.iter().collect::<String>());
-        node.set_character_lengths(
-            chunk
-                .iter()
-                .map(|ch| ch.len_utf8() as u8)
-                .collect::<Vec<_>>(),
-        );
-        node.set_word_starts(
-            word_starts
-                .iter()
-                .filter(|start| **start >= char_start && **start < char_end)
-                .map(|start| (*start - char_start) as u8)
-                .collect::<Vec<_>>(),
-        );
-        if chunk_index > 0 {
-            node.set_previous_on_line(synthetic_node_id(chunk_index as u64 - 1));
-        }
-        if chunk_index + 1 < num_chunks {
-            node.set_next_on_line(synthetic_node_id(chunk_index as u64 + 1));
-        }
-        runs.push((synthetic_node_id(chunk_index as u64), node));
-    }
-    let anchor = a11y_text_position(
-        char_index_for_byte(text, selection_tail),
-        &synthetic_node_id,
-    );
-    let focus = a11y_text_position(
-        char_index_for_byte(text, selection_head),
-        &synthetic_node_id,
-    );
-    (runs, accesskit::TextSelection { anchor, focus })
-}
-
-fn push_a11y_text_runs(
-    builder: &mut A11ySubtreeBuilder,
-    text: &str,
-    selection_tail: usize,
-    selection_head: usize,
-) {
-    let (runs, selection) = build_a11y_text_runs(text, selection_tail, selection_head, |chunk| {
-        builder.synthetic_node_id(chunk)
-    });
-    for (id, node) in runs {
-        builder.push_child(id, node);
-    }
-    builder.parent_node().set_text_selection(selection);
 }
 
 #[cfg(test)]

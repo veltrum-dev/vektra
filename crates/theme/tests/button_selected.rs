@@ -5,6 +5,8 @@ use vektra_theme::{ResolvedTheme, ResolvedThemeMode, default_theme, dtcg, profil
 const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const BUTTON: &str = "themes/default/button.json";
+const INPUT: &str = "themes/default/input.json";
+const SELECT: &str = "themes/default/select.json";
 
 const VARIANTS: &[&str] = &[
     "primary",
@@ -36,7 +38,9 @@ fn default_themes_define_complete_selected_state_matrices() {
 #[test]
 fn themes_without_selected_extension_remain_compatible() {
     let (foundation, light, button) = theme_sources_without_selected();
-    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button]).unwrap();
+    let tokens =
+        dtcg::parse_token_sets(&[&foundation, &light, &button, &load(INPUT), &load(SELECT)])
+            .unwrap();
     profile::validate(&tokens).unwrap();
     let theme = ResolvedTheme::from_tokens(ResolvedThemeMode::Light, tokens).unwrap();
 
@@ -57,7 +61,9 @@ fn partial_selected_extension_is_rejected_by_the_profile() {
         }
     });
     let button = serde_json::to_string(&button).unwrap();
-    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button]).unwrap();
+    let tokens =
+        dtcg::parse_token_sets(&[&foundation, &light, &button, &load(INPUT), &load(SELECT)])
+            .unwrap();
 
     assert!(profile::validate(&tokens).is_err());
 }
@@ -75,4 +81,8 @@ fn theme_sources_without_selected() -> (String, String, String) {
         variant.as_object_mut().unwrap().remove("selected");
     }
     (foundation, light, serde_json::to_string(&button).unwrap())
+}
+
+fn load(path: &str) -> String {
+    Assets::load_text(path).unwrap().unwrap().into_owned()
 }

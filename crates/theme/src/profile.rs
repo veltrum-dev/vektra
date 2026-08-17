@@ -167,24 +167,13 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
         "affix",
         "status",
     ];
-    let has_input_state_extension = INPUT_VARIANTS.iter().any(|variant| {
-        INPUT_STATES.iter().any(|state| {
-            input_state_fields.iter().any(|field| {
-                tokens
-                    .get(&format!("input.variant.{variant}.{state}.{field}"))
-                    .is_some()
-            })
-        })
-    });
-    if has_input_state_extension {
-        tokens.required("input.border-width")?;
-        tokens.required("input.focus-width")?;
-        tokens.required("input.caret-width")?;
-        for variant in INPUT_VARIANTS {
-            for state in INPUT_STATES {
-                for field in input_state_fields {
-                    tokens.required(&format!("input.variant.{variant}.{state}.{field}"))?;
-                }
+    tokens.required("input.border-width")?;
+    tokens.required("input.focus-width")?;
+    tokens.required("input.caret-width")?;
+    for variant in INPUT_VARIANTS {
+        for state in INPUT_STATES {
+            for field in input_state_fields {
+                tokens.required(&format!("input.variant.{variant}.{state}.{field}"))?;
             }
         }
     }
@@ -200,16 +189,9 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
         "status-size",
         "gap",
     ];
-    let has_input_size_extension = INPUT_SIZES.iter().any(|size| {
-        input_size_fields
-            .iter()
-            .any(|field| tokens.get(&format!("input.size.{size}.{field}")).is_some())
-    });
-    if has_input_size_extension {
-        for size in INPUT_SIZES {
-            for field in input_size_fields {
-                tokens.required(&format!("input.size.{size}.{field}"))?;
-            }
+    for size in INPUT_SIZES {
+        for field in input_size_fields {
+            tokens.required(&format!("input.size.{size}.{field}"))?;
         }
     }
 
@@ -356,43 +338,28 @@ pub fn validate(tokens: &ResolvedTokens) -> Result<(), ThemeError> {
         "description-line-height",
         "group-padding-y",
     ];
-    let has_select_extension = select_common_fields
-        .iter()
-        .any(|field| tokens.get(&format!("select.{field}")).is_some())
-        || select_popup_fields
-            .iter()
-            .any(|field| tokens.get(&format!("select.popup.{field}")).is_some())
-        || SELECT_TRIGGER_STATES.iter().any(|state| {
-            select_trigger_fields.iter().any(|field| {
-                tokens
-                    .get(&format!("select.trigger.{state}.{field}"))
-                    .is_some()
-            })
-        });
-    if has_select_extension {
-        for field in select_common_fields {
-            tokens.required(&format!("select.{field}"))?;
+    for field in select_common_fields {
+        tokens.required(&format!("select.{field}"))?;
+    }
+    for field in select_popup_fields {
+        tokens.required(&format!("select.popup.{field}"))?;
+    }
+    for field in select_status_fields {
+        tokens.required(&format!("select.status.{field}"))?;
+    }
+    for state in SELECT_TRIGGER_STATES {
+        for field in select_trigger_fields {
+            tokens.required(&format!("select.trigger.{state}.{field}"))?;
         }
-        for field in select_popup_fields {
-            tokens.required(&format!("select.popup.{field}"))?;
+    }
+    for state in SELECT_OPTION_STATES {
+        for field in select_option_fields {
+            tokens.required(&format!("select.option.{state}.{field}"))?;
         }
-        for field in select_status_fields {
-            tokens.required(&format!("select.status.{field}"))?;
-        }
-        for state in SELECT_TRIGGER_STATES {
-            for field in select_trigger_fields {
-                tokens.required(&format!("select.trigger.{state}.{field}"))?;
-            }
-        }
-        for state in SELECT_OPTION_STATES {
-            for field in select_option_fields {
-                tokens.required(&format!("select.option.{state}.{field}"))?;
-            }
-        }
-        for size in SELECT_SIZES {
-            for field in select_size_fields {
-                tokens.required(&format!("select.size.{size}.{field}"))?;
-            }
+    }
+    for size in SELECT_SIZES {
+        for field in select_size_fields {
+            tokens.required(&format!("select.size.{size}.{field}"))?;
         }
     }
 

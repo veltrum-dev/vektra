@@ -1,6 +1,7 @@
 //! Vektra 组件共享语义尺寸。
 
 use gpui::{App, BorrowAppContext, Global};
+use vektra_theme::ThemeSize;
 
 /// Vektra 公开组件共享的语义尺寸。
 ///
@@ -26,6 +27,15 @@ impl ComponentSize {
             Self::Sm => "sm",
             Self::Md => "md",
             Self::Lg => "lg",
+        }
+    }
+
+    pub(crate) const fn theme_size(self) -> ThemeSize {
+        match self {
+            Self::Xs => ThemeSize::Xs,
+            Self::Sm => ThemeSize::Sm,
+            Self::Md => ThemeSize::Md,
+            Self::Lg => ThemeSize::Lg,
         }
     }
 }

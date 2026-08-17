@@ -5,6 +5,8 @@ use vektra_theme::{ResolvedTheme, ResolvedThemeMode, default_theme, dtcg, profil
 const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const BUTTON: &str = "themes/default/button.json";
+const INPUT: &str = "themes/default/input.json";
+const SELECT: &str = "themes/default/select.json";
 const CHECKBOX: &str = "themes/default/checkbox.json";
 
 #[test]
@@ -31,7 +33,9 @@ fn themes_without_checkbox_extension_use_semantic_fallbacks() {
     let foundation = load(FOUNDATION);
     let light = load(LIGHT);
     let button = load(BUTTON);
-    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button]).unwrap();
+    let input = load(INPUT);
+    let select = load(SELECT);
+    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button, &input, &select]).unwrap();
     profile::validate(&tokens).unwrap();
     let theme = ResolvedTheme::from_tokens(ResolvedThemeMode::Light, tokens).unwrap();
 
@@ -53,13 +57,17 @@ fn partial_checkbox_state_extension_is_rejected() {
     let foundation = load(FOUNDATION);
     let light = load(LIGHT);
     let button = load(BUTTON);
+    let input = load(INPUT);
+    let select = load(SELECT);
     let mut checkbox: Value = serde_json::from_str(&load(CHECKBOX)).unwrap();
     checkbox["checkbox"]["state"]["checked"]["normal"]
         .as_object_mut()
         .unwrap()
         .remove("label");
     let checkbox = serde_json::to_string(&checkbox).unwrap();
-    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button, &checkbox]).unwrap();
+    let tokens =
+        dtcg::parse_token_sets(&[&foundation, &light, &button, &input, &select, &checkbox])
+            .unwrap();
 
     assert!(profile::validate(&tokens).is_err());
 }
@@ -69,13 +77,17 @@ fn partial_checkbox_size_extension_is_rejected() {
     let foundation = load(FOUNDATION);
     let light = load(LIGHT);
     let button = load(BUTTON);
+    let input = load(INPUT);
+    let select = load(SELECT);
     let mut checkbox: Value = serde_json::from_str(&load(CHECKBOX)).unwrap();
     checkbox["checkbox"]["size"]["md"]
         .as_object_mut()
         .unwrap()
         .remove("hit-size");
     let checkbox = serde_json::to_string(&checkbox).unwrap();
-    let tokens = dtcg::parse_token_sets(&[&foundation, &light, &button, &checkbox]).unwrap();
+    let tokens =
+        dtcg::parse_token_sets(&[&foundation, &light, &button, &input, &select, &checkbox])
+            .unwrap();
 
     assert!(profile::validate(&tokens).is_err());
 }

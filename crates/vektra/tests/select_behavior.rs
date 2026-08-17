@@ -463,6 +463,14 @@ fn non_ready_statuses_are_inert_and_close_with_mouse_keyboard_and_focus(cx: &mut
         key_cycle("enter", cx);
         draw(cx);
         assert!(cx.debug_bounds("vektra-select-status").is_some());
+        key_down("down", cx);
+        key_cycle("enter", cx);
+        assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+        draw(cx);
+        assert!(cx.debug_bounds("vektra-select-popup").is_none());
+
+        key_cycle("enter", cx);
+        draw(cx);
         for key in ["down", "up", "home", "end"] {
             key_down(key, cx);
         }
@@ -498,6 +506,135 @@ fn non_ready_statuses_are_inert_and_close_with_mouse_keyboard_and_focus(cx: &mut
     assert!(cx.debug_bounds("vektra-select-popup").is_none());
     key_cycle("enter", cx);
     assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+}
+
+#[gpui::test]
+fn typeahead_opens_from_closed_and_matches_accessible_names(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|window, cx| SelectView::new(None, true, window, cx));
+    draw(cx);
+    focus_trigger(&view, cx);
+
+    key_down("专", cx);
+    draw(cx);
+    assert!(cx.debug_bounds("vektra-select-popup").is_some());
+    key_cycle("enter", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(Plan::Pro));
+
+    focus_trigger(&view, cx);
+    key_down("x", cx);
+    assert!(cx.debug_bounds("vektra-select-popup").is_none());
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(Plan::Pro));
+}
+
+struct TypeaheadSelectView {
+    selected: Option<usize>,
+    status: SelectStatus,
+    root_focus: FocusHandle,
+}
+
+impl TypeaheadSelectView {
+    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        cx.activate(true);
+        let root_focus = cx.focus_handle();
+        window.focus(&root_focus, cx);
+        Self {
+            selected: None,
+            status: SelectStatus::Ready,
+            root_focus,
+        }
+    }
+}
+
+impl Render for TypeaheadSelectView {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let group = SelectGroup::new("letters", "字母")
+            .option(
+                SelectOption::new("beta", 1, "禁用项")
+                    .aria_label("Beta")
+                    .disabled(true),
+            )
+            .option(SelectOption::new("bravo", 2, "二号").aria_label("Bravo"))
+            .option(SelectOption::new("berlin", 3, "三号").aria_label("Berlin"))
+            .option(SelectOption::new("echo", 4, "四号").aria_label("Echo"));
+        div().track_focus(&self.root_focus).child(
+            Select::new("typeahead-select")
+                .selected_value(self.selected)
+                .status(self.status.clone())
+                .option(SelectOption::new("alpha", 0, "一号").aria_label("Älpha"))
+                .group(group)
+                .option(SelectOption::new("berlin", 5, "重复 ID").aria_label("Beryl"))
+                .option(SelectOption::new("duplicate-value", 3, "重复值").aria_label("Broken"))
+                .on_change_in(cx, |this, value, _, cx| {
+                    this.selected = Some(value);
+                    cx.notify();
+                }),
+        )
+    }
+}
+
+fn focus_typeahead_trigger(
+    view: &gpui::Entity<TypeaheadSelectView>,
+    cx: &mut gpui::VisualTestContext,
+) {
+    let root_focus = view.read_with(cx, |view, _| view.root_focus.clone());
+    cx.update(|window, cx| {
+        window.activate_window();
+        window.focus(&root_focus, cx);
+        window.focus_next(cx);
+    });
+    draw(cx);
+}
+
+#[gpui::test]
+fn typeahead_handles_unicode_prefixes_repetition_timeout_groups_and_conflicts(
+    cx: &mut TestAppContext,
+) {
+    let (view, cx) = cx.add_window_view(TypeaheadSelectView::new);
+    draw(cx);
+    focus_typeahead_trigger(&view, cx);
+
+    key_down("ä", cx);
+    key_cycle("enter", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(0));
+
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(500));
+    cx.run_until_parked();
+    key_down("b", cx);
+    key_down("b", cx);
+    key_cycle("enter", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(3));
+
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(500));
+    cx.run_until_parked();
+    key_down("b", cx);
+    key_down("r", cx);
+    key_cycle("enter", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(2));
+
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(500));
+    cx.run_until_parked();
+    key_down("b", cx);
+    cx.executor()
+        .advance_clock(std::time::Duration::from_millis(500));
+    cx.run_until_parked();
+    key_down("e", cx);
+    key_cycle("enter", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(4));
+
+    key_down("x", cx);
+    assert!(cx.debug_bounds("vektra-select-popup").is_none());
+
+    view.update(cx, |view, cx| {
+        view.status = SelectStatus::loading("加载中");
+        cx.notify();
+    });
+    draw(cx);
+    key_down("b", cx);
+    assert!(cx.debug_bounds("vektra-select-popup").is_none());
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(4));
 }
 
 #[gpui::test]
@@ -950,6 +1087,144 @@ fn long_list_flips_stays_in_viewport_and_end_scrolls_active_visible(cx: &mut Tes
     let popup = cx.debug_bounds("vektra-select-popup").unwrap();
     assert!(popup.left() >= px(0.));
     assert!(popup.right() <= px(240.));
+}
+
+#[gpui::test]
+fn page_down_uses_the_measured_popup_page_instead_of_a_fixed_item_count(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(LongSelectView::new);
+    cx.simulate_resize(size(px(360.), px(260.)));
+    draw(cx);
+    let root_focus = view.read_with(cx, |view, _| view.focus_handle.clone());
+    cx.update(|window, cx| {
+        window.focus(&root_focus, cx);
+        window.focus_next(cx);
+    });
+    key_down("down", cx);
+    draw(cx);
+
+    let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+    let candidates = [
+        ("vektra-select-option-long-0", 0),
+        ("vektra-select-option-long-1", 1),
+        ("vektra-select-option-long-2", 2),
+        ("vektra-select-option-long-3", 3),
+        ("vektra-select-option-long-4", 4),
+        ("vektra-select-option-long-5", 5),
+        ("vektra-select-option-long-6", 6),
+        ("vektra-select-option-long-7", 7),
+        ("vektra-select-option-long-8", 8),
+        ("vektra-select-option-long-9", 9),
+        ("vektra-select-option-long-10", 10),
+        ("vektra-select-option-long-11", 11),
+        ("vektra-select-option-long-12", 12),
+    ];
+    let expected = candidates
+        .into_iter()
+        .take_while(|(selector, _)| {
+            cx.debug_bounds(selector)
+                .is_some_and(|bounds| bounds.bottom() <= popup.bottom())
+        })
+        .map(|(_, index)| index)
+        .last()
+        .unwrap();
+    assert_ne!(expected, 10, "夹具必须避免把固定十项误当成实际页");
+
+    key_down("pagedown", cx);
+    key_cycle("enter", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(expected));
+
+    key_down("down", cx);
+    draw(cx);
+    key_down("pageup", cx);
+    key_cycle("enter", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(0));
+}
+
+struct MixedPageSelectView {
+    selected: Option<usize>,
+    root_focus: FocusHandle,
+}
+
+impl MixedPageSelectView {
+    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        cx.activate(true);
+        let root_focus = cx.focus_handle();
+        window.focus(&root_focus, cx);
+        Self {
+            selected: None,
+            root_focus,
+        }
+    }
+}
+
+impl Render for MixedPageSelectView {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let mut group = SelectGroup::new("mixed-page-group", "分组选项").option(SelectOption::new(
+            "duplicate-zero",
+            0,
+            "重复值",
+        ));
+        for index in 1..30 {
+            group = group.option(
+                SelectOption::new(format!("mixed-{index}"), index, format!("混合选项 {index}"))
+                    .disabled(index == 2),
+            );
+        }
+        div().track_focus(&self.root_focus).w(px(340.)).child(
+            Select::new("mixed-page-select")
+                .selected_value(self.selected)
+                .option(SelectOption::new("mixed-0", 0, "混合选项 0"))
+                .group(group)
+                .on_change_in(cx, |this, value, _, cx| {
+                    this.selected = Some(value);
+                    cx.notify();
+                }),
+        )
+    }
+}
+
+#[gpui::test]
+fn measured_page_navigation_skips_grouped_disabled_and_duplicate_options(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(MixedPageSelectView::new);
+    cx.simulate_resize(size(px(360.), px(220.)));
+    draw(cx);
+    let root_focus = view.read_with(cx, |view, _| view.root_focus.clone());
+    cx.update(|window, cx| {
+        window.focus(&root_focus, cx);
+        window.focus_next(cx);
+    });
+    key_down("down", cx);
+    draw(cx);
+
+    let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+    let candidates = [
+        ("vektra-select-option-mixed-0", 0),
+        ("vektra-select-option-mixed-1", 1),
+        ("vektra-select-option-mixed-3", 3),
+        ("vektra-select-option-mixed-4", 4),
+        ("vektra-select-option-mixed-5", 5),
+        ("vektra-select-option-mixed-6", 6),
+        ("vektra-select-option-mixed-7", 7),
+        ("vektra-select-option-mixed-8", 8),
+    ];
+    let expected = candidates
+        .into_iter()
+        .filter(|(selector, _)| {
+            cx.debug_bounds(selector)
+                .is_some_and(|bounds| bounds.bottom() <= popup.bottom())
+        })
+        .map(|(_, value)| value)
+        .last()
+        .unwrap();
+    assert!(
+        cx.debug_bounds("vektra-select-option-duplicate-zero")
+            .is_some()
+    );
+    assert!(cx.debug_bounds("vektra-select-option-mixed-2").is_some());
+
+    key_down("pagedown", cx);
+    key_cycle("enter", cx);
+    assert_eq!(view.read_with(cx, |view, _| view.selected), Some(expected));
 }
 
 #[gpui::test]

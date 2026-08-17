@@ -22,7 +22,7 @@
 | --- | --- |
 | `ComponentSize`, `component_size`, `set_component_size` | Shared semantic sizes and the global default |
 | `ThemeMode`, `ResolvedThemeMode` | Requested and resolved theme modes |
-| `ResolvedTheme`, `SemanticColors`, `InputTokens`, `InputStateTokens`, `InputSizeTokens`, `RadioTokens`, `RadioStateTokens`, `RadioSizeTokens`, `TooltipTokens`, `ScrollbarTokens` | Public resolved-theme types |
+| `ResolvedTheme`, `SemanticColors`, `InputTokens`, `InputStateTokens`, `InputSizeTokens`, `InputVariantKind`, `InputVisualState`, `SelectTokens`, `SelectTriggerStateTokens`, `SelectOptionStateTokens`, `SelectSizeTokens`, `SelectTriggerState`, `SelectOptionState`, `ThemeSize`, `RadioTokens`, `RadioStateTokens`, `RadioSizeTokens`, `TooltipTokens`, `ScrollbarTokens` | Public resolved-theme types; Input and Select use strongly typed indices validated at construction |
 | `theme_mode`, `set_theme_mode`, `resolved_theme_mode` | Read, set, and resolve theme mode |
 | `current_theme`, `semantic_colors` | Current window theme and semantic colors |
 | `assets::Assets`, `assets::AssetsWithOverrides` | GPUI asset source and override composition |

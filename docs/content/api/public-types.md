@@ -22,7 +22,7 @@
 | --- | --- |
 | `ComponentSize`, `component_size`, `set_component_size` | 共享语义尺寸与全局默认值 |
 | `ThemeMode`, `ResolvedThemeMode` | 主题选择与解析结果 |
-| `ResolvedTheme`, `SemanticColors`, `InputTokens`, `InputStateTokens`, `InputSizeTokens`, `RadioTokens`, `RadioStateTokens`, `RadioSizeTokens`, `TooltipTokens`, `ScrollbarTokens` | 解析后的主题公共类型 |
+| `ResolvedTheme`, `SemanticColors`, `InputTokens`, `InputStateTokens`, `InputSizeTokens`, `InputVariantKind`, `InputVisualState`, `SelectTokens`, `SelectTriggerStateTokens`, `SelectOptionStateTokens`, `SelectSizeTokens`, `SelectTriggerState`, `SelectOptionState`, `ThemeSize`, `RadioTokens`, `RadioStateTokens`, `RadioSizeTokens`, `TooltipTokens`, `ScrollbarTokens` | 解析后的主题公共类型；Input/Select 使用构造期严格验证后的强类型索引 |
 | `theme_mode`, `set_theme_mode`, `resolved_theme_mode` | 读取、设置并解析主题模式 |
 | `current_theme`, `semantic_colors` | 当前窗口主题与语义颜色 |
 | `assets::Assets`, `assets::AssetsWithOverrides` | 传给 GPUI `with_assets` 的资源源及覆盖组合 |

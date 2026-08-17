@@ -5,13 +5,18 @@ use std::sync::Arc;
 use gpui::{Hsla, WindowAppearance};
 use support::{assert_contrast_at_least, assert_neutral, contrast_ratio};
 use vektra_assets::Assets;
-use vektra_theme::{ResolvedTheme, ResolvedThemeMode, ThemeMode, default_theme, dtcg, profile};
+use vektra_theme::{
+    InputVariantKind, InputVisualState, ResolvedTheme, ResolvedThemeMode, ThemeMode, default_theme,
+    dtcg, profile,
+};
 
 const ENABLED_STATES: [&str; 4] = ["normal", "hover", "pressed", "focus-visible"];
 const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const DARK: &str = "themes/default/dark.json";
 const BUTTON: &str = "themes/default/button.json";
+const INPUT: &str = "themes/default/input.json";
+const SELECT: &str = "themes/default/select.json";
 
 #[test]
 fn default_switch_enabled_states_meet_contrast_and_hierarchy_requirements() {
@@ -166,11 +171,19 @@ fn shared_enabled_control_tokens_keep_required_boundaries_and_text_legible() {
             }
         }
 
-        for variant in ["outline", "filled", "underline"] {
-            for state in ["normal", "hover", "focus-visible"] {
-                let tokens = theme.input_state(variant, state).unwrap();
+        for (variant_name, variant) in [
+            ("outline", InputVariantKind::Outline),
+            ("filled", InputVariantKind::Filled),
+            ("underline", InputVariantKind::Underline),
+        ] {
+            for (state_name, state) in [
+                ("normal", InputVisualState::Normal),
+                ("hover", InputVisualState::Hover),
+                ("focus-visible", InputVisualState::FocusVisible),
+            ] {
+                let tokens = theme.input_state(variant, state);
                 let background = opaque_or(tokens.background, page);
-                let context = format!("{mode:?} Input {variant} {state}");
+                let context = format!("{mode:?} Input {variant_name} {state_name}");
                 assert_contrast_at_least(
                     &format!("{context} border/page"),
                     tokens.border,
@@ -329,8 +342,14 @@ fn themes_without_component_extensions_keep_contrast_qualified_semantic_fallback
         (ResolvedThemeMode::Light, LIGHT),
         (ResolvedThemeMode::Dark, DARK),
     ] {
-        let tokens =
-            dtcg::parse_token_sets(&[&load(FOUNDATION), &load(palette), &load(BUTTON)]).unwrap();
+        let tokens = dtcg::parse_token_sets(&[
+            &load(FOUNDATION),
+            &load(palette),
+            &load(BUTTON),
+            &load(INPUT),
+            &load(SELECT),
+        ])
+        .unwrap();
         profile::validate(&tokens).unwrap();
         let theme = ResolvedTheme::from_tokens(mode, tokens).unwrap();
         let page = theme.semantic.background;
@@ -373,18 +392,6 @@ fn themes_without_component_extensions_keep_contrast_qualified_semantic_fallback
                 let tokens = theme.radio_state(selected, state).unwrap();
                 assert_contrast_at_least(
                     &format!("{mode:?} fallback Radio selected={selected} {state} boundary/page"),
-                    tokens.border,
-                    page,
-                    3.,
-                );
-            }
-        }
-
-        for variant in ["outline", "filled", "underline"] {
-            for state in ["normal", "hover", "focus-visible"] {
-                let tokens = theme.input_state(variant, state).unwrap();
-                assert_contrast_at_least(
-                    &format!("{mode:?} fallback Input {variant} {state} boundary/page"),
                     tokens.border,
                     page,
                     3.,

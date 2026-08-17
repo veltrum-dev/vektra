@@ -115,7 +115,9 @@ impl Render for SelectExample {
                             .flex_col()
                             .gap(px(8.))
                             .child(div().text_size(px(18.)).child("长列表滚动"))
-                            .child("打开后可使用滚轮或拖动滚动条，按 End 可跳到最后一项。")
+                            .child(
+                                "打开后可输入名称定位，使用 PageUp/PageDown 实测分页，按 End 跳到最后一项。",
+                            )
                             .child({
                                 let mut city_select = Select::new("city-select")
                                     .selected_value(self.city)

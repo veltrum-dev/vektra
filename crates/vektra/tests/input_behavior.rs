@@ -9,6 +9,7 @@ use vektra::{
     IconButtonVariant, IconSource, Input, InputClear, InputEvent, InputState, InputType,
     InputVariant, Sizable, Tooltip, TooltipPlacement,
 };
+use vektra_theme::{InputVariantKind, InputVisualState};
 
 #[test]
 fn input_is_a_root_export_with_standard_capabilities_and_builders() {
@@ -642,6 +643,178 @@ fn programmatic_updates_end_composition_without_user_events(cx: &mut TestAppCont
 }
 
 #[gpui::test]
+fn programmatic_set_value_clears_user_undo_and_redo_history(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, cx| InputView::new("初始", cx));
+    draw(cx);
+    focus_editor(&view, cx);
+    cx.simulate_input("用户编辑");
+    assert_eq!(value(&view, cx), "初始用户编辑");
+
+    let input_state = state(&view, cx);
+    input_state.update(cx, |state, cx| state.set_value("外部同步", cx));
+    cx.simulate_keystrokes(&command("z"));
+    assert_eq!(value(&view, cx), "外部同步");
+    cx.simulate_keystrokes(&command("shift-z"));
+    assert_eq!(value(&view, cx), "外部同步");
+}
+
+#[gpui::test]
+fn ime_selection_is_normalized_against_the_updated_full_value(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, cx| InputView::new("AexB", cx));
+    draw(cx);
+    let input_state = state(&view, cx);
+
+    for (initial, selected, replacement, expected, marked) in [
+        ("AexB", 2..3, "\u{301}", "Ae\u{301}B", 2..3),
+        ("A👨xB", 3..4, "\u{200d}👩", "A👨\u{200d}👩B", 3..6),
+    ] {
+        cx.update(|window, cx| {
+            input_state.update(cx, |state, cx| {
+                state.reset(initial, cx);
+                EntityInputHandler::set_selected_text_range(state, selected, window, cx);
+                EntityInputHandler::replace_and_mark_text_in_range(
+                    state,
+                    None,
+                    replacement,
+                    Some(0..0),
+                    window,
+                    cx,
+                );
+                let selection =
+                    EntityInputHandler::selected_text_range(state, true, window, cx).unwrap();
+                assert_eq!(selection.range, 1..1);
+                assert!(!selection.reversed);
+                assert_eq!(
+                    EntityInputHandler::marked_text_range(state, window, cx),
+                    Some(marked)
+                );
+            });
+        });
+        assert_eq!(value(&view, cx), expected);
+    }
+}
+
+#[gpui::test]
+fn ime_bounds_reject_stale_display_and_recover_after_redraw(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, cx| InputView::new("iiii", cx));
+    draw(cx);
+    let input_state = state(&view, cx);
+    let editor = cx.debug_bounds("vektra-input-editor").unwrap();
+    let bounds = |input_state: &gpui::Entity<InputState>, cx: &mut gpui::VisualTestContext| {
+        cx.update(|window, cx| {
+            input_state.update(cx, |state, cx| {
+                EntityInputHandler::bounds_for_range(state, 0..4, editor, window, cx)
+            })
+        })
+    };
+    assert!(bounds(&input_state, cx).is_some());
+
+    cx.update(|window, cx| {
+        input_state.update(cx, |state, cx| {
+            state.set_value("WWWW", cx);
+            assert!(
+                EntityInputHandler::bounds_for_range(state, 0..4, editor, window, cx,).is_none()
+            );
+        });
+    });
+    draw(cx);
+    assert!(bounds(&input_state, cx).is_some());
+
+    view.update(cx, |view, cx| {
+        view.input_type = InputType::Password;
+        cx.notify();
+    });
+    input_state.update(cx, |state, cx| state.set_value("甲乙", cx));
+    draw(cx);
+    cx.update(|window, cx| {
+        input_state.update(cx, |state, cx| {
+            state.set_value("甲乙丙丁", cx);
+            assert!(
+                EntityInputHandler::bounds_for_range(state, 0..4, editor, window, cx,).is_none()
+            );
+        });
+    });
+    draw(cx);
+    assert!(bounds(&input_state, cx).is_some());
+}
+
+#[gpui::test]
+fn word_and_line_deletion_respect_platform_modifiers_and_undo(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(|_, cx| InputView::new("hello 世界! e\u{301}", cx));
+    draw(cx);
+    focus_editor(&view, cx);
+
+    #[cfg(target_os = "macos")]
+    key_down("alt-backspace", cx);
+    #[cfg(not(target_os = "macos"))]
+    key_down("ctrl-backspace", cx);
+    assert_eq!(value(&view, cx), "hello 世界! ");
+    cx.simulate_keystrokes(&command("z"));
+    assert_eq!(value(&view, cx), "hello 世界! e\u{301}");
+
+    cx.simulate_keystrokes(&command("a"));
+    key_down("left", cx);
+    #[cfg(target_os = "macos")]
+    key_down("alt-delete", cx);
+    #[cfg(not(target_os = "macos"))]
+    key_down("ctrl-delete", cx);
+    assert_eq!(value(&view, cx), " 世界! e\u{301}");
+    cx.simulate_keystrokes(&command("z"));
+    assert_eq!(value(&view, cx), "hello 世界! e\u{301}");
+
+    let input_state = state(&view, cx);
+    cx.update(|window, cx| {
+        input_state.update(cx, |state, cx| {
+            EntityInputHandler::set_selected_text_range(state, 6..8, window, cx);
+        });
+    });
+    #[cfg(target_os = "macos")]
+    key_down("alt-backspace", cx);
+    #[cfg(not(target_os = "macos"))]
+    key_down("ctrl-backspace", cx);
+    assert_eq!(value(&view, cx), "hello ! e\u{301}");
+
+    view.update(cx, |view, cx| {
+        view.read_only = true;
+        cx.notify();
+    });
+    draw(cx);
+    #[cfg(target_os = "macos")]
+    key_down("cmd-backspace", cx);
+    #[cfg(not(target_os = "macos"))]
+    key_down("ctrl-backspace", cx);
+    assert_eq!(value(&view, cx), "hello ! e\u{301}");
+
+    view.update(cx, |view, cx| {
+        view.read_only = false;
+        view.disabled = true;
+        cx.notify();
+    });
+    draw(cx);
+    key_down("backspace", cx);
+    assert_eq!(value(&view, cx), "hello ! e\u{301}");
+
+    #[cfg(target_os = "macos")]
+    {
+        view.update(cx, |view, cx| {
+            view.disabled = false;
+            cx.notify();
+        });
+        draw(cx);
+        focus_editor(&view, cx);
+        key_down("end", cx);
+        key_down("cmd-backspace", cx);
+        assert_eq!(value(&view, cx), "");
+        cx.simulate_keystrokes(&command("z"));
+        assert_eq!(value(&view, cx), "hello ! e\u{301}");
+        cx.simulate_keystrokes(&command("a"));
+        key_down("left", cx);
+        key_down("cmd-delete", cx);
+        assert_eq!(value(&view, cx), "");
+    }
+}
+
+#[gpui::test]
 fn disabled_rejects_focus_and_selection_while_read_only_allows_selection_only(
     cx: &mut TestAppContext,
 ) {
@@ -1108,11 +1281,13 @@ fn borderless_pointer_and_keyboard_focus_keep_invalid_marker(cx: &mut TestAppCon
     assert!(cx.debug_bounds("vektra-input-invalid").is_some());
     cx.update(|window, cx| {
         let theme = vektra::current_theme(window, cx);
-        let pointer = theme.input_state("borderless", "focus-visible").unwrap();
-        let invalid = theme.input_state("borderless", "invalid").unwrap();
-        let invalid_focus = theme
-            .input_state("borderless", "invalid-focus-visible")
-            .unwrap();
+        let pointer =
+            theme.input_state(InputVariantKind::Borderless, InputVisualState::FocusVisible);
+        let invalid = theme.input_state(InputVariantKind::Borderless, InputVisualState::Invalid);
+        let invalid_focus = theme.input_state(
+            InputVariantKind::Borderless,
+            InputVisualState::InvalidFocusVisible,
+        );
         assert!(!pointer.border.is_transparent());
         assert!(!invalid_focus.border.is_transparent());
         assert_eq!(invalid.status, invalid_focus.status);

@@ -1,12 +1,22 @@
 use super::*;
-use gpui::{Element, ElementId, InteractiveElement, Role, div};
-use std::{cell::Cell, rc::Rc};
+use gpui::{
+    Context, Element, ElementId, InteractiveElement, IntoElement, Render, Role, Window, div,
+};
+
+struct EmptyView;
+
+impl Render for EmptyView {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+    }
+}
 
 #[derive(Clone, PartialEq)]
 enum Value {
     A,
     B,
     C,
+    D,
 }
 
 fn option(id: &'static str, value: Value, disabled: bool) -> SelectOption<Value> {
@@ -17,14 +27,53 @@ fn option(id: &'static str, value: Value, disabled: bool) -> SelectOption<Value>
 fn duplicate_ids_and_values_use_first_canonical_option() {
     let children = vec![
         SelectChild::Option(option("a", Value::A, false)),
-        SelectChild::Option(option("a", Value::B, false)),
-        SelectChild::Option(option("c", Value::A, false)),
-        SelectChild::Option(option("d", Value::C, false)),
+        SelectChild::Group(
+            SelectGroup::new("group", "Group")
+                .option(option("a", Value::B, false))
+                .option(option("c", Value::A, false))
+                .option(option("d", Value::D, true)),
+        ),
+        SelectChild::Option(option("e", Value::C, false)),
     ];
-    let flat = flat_options(&children);
+    let flat = option_catalog(&children);
     assert_eq!(
         flat.iter().map(|entry| entry.canonical).collect::<Vec<_>>(),
-        [true, false, false, true]
+        [true, false, false, true, true]
+    );
+    assert_eq!(
+        flat.iter()
+            .map(|entry| (entry.position, entry.set_size, entry.disabled))
+            .collect::<Vec<_>>(),
+        [
+            (0, 5, false),
+            (1, 5, true),
+            (2, 5, true),
+            (3, 5, true),
+            (4, 5, false),
+        ]
+    );
+}
+
+#[test]
+fn trigger_placeholder_is_not_duplicated_as_an_accessibility_value() {
+    let placeholder: SharedString = "选择方案".into();
+    assert_eq!(
+        trigger_accessibility::<Value>(None, &placeholder),
+        TriggerAccessibility {
+            value: None,
+            placeholder: Some(placeholder.clone()),
+        }
+    );
+
+    let catalog = option_catalog(&[SelectChild::Option(
+        SelectOption::new("pro", Value::C, "专业版").aria_label("专业方案"),
+    )]);
+    assert_eq!(
+        trigger_accessibility(catalog.first(), &placeholder),
+        TriggerAccessibility {
+            value: Some("专业方案".into()),
+            placeholder: None,
+        }
     );
 }
 
@@ -34,24 +83,29 @@ fn removed_active_prefers_same_position_then_previous() {
         OptionSnapshot {
             id: "a".into(),
             disabled: false,
+            accessible_name: "a".into(),
         },
         OptionSnapshot {
             id: "b".into(),
             disabled: false,
+            accessible_name: "b".into(),
         },
         OptionSnapshot {
             id: "c".into(),
             disabled: false,
+            accessible_name: "c".into(),
         },
     ];
     let next = vec![
         OptionSnapshot {
             id: "a".into(),
             disabled: false,
+            accessible_name: "a".into(),
         },
         OptionSnapshot {
             id: "c".into(),
             disabled: false,
+            accessible_name: "c".into(),
         },
     ];
     assert_eq!(
@@ -85,12 +139,39 @@ fn accessibility_wrapper_associates_an_open_trigger_with_its_popup() {
         None,
         None,
     )
-    .controls(Rc::new(Cell::new(Some(popup_id))));
+    .controls(popup_id);
     let mut node = gpui::accesskit::Node::new(Role::ComboBox);
 
     wrapper.write_a11y_info(&mut node);
 
     assert_eq!(node.controls(), &[popup_id]);
+}
+
+#[gpui::test]
+fn popup_node_id_is_available_from_the_real_nested_global_id_on_the_first_frame(
+    cx: &mut gpui::TestAppContext,
+) {
+    let (_, cx) = cx.add_window_view(|_, _| EmptyView);
+    cx.update(|window, _| {
+        let expected = window.with_global_id(ElementId::from("plans"), |_, window| {
+            window.with_global_id(ElementId::from("vektra-select-popup"), |global_id, _| {
+                accesskit_node_id(global_id)
+            })
+        });
+        let popup_id = select_popup_node_id(ElementId::from("plans"), window);
+        assert_eq!(popup_id, expected);
+
+        let wrapper = DisabledA11y::new(
+            div().id("plans").role(Role::ComboBox).aria_expanded(true),
+            false,
+            None,
+            None,
+        )
+        .controls(popup_id);
+        let mut node = gpui::accesskit::Node::new(Role::ComboBox);
+        wrapper.write_a11y_info(&mut node);
+        assert_eq!(node.controls(), &[popup_id]);
+    });
 }
 
 #[test]

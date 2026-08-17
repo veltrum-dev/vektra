@@ -32,7 +32,7 @@ group 标题只用于可见与可访问分组，不进入 active、选择或键�
 
 </VektraExample>
 
-`SelectStatus` 是互斥状态。`Ready` 显示 option；`Loading`、`Empty`、`Error` 显示宿主提供的文案。Select 不发起网络请求、等待、重试或自动切换状态；状态内容也不是 option，不会触发选择。
+`SelectStatus` 是互斥状态。`Ready` 显示 option；`Loading`、`Empty`、`Error` 显示宿主提供的文案。Select 不发起网络请求、等待、重试或自动切换状态；状态内容也不是 option，不会触发选择。非 Ready 弹层仍可由键盘或鼠标打开并访问状态消息，但方向键、分页、typeahead 与 Enter 提交不会建立 active option 或请求值。
 
 ## 键盘导航
 
@@ -48,10 +48,12 @@ group 标题只用于可见与可访问分组，不进入 active、选择或键�
 | ArrowDown | 打开；从选中项或首个可用项开始 | 移到下一个可用项，不循环 |
 | ArrowUp | 打开；从选中项或末个可用项开始 | 移到上一个可用项，不循环 |
 | Home / End | 正常传播 | 移到首个 / 末个可用项 |
+| PageUp / PageDown | 正常传播 | 按弹层当前实测可见页移动，并在首尾钳制 |
+| 可打印字符 | Ready 时打开并从当前项后循环匹配可访问名称 | 累积短时前缀并循环匹配；重复字符循环同首字母项 |
 | Escape | 正常传播 | 关闭，不改变业务值，焦点留在 Trigger |
 | Tab / Shift+Tab | 正常遍历 | 关闭并继续正常焦点遍历 |
 
-带不支持修饰键的组合和未识别按键继续传播。Enter 与 Space 使用 GPUI 完整 KeyDown/KeyUp 激活周期，一次交互最多产生一次变化请求。
+带不支持修饰键的组合和未识别按键继续传播。Typeahead 仅匹配 enabled canonical option，使用 Unicode 大小写不敏感前缀，短暂停顿后清空缓冲；无匹配时保持当前 active。Enter 与 Space 使用 GPUI 完整 KeyDown/KeyUp 激活周期，一次交互最多产生一次变化请求。
 
 ## 长列表、窄窗口与 resize
 
@@ -61,7 +63,7 @@ group 标题只用于可见与可访问分组，不进入 active、选择或键�
 
 </VektraExample>
 
-Popup 优先向下展开；下方不足时向上翻转，并受视口边距和最大高度限制。内容溢出时复用 Vektra Scrollbar，Arrow、Home、End 以及首次打开都会让 active option 进入可见区域。布局与窗口 resize 时会重新测量 Trigger 和视口；窄窗口下 Popup 会水平收敛，不超出可用区域。
+Popup 优先向下展开；下方不足时向上翻转，并受视口边距和最大高度限制。内容溢出时复用 Vektra Scrollbar，Arrow、Home、End、PageUp、PageDown、typeahead 以及首次打开都会让 active option 进入可见区域。分页使用当前 ScrollArea 视口和实际 option bounds，不依赖固定项数。布局与窗口 resize 时会重新测量 Trigger 和视口；窄窗口下 Popup 会水平收敛，不超出可用区域。
 
 当前实现不虚拟化，也不承诺无界 option 数量的性能；大数据量能力跟踪在 [Issue #6](https://github.com/veltrum-dev/vektra/issues/6)。
 
@@ -119,13 +121,15 @@ Select 实现 [`Changeable<T>`](/api/changeable)、[`Disableable`](/api/disablea
 
 Trigger 是唯一真实焦点和普通 Tab stop；Popup 打开时焦点仍留在 Trigger，option 通过 GPUI/AccessKit 的 active-descendant 语义报告。点击可用 option 后关闭并恢复 Trigger 焦点；再次点击 Trigger、外部点击、Escape、Tab/Shift+Tab 或窗口失活都会关闭 Popup。Popup 内点击、滚轮与 Scrollbar 交互不会被当作外部点击。
 
-Trigger 报告 `ComboBox`、名称、描述、expanded 与 disabled；Popup、Group、Label、Option 分别报告 `ListBox`、`Group`、`Label`、`ListBoxOption`，option 报告 selected 与 disabled。Loading/Empty 使用 `Status`，Error 使用 `Alert`。Popup 打开时，Trigger 通过 AccessKit `controls` 关联到本帧真实的 `ListBox` 节点；键盘 active option 继续通过 active-descendant 暴露，不会与业务 selected 混用。
+Trigger 报告 `ComboBox`、名称、描述、expanded 与 disabled；未选中时只报告 placeholder，不把它重复为 value，选中后 value 使用选中项的可访问名称。Popup、Group、Label、Option 分别报告 `ListBox`、`Group`、`Label`、`ListBoxOption`，option 报告 selected、disabled 以及按全部实际渲染 option（含 disabled 与重复冲突项）统计的 `posinset`/`setsize`。Loading/Empty 使用 `Status`，Error 使用 `Alert`。Popup 打开时，Trigger 通过 AccessKit `controls` 关联到同一首帧真实的 `ListBox` 节点；键盘 active option 继续通过 active-descendant 暴露，不会与业务 selected 混用。
 
 disabled、expanded、selected、名称、描述和值映射具有确定性 AccessKit 节点断言；角色、active-descendant 与焦点路径由锁定 GPUI API 的编译和交互测试覆盖。GPUI 的普通测试平台不会激活完整辅助技术树，因此真实 VoiceOver、NVDA、Narrator、Orca 以及各平台朗读体验尚未人工验证。
 
 ## 主题与跨平台状态
 
 Light、Dark 与 System 都解析 Select 专用 Trigger、Popup、Option、group、status 和 `Xs/Sm/Md/Lg` token；Scrollbar 继续使用共享 Scrollbar token。组件不开放任意颜色、圆角或间距透传。
+
+自定义主题现在必须由 `ResolvedTheme::from_tokens` 一次性完整验证 Select token；缺键、类型错误或无效引用返回 `ThemeError`，旧主题缺失扩展的 fallback 已移除。迁移时补齐六种 Trigger state、五种 Option state 与四种 size，并把字符串访问改为不可失败的 `select_trigger_state(SelectTriggerState)`、`select_option_state(SelectOptionState)` 和 `select_size(ThemeSize)`。
 
 代码目标覆盖 GPUI 支持的 macOS、Windows、Linux 与 Web/WASM。当前完成了本机编译、确定性交互测试、1.25x/1.5x/2x 测试缩放下的弹层约束与共享 WASM 构建；Linux、物理高 DPI 屏幕的像素一致性、屏幕阅读器与大列表性能仍未人工验证。
 

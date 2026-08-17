@@ -186,14 +186,14 @@ impl SelectDemo {
         let (title, hint, free, pro, enterprise) = match language {
             PreviewLang::ZhCn => (
                 "键盘导航",
-                "Enter/Space 打开，方向键与 Home/End 导航，Escape 关闭",
+                "Enter/Space 打开；输入名称、方向键、Home/End、PageUp/PageDown 导航",
                 "免费版",
                 "专业版",
                 "企业版",
             ),
             PreviewLang::EnUs => (
                 "Keyboard navigation",
-                "Enter/Space opens; arrows and Home/End navigate; Escape closes",
+                "Enter/Space opens; type a name or use arrows, Home/End, PageUp/PageDown",
                 "Free",
                 "Pro",
                 "Enterprise",

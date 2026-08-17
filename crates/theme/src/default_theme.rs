@@ -122,12 +122,16 @@ fn load_builtin_text(path: &str) -> Result<Cow<'static, str>, ThemeError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{InputVariantKind, InputVisualState, ThemeSize};
     use gpui::px;
 
     #[test]
     fn parses_default_light_and_dark() {
-        assert!(!default_tokens(ResolvedThemeMode::Light).unwrap().is_empty());
-        assert!(!default_tokens(ResolvedThemeMode::Dark).unwrap().is_empty());
+        for mode in [ResolvedThemeMode::Light, ResolvedThemeMode::Dark] {
+            let tokens = default_tokens(mode).unwrap();
+            assert!(!tokens.is_empty());
+            ResolvedTheme::from_tokens(mode, tokens).unwrap();
+        }
     }
 
     #[test]
@@ -153,21 +157,31 @@ mod tests {
                     theme.button_state(variant, state).unwrap();
                 }
             }
-            for size in ["xs", "sm", "md", "lg"] {
+            for (size, theme_size) in [
+                ("xs", ThemeSize::Xs),
+                ("sm", ThemeSize::Sm),
+                ("md", ThemeSize::Md),
+                ("lg", ThemeSize::Lg),
+            ] {
                 theme.button_size(size).unwrap();
-                theme.input_size(size).unwrap();
+                theme.input_size(theme_size);
             }
-            for variant in ["outline", "filled", "borderless", "underline"] {
+            for variant in [
+                InputVariantKind::Outline,
+                InputVariantKind::Filled,
+                InputVariantKind::Borderless,
+                InputVariantKind::Underline,
+            ] {
                 for state in [
-                    "normal",
-                    "hover",
-                    "focus-visible",
-                    "invalid",
-                    "invalid-focus-visible",
-                    "read-only",
-                    "disabled",
+                    InputVisualState::Normal,
+                    InputVisualState::Hover,
+                    InputVisualState::FocusVisible,
+                    InputVisualState::Invalid,
+                    InputVisualState::InvalidFocusVisible,
+                    InputVisualState::ReadOnly,
+                    InputVisualState::Disabled,
                 ] {
-                    theme.input_state(variant, state).unwrap();
+                    theme.input_state(variant, state);
                 }
             }
             for visual_state in ["unchecked", "checked", "indeterminate"] {

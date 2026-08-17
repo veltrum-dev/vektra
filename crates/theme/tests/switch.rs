@@ -6,6 +6,8 @@ const FOUNDATION: &str = "themes/default/foundation.json";
 const LIGHT: &str = "themes/default/light.json";
 const DARK: &str = "themes/default/dark.json";
 const BUTTON: &str = "themes/default/button.json";
+const INPUT: &str = "themes/default/input.json";
+const SELECT: &str = "themes/default/select.json";
 const SWITCH: &str = "themes/default/switch.json";
 
 #[test]
@@ -59,8 +61,7 @@ fn themes_without_a_switch_extension_use_semantic_fallbacks() {
         (ResolvedThemeMode::Light, LIGHT),
         (ResolvedThemeMode::Dark, DARK),
     ] {
-        let tokens =
-            dtcg::parse_token_sets(&[&load(FOUNDATION), &load(palette), &load(BUTTON)]).unwrap();
+        let tokens = parse(palette, None);
         profile::validate(&tokens).unwrap();
         let theme = ResolvedTheme::from_tokens(mode, tokens).unwrap();
         assert_eq!(
@@ -128,8 +129,7 @@ fn legacy_complete_switch_extension_uses_content_fallbacks() {
         }
     }
     let switch = serde_json::to_string(&switch).unwrap();
-    let tokens =
-        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &switch]).unwrap();
+    let tokens = parse(LIGHT, Some(&switch));
     profile::validate(&tokens).unwrap();
     let theme = ResolvedTheme::from_tokens(ResolvedThemeMode::Light, tokens).unwrap();
 
@@ -159,8 +159,7 @@ fn partial_switch_extensions_are_rejected() {
         .unwrap()
         .remove("thumb");
     let switch = serde_json::to_string(&switch).unwrap();
-    let tokens =
-        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &switch]).unwrap();
+    let tokens = parse(LIGHT, Some(&switch));
     assert!(profile::validate(&tokens).is_err());
 
     let mut switch: Value = serde_json::from_str(&load(SWITCH)).unwrap();
@@ -169,8 +168,7 @@ fn partial_switch_extensions_are_rejected() {
         .unwrap()
         .remove("spinner");
     let switch = serde_json::to_string(&switch).unwrap();
-    let tokens =
-        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &switch]).unwrap();
+    let tokens = parse(LIGHT, Some(&switch));
     assert!(profile::validate(&tokens).is_err());
 
     let mut switch: Value = serde_json::from_str(&load(SWITCH)).unwrap();
@@ -179,8 +177,7 @@ fn partial_switch_extensions_are_rejected() {
         .unwrap()
         .remove("spinner-size");
     let switch = serde_json::to_string(&switch).unwrap();
-    let tokens =
-        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &switch]).unwrap();
+    let tokens = parse(LIGHT, Some(&switch));
     assert!(profile::validate(&tokens).is_err());
 
     let mut switch: Value = serde_json::from_str(&load(SWITCH)).unwrap();
@@ -189,8 +186,7 @@ fn partial_switch_extensions_are_rejected() {
         .unwrap()
         .remove("thumb-size");
     let switch = serde_json::to_string(&switch).unwrap();
-    let tokens =
-        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &switch]).unwrap();
+    let tokens = parse(LIGHT, Some(&switch));
     assert!(profile::validate(&tokens).is_err());
 
     let mut switch: Value = serde_json::from_str(&load(SWITCH)).unwrap();
@@ -199,8 +195,7 @@ fn partial_switch_extensions_are_rejected() {
         .unwrap()
         .remove("content");
     let switch = serde_json::to_string(&switch).unwrap();
-    let tokens =
-        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &switch]).unwrap();
+    let tokens = parse(LIGHT, Some(&switch));
     assert!(profile::validate(&tokens).is_err());
 
     let mut switch: Value = serde_json::from_str(&load(SWITCH)).unwrap();
@@ -209,11 +204,27 @@ fn partial_switch_extensions_are_rejected() {
         .unwrap()
         .remove("content-icon-size");
     let switch = serde_json::to_string(&switch).unwrap();
-    let tokens =
-        dtcg::parse_token_sets(&[&load(FOUNDATION), &load(LIGHT), &load(BUTTON), &switch]).unwrap();
+    let tokens = parse(LIGHT, Some(&switch));
     assert!(profile::validate(&tokens).is_err());
 }
 
 fn load(path: &str) -> String {
     Assets::load_text(path).unwrap().unwrap().into_owned()
+}
+
+fn parse(palette: &str, extension: Option<&str>) -> dtcg::ResolvedTokens {
+    let foundation = load(FOUNDATION);
+    let palette = load(palette);
+    let button = load(BUTTON);
+    let input = load(INPUT);
+    let select = load(SELECT);
+    let mut sources = vec![
+        foundation.as_str(),
+        palette.as_str(),
+        button.as_str(),
+        input.as_str(),
+        select.as_str(),
+    ];
+    sources.extend(extension);
+    dtcg::parse_token_sets(&sources).unwrap()
 }

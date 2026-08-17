@@ -138,6 +138,54 @@ pub struct InputTokens {
     pub caret_width: Pixels,
 }
 
+/// Input 的公开视觉变体索引。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+pub enum InputVariantKind {
+    /// 带完整边框的输入框。
+    Outline,
+    /// 带填充背景的输入框。
+    Filled,
+    /// 无常驻边框的输入框。
+    Borderless,
+    /// 仅显示底线的输入框。
+    Underline,
+}
+
+/// Input 的公开视觉状态索引。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+pub enum InputVisualState {
+    /// 默认状态。
+    Normal,
+    /// 指针悬停状态。
+    Hover,
+    /// 键盘焦点可见状态。
+    FocusVisible,
+    /// 校验失败状态。
+    Invalid,
+    /// 校验失败且键盘焦点可见。
+    InvalidFocusVisible,
+    /// 只读状态。
+    ReadOnly,
+    /// 禁用状态。
+    Disabled,
+}
+
+/// Input 与 Select 共用的语义尺寸索引。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+pub enum ThemeSize {
+    /// 超小尺寸。
+    Xs,
+    /// 小尺寸。
+    Sm,
+    /// 中尺寸。
+    Md,
+    /// 大尺寸。
+    Lg,
+}
+
 /// Checkbox 某个 state 的 GPUI 样式 token。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CheckboxStateTokens {
@@ -340,6 +388,40 @@ pub struct SelectTokens {
     pub status_error: Hsla,
 }
 
+/// Select Trigger 的公开视觉状态索引。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+pub enum SelectTriggerState {
+    /// 默认状态。
+    Normal,
+    /// 指针悬停状态。
+    Hover,
+    /// 指针按下状态。
+    Pressed,
+    /// 键盘焦点可见状态。
+    FocusVisible,
+    /// 弹层展开状态。
+    Open,
+    /// 禁用状态。
+    Disabled,
+}
+
+/// Select Option 的公开视觉状态索引。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
+pub enum SelectOptionState {
+    /// 默认状态。
+    Normal,
+    /// 指针悬停状态。
+    Hover,
+    /// 键盘活动项状态。
+    Active,
+    /// 已选状态。
+    Selected,
+    /// 禁用状态。
+    Disabled,
+}
+
 /// Switch 某个 visual/interaction state 的 GPUI 样式 token。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SwitchStateTokens {
@@ -515,6 +597,11 @@ pub struct ResolvedTheme {
     pub tooltip: TooltipTokens,
     /// Scrollbar 公共 token。
     pub scrollbar: ScrollbarTokens,
+    input_states: [[InputStateTokens; 7]; 4],
+    input_sizes: [InputSizeTokens; 4],
+    select_trigger_states: [SelectTriggerStateTokens; 6],
+    select_option_states: [SelectOptionStateTokens; 5],
+    select_sizes: [SelectSizeTokens; 4],
     tokens: ResolvedTokens,
 }
 
@@ -524,6 +611,11 @@ impl ResolvedTheme {
         mode: ResolvedThemeMode,
         tokens: ResolvedTokens,
     ) -> Result<Self, ThemeError> {
+        let input_states = resolve_input_states(&tokens)?;
+        let input_sizes = resolve_input_sizes(&tokens)?;
+        let select_trigger_states = resolve_select_trigger_states(&tokens)?;
+        let select_option_states = resolve_select_option_states(&tokens)?;
+        let select_sizes = resolve_select_sizes(&tokens)?;
         Ok(Self {
             mode,
             semantic: SemanticColors {
@@ -555,21 +647,9 @@ impl ResolvedTheme {
                 focus_width: dimension(&tokens, "button.focus-width")?,
             },
             input: InputTokens {
-                border_width: optional_dimension(
-                    &tokens,
-                    "input.border-width",
-                    "foundation.border.width",
-                )?,
-                focus_width: optional_dimension(
-                    &tokens,
-                    "input.focus-width",
-                    "foundation.border.focus",
-                )?,
-                caret_width: if tokens.get("input.caret-width").is_some() {
-                    dimension(&tokens, "input.caret-width")?
-                } else {
-                    gpui::px(1.)
-                },
+                border_width: dimension(&tokens, "input.border-width")?,
+                focus_width: dimension(&tokens, "input.focus-width")?,
+                caret_width: dimension(&tokens, "input.caret-width")?,
             },
             checkbox: CheckboxTokens {
                 border_width: optional_dimension(
@@ -596,84 +676,24 @@ impl ResolvedTheme {
                 )?,
             },
             select: SelectTokens {
-                border_width: optional_dimension(
-                    &tokens,
-                    "select.border-width",
-                    "foundation.border.width",
-                )?,
-                focus_width: optional_dimension(
-                    &tokens,
-                    "select.focus-width",
-                    "foundation.border.focus",
-                )?,
-                popup_background: optional_color(
-                    &tokens,
-                    "select.popup.background",
-                    "semantic.surface",
-                )?,
-                popup_border: optional_color(&tokens, "select.popup.border", "semantic.border")?,
-                popup_border_width: optional_dimension(
-                    &tokens,
-                    "select.popup.border-width",
-                    "foundation.border.width",
-                )?,
-                popup_radius: optional_dimension(
-                    &tokens,
-                    "select.popup.radius",
-                    "foundation.radius.md",
-                )?,
-                popup_padding: optional_dimension(
-                    &tokens,
-                    "select.popup.padding",
-                    "foundation.space.1",
-                )?,
-                popup_shadow_color: if tokens.get("select.popup.shadow-color").is_some() {
-                    color(&tokens, "select.popup.shadow-color")?
-                } else {
-                    color(&tokens, "semantic.foreground")?.opacity(0.16)
-                },
-                popup_shadow_offset_y: optional_dimension(
-                    &tokens,
-                    "select.popup.shadow-offset-y",
-                    "foundation.space.1",
-                )?,
-                popup_shadow_blur: optional_dimension(
-                    &tokens,
-                    "select.popup.shadow-blur",
-                    "foundation.space.2",
-                )?,
-                popup_shadow_spread: optional_dimension(
-                    &tokens,
-                    "select.popup.shadow-spread",
-                    "foundation.space.0",
-                )?,
-                popup_anchor_gap: optional_dimension(
-                    &tokens,
-                    "select.popup.anchor-gap",
-                    "foundation.space.1",
-                )?,
-                popup_viewport_padding: optional_dimension(
-                    &tokens,
-                    "select.popup.viewport-padding",
-                    "foundation.space.2",
-                )?,
-                popup_max_height: optional_dimension_value(
-                    &tokens,
-                    "select.popup.max-height",
-                    gpui::px(280.),
-                )?,
-                group_label: optional_color(&tokens, "select.group-label", "semantic.on-muted")?,
-                status_loading: optional_color(
-                    &tokens,
-                    "select.status.loading",
-                    "semantic.on-muted",
-                )?,
-                status_empty: optional_color(&tokens, "select.status.empty", "semantic.on-muted")?,
-                status_error: optional_color(
-                    &tokens,
-                    "select.status.error",
-                    "semantic.destructive",
-                )?,
+                border_width: dimension(&tokens, "select.border-width")?,
+                focus_width: dimension(&tokens, "select.focus-width")?,
+                popup_background: color(&tokens, "select.popup.background")?,
+                popup_border: color(&tokens, "select.popup.border")?,
+                popup_border_width: dimension(&tokens, "select.popup.border-width")?,
+                popup_radius: dimension(&tokens, "select.popup.radius")?,
+                popup_padding: dimension(&tokens, "select.popup.padding")?,
+                popup_shadow_color: color(&tokens, "select.popup.shadow-color")?,
+                popup_shadow_offset_y: dimension(&tokens, "select.popup.shadow-offset-y")?,
+                popup_shadow_blur: dimension(&tokens, "select.popup.shadow-blur")?,
+                popup_shadow_spread: dimension(&tokens, "select.popup.shadow-spread")?,
+                popup_anchor_gap: dimension(&tokens, "select.popup.anchor-gap")?,
+                popup_viewport_padding: dimension(&tokens, "select.popup.viewport-padding")?,
+                popup_max_height: dimension(&tokens, "select.popup.max-height")?,
+                group_label: color(&tokens, "select.group-label")?,
+                status_loading: color(&tokens, "select.status.loading")?,
+                status_empty: color(&tokens, "select.status.empty")?,
+                status_error: color(&tokens, "select.status.error")?,
             },
             switch: SwitchTokens {
                 border_width: optional_dimension(
@@ -801,6 +821,11 @@ impl ResolvedTheme {
                     "foundation.border.focus",
                 )?,
             },
+            input_states,
+            input_sizes,
+            select_trigger_states,
+            select_option_states,
+            select_sizes,
             tokens,
         })
     }
@@ -850,101 +875,18 @@ impl ResolvedTheme {
         })
     }
 
-    /// 读取 Input variant/state 样式 token。
-    ///
-    /// 旧主题完全不含 Input 扩展时，从既有 semantic token 安全回退。
-    pub fn input_state(&self, variant: &str, state: &str) -> Result<InputStateTokens, ThemeError> {
-        let prefix = format!("input.variant.{variant}.{state}");
-        Ok(InputStateTokens {
-            background: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.background"),
-                input_background_fallback(self.semantic, variant, state),
-            )?,
-            foreground: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.foreground"),
-                input_foreground_fallback(self.semantic, state),
-            )?,
-            placeholder: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.placeholder"),
-                input_placeholder_fallback(self.semantic, state),
-            )?,
-            border: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.border"),
-                input_border_fallback(self.semantic, variant, state),
-            )?,
-            caret: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.caret"),
-                input_caret_fallback(self.semantic, state),
-            )?,
-            selection: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.selection"),
-                input_selection_fallback(self.semantic, state),
-            )?,
-            affix: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.affix"),
-                input_affix_fallback(self.semantic, state),
-            )?,
-            status: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.status"),
-                input_status_fallback(self.semantic, state),
-            )?,
-        })
+    /// 读取已在构造阶段完整解析的 Input variant/state 样式 token。
+    pub fn input_state(
+        &self,
+        variant: InputVariantKind,
+        state: InputVisualState,
+    ) -> InputStateTokens {
+        self.input_states[variant as usize][state as usize]
     }
 
-    /// 读取 Input size token。
-    ///
-    /// 旧主题缺少整个 Input 扩展时使用与 Button 对齐的安全尺寸回退。
-    pub fn input_size(&self, size: &str) -> Result<InputSizeTokens, ThemeError> {
-        let prefix = format!("input.size.{size}");
-        let (height, padding_x, line_height, slot_size, icon_size, status_size, gap) =
-            input_size_fallback(size);
-        Ok(InputSizeTokens {
-            height: optional_dimension_value(&self.tokens, &format!("{prefix}.height"), height)?,
-            padding_x: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.padding-x"),
-                padding_x,
-            )?,
-            font_size: optional_dimension(
-                &self.tokens,
-                &format!("{prefix}.font-size"),
-                input_font_size_fallback(size),
-            )?,
-            line_height: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.line-height"),
-                line_height,
-            )?,
-            radius: optional_dimension(
-                &self.tokens,
-                &format!("{prefix}.radius"),
-                input_radius_fallback(size),
-            )?,
-            slot_size: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.slot-size"),
-                slot_size,
-            )?,
-            icon_size: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.icon-size"),
-                icon_size,
-            )?,
-            status_size: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.status-size"),
-                status_size,
-            )?,
-            gap: optional_dimension_value(&self.tokens, &format!("{prefix}.gap"), gap)?,
-        })
+    /// 读取已在构造阶段完整解析的 Input size token。
+    pub fn input_size(&self, size: ThemeSize) -> InputSizeTokens {
+        self.input_sizes[size as usize]
     }
 
     /// 读取 Checkbox state token。
@@ -1140,136 +1082,19 @@ impl ResolvedTheme {
         })
     }
 
-    /// 读取 Select Trigger 的交互状态 token。
-    pub fn select_trigger_state(
-        &self,
-        state: &str,
-    ) -> Result<SelectTriggerStateTokens, ThemeError> {
-        let prefix = format!("select.trigger.{state}");
-        Ok(SelectTriggerStateTokens {
-            background: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.background"),
-                select_trigger_background_fallback(self.semantic, state),
-            )?,
-            foreground: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.foreground"),
-                select_trigger_foreground_fallback(self.semantic, state),
-            )?,
-            placeholder: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.placeholder"),
-                select_trigger_placeholder_fallback(self.semantic, state),
-            )?,
-            border: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.border"),
-                select_trigger_border_fallback(self.semantic, state),
-            )?,
-            indicator: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.indicator"),
-                select_trigger_indicator_fallback(self.semantic, state),
-            )?,
-        })
+    /// 读取已在构造阶段完整解析的 Select Trigger 状态 token。
+    pub fn select_trigger_state(&self, state: SelectTriggerState) -> SelectTriggerStateTokens {
+        self.select_trigger_states[state as usize]
     }
 
-    /// 读取 Select Option 的交互状态 token。
-    pub fn select_option_state(&self, state: &str) -> Result<SelectOptionStateTokens, ThemeError> {
-        let prefix = format!("select.option.{state}");
-        Ok(SelectOptionStateTokens {
-            background: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.background"),
-                select_option_background_fallback(self.semantic, state),
-            )?,
-            foreground: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.foreground"),
-                select_option_foreground_fallback(self.semantic, state),
-            )?,
-            description: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.description"),
-                select_option_description_fallback(self.semantic, state),
-            )?,
-            indicator: optional_color_value(
-                &self.tokens,
-                &format!("{prefix}.indicator"),
-                select_option_foreground_fallback(self.semantic, state),
-            )?,
-        })
+    /// 读取已在构造阶段完整解析的 Select Option 状态 token。
+    pub fn select_option_state(&self, state: SelectOptionState) -> SelectOptionStateTokens {
+        self.select_option_states[state as usize]
     }
 
-    /// 读取 Select 的语义尺寸 token。
-    pub fn select_size(&self, size: &str) -> Result<SelectSizeTokens, ThemeError> {
-        let prefix = format!("select.size.{size}");
-        let (height, padding_x, font_size, icon_size, option_padding_y) =
-            select_size_fallback(size);
-        Ok(SelectSizeTokens {
-            height: optional_dimension_value(&self.tokens, &format!("{prefix}.height"), height)?,
-            padding_x: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.padding-x"),
-                padding_x,
-            )?,
-            font_size: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.font-size"),
-                font_size,
-            )?,
-            line_height: optional_dimension(
-                &self.tokens,
-                &format!("{prefix}.line-height"),
-                "foundation.space.4",
-            )?,
-            radius: optional_dimension(
-                &self.tokens,
-                &format!("{prefix}.radius"),
-                "foundation.radius.md",
-            )?,
-            icon_size: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.icon-size"),
-                icon_size,
-            )?,
-            indicator_size: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.indicator-size"),
-                icon_size,
-            )?,
-            content_gap: optional_dimension(
-                &self.tokens,
-                &format!("{prefix}.content-gap"),
-                "foundation.space.2",
-            )?,
-            option_padding_x: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.option-padding-x"),
-                padding_x,
-            )?,
-            option_padding_y: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.option-padding-y"),
-                option_padding_y,
-            )?,
-            description_font_size: optional_dimension(
-                &self.tokens,
-                &format!("{prefix}.description-font-size"),
-                "foundation.font.size.xs",
-            )?,
-            description_line_height: optional_dimension(
-                &self.tokens,
-                &format!("{prefix}.description-line-height"),
-                "foundation.space.4",
-            )?,
-            group_padding_y: optional_dimension_value(
-                &self.tokens,
-                &format!("{prefix}.group-padding-y"),
-                option_padding_y,
-            )?,
-        })
+    /// 读取已在构造阶段完整解析的 Select 尺寸 token。
+    pub fn select_size(&self, size: ThemeSize) -> SelectSizeTokens {
+        self.select_sizes[size as usize]
     }
 
     /// 读取 Switch state token。
@@ -1467,6 +1292,219 @@ fn dimension(tokens: &ResolvedTokens, path: &str) -> Result<Pixels, ThemeError> 
     Ok(tokens.dimension(path)?.to_pixels())
 }
 
+impl InputVariantKind {
+    fn token(self) -> &'static str {
+        match self {
+            Self::Outline => "outline",
+            Self::Filled => "filled",
+            Self::Borderless => "borderless",
+            Self::Underline => "underline",
+        }
+    }
+}
+
+impl InputVisualState {
+    fn token(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Hover => "hover",
+            Self::FocusVisible => "focus-visible",
+            Self::Invalid => "invalid",
+            Self::InvalidFocusVisible => "invalid-focus-visible",
+            Self::ReadOnly => "read-only",
+            Self::Disabled => "disabled",
+        }
+    }
+}
+
+impl ThemeSize {
+    fn token(self) -> &'static str {
+        match self {
+            Self::Xs => "xs",
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+        }
+    }
+}
+
+impl SelectTriggerState {
+    fn token(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Hover => "hover",
+            Self::Pressed => "pressed",
+            Self::FocusVisible => "focus-visible",
+            Self::Open => "open",
+            Self::Disabled => "disabled",
+        }
+    }
+}
+
+impl SelectOptionState {
+    fn token(self) -> &'static str {
+        match self {
+            Self::Normal => "normal",
+            Self::Hover => "hover",
+            Self::Active => "active",
+            Self::Selected => "selected",
+            Self::Disabled => "disabled",
+        }
+    }
+}
+
+fn resolve_input_states(tokens: &ResolvedTokens) -> Result<[[InputStateTokens; 7]; 4], ThemeError> {
+    Ok([
+        resolve_input_variant(tokens, InputVariantKind::Outline)?,
+        resolve_input_variant(tokens, InputVariantKind::Filled)?,
+        resolve_input_variant(tokens, InputVariantKind::Borderless)?,
+        resolve_input_variant(tokens, InputVariantKind::Underline)?,
+    ])
+}
+
+fn resolve_input_variant(
+    tokens: &ResolvedTokens,
+    variant: InputVariantKind,
+) -> Result<[InputStateTokens; 7], ThemeError> {
+    Ok([
+        resolve_input_state(tokens, variant, InputVisualState::Normal)?,
+        resolve_input_state(tokens, variant, InputVisualState::Hover)?,
+        resolve_input_state(tokens, variant, InputVisualState::FocusVisible)?,
+        resolve_input_state(tokens, variant, InputVisualState::Invalid)?,
+        resolve_input_state(tokens, variant, InputVisualState::InvalidFocusVisible)?,
+        resolve_input_state(tokens, variant, InputVisualState::ReadOnly)?,
+        resolve_input_state(tokens, variant, InputVisualState::Disabled)?,
+    ])
+}
+
+fn resolve_input_state(
+    tokens: &ResolvedTokens,
+    variant: InputVariantKind,
+    state: InputVisualState,
+) -> Result<InputStateTokens, ThemeError> {
+    let prefix = format!("input.variant.{}.{}", variant.token(), state.token());
+    Ok(InputStateTokens {
+        background: color(tokens, &format!("{prefix}.background"))?,
+        foreground: color(tokens, &format!("{prefix}.foreground"))?,
+        placeholder: color(tokens, &format!("{prefix}.placeholder"))?,
+        border: color(tokens, &format!("{prefix}.border"))?,
+        caret: color(tokens, &format!("{prefix}.caret"))?,
+        selection: color(tokens, &format!("{prefix}.selection"))?,
+        affix: color(tokens, &format!("{prefix}.affix"))?,
+        status: color(tokens, &format!("{prefix}.status"))?,
+    })
+}
+
+fn resolve_input_sizes(tokens: &ResolvedTokens) -> Result<[InputSizeTokens; 4], ThemeError> {
+    Ok([
+        resolve_input_size(tokens, ThemeSize::Xs)?,
+        resolve_input_size(tokens, ThemeSize::Sm)?,
+        resolve_input_size(tokens, ThemeSize::Md)?,
+        resolve_input_size(tokens, ThemeSize::Lg)?,
+    ])
+}
+
+fn resolve_input_size(
+    tokens: &ResolvedTokens,
+    size: ThemeSize,
+) -> Result<InputSizeTokens, ThemeError> {
+    let prefix = format!("input.size.{}", size.token());
+    Ok(InputSizeTokens {
+        height: dimension(tokens, &format!("{prefix}.height"))?,
+        padding_x: dimension(tokens, &format!("{prefix}.padding-x"))?,
+        font_size: dimension(tokens, &format!("{prefix}.font-size"))?,
+        line_height: dimension(tokens, &format!("{prefix}.line-height"))?,
+        radius: dimension(tokens, &format!("{prefix}.radius"))?,
+        slot_size: dimension(tokens, &format!("{prefix}.slot-size"))?,
+        icon_size: dimension(tokens, &format!("{prefix}.icon-size"))?,
+        status_size: dimension(tokens, &format!("{prefix}.status-size"))?,
+        gap: dimension(tokens, &format!("{prefix}.gap"))?,
+    })
+}
+
+fn resolve_select_trigger_states(
+    tokens: &ResolvedTokens,
+) -> Result<[SelectTriggerStateTokens; 6], ThemeError> {
+    Ok([
+        resolve_select_trigger_state(tokens, SelectTriggerState::Normal)?,
+        resolve_select_trigger_state(tokens, SelectTriggerState::Hover)?,
+        resolve_select_trigger_state(tokens, SelectTriggerState::Pressed)?,
+        resolve_select_trigger_state(tokens, SelectTriggerState::FocusVisible)?,
+        resolve_select_trigger_state(tokens, SelectTriggerState::Open)?,
+        resolve_select_trigger_state(tokens, SelectTriggerState::Disabled)?,
+    ])
+}
+
+fn resolve_select_trigger_state(
+    tokens: &ResolvedTokens,
+    state: SelectTriggerState,
+) -> Result<SelectTriggerStateTokens, ThemeError> {
+    let prefix = format!("select.trigger.{}", state.token());
+    Ok(SelectTriggerStateTokens {
+        background: color(tokens, &format!("{prefix}.background"))?,
+        foreground: color(tokens, &format!("{prefix}.foreground"))?,
+        placeholder: color(tokens, &format!("{prefix}.placeholder"))?,
+        border: color(tokens, &format!("{prefix}.border"))?,
+        indicator: color(tokens, &format!("{prefix}.indicator"))?,
+    })
+}
+
+fn resolve_select_option_states(
+    tokens: &ResolvedTokens,
+) -> Result<[SelectOptionStateTokens; 5], ThemeError> {
+    Ok([
+        resolve_select_option_state(tokens, SelectOptionState::Normal)?,
+        resolve_select_option_state(tokens, SelectOptionState::Hover)?,
+        resolve_select_option_state(tokens, SelectOptionState::Active)?,
+        resolve_select_option_state(tokens, SelectOptionState::Selected)?,
+        resolve_select_option_state(tokens, SelectOptionState::Disabled)?,
+    ])
+}
+
+fn resolve_select_option_state(
+    tokens: &ResolvedTokens,
+    state: SelectOptionState,
+) -> Result<SelectOptionStateTokens, ThemeError> {
+    let prefix = format!("select.option.{}", state.token());
+    Ok(SelectOptionStateTokens {
+        background: color(tokens, &format!("{prefix}.background"))?,
+        foreground: color(tokens, &format!("{prefix}.foreground"))?,
+        description: color(tokens, &format!("{prefix}.description"))?,
+        indicator: color(tokens, &format!("{prefix}.indicator"))?,
+    })
+}
+
+fn resolve_select_sizes(tokens: &ResolvedTokens) -> Result<[SelectSizeTokens; 4], ThemeError> {
+    Ok([
+        resolve_select_size(tokens, ThemeSize::Xs)?,
+        resolve_select_size(tokens, ThemeSize::Sm)?,
+        resolve_select_size(tokens, ThemeSize::Md)?,
+        resolve_select_size(tokens, ThemeSize::Lg)?,
+    ])
+}
+
+fn resolve_select_size(
+    tokens: &ResolvedTokens,
+    size: ThemeSize,
+) -> Result<SelectSizeTokens, ThemeError> {
+    let prefix = format!("select.size.{}", size.token());
+    Ok(SelectSizeTokens {
+        height: dimension(tokens, &format!("{prefix}.height"))?,
+        padding_x: dimension(tokens, &format!("{prefix}.padding-x"))?,
+        font_size: dimension(tokens, &format!("{prefix}.font-size"))?,
+        line_height: dimension(tokens, &format!("{prefix}.line-height"))?,
+        radius: dimension(tokens, &format!("{prefix}.radius"))?,
+        icon_size: dimension(tokens, &format!("{prefix}.icon-size"))?,
+        indicator_size: dimension(tokens, &format!("{prefix}.indicator-size"))?,
+        content_gap: dimension(tokens, &format!("{prefix}.content-gap"))?,
+        option_padding_x: dimension(tokens, &format!("{prefix}.option-padding-x"))?,
+        option_padding_y: dimension(tokens, &format!("{prefix}.option-padding-y"))?,
+        description_font_size: dimension(tokens, &format!("{prefix}.description-font-size"))?,
+        description_line_height: dimension(tokens, &format!("{prefix}.description-line-height"))?,
+        group_padding_y: dimension(tokens, &format!("{prefix}.group-padding-y"))?,
+    })
+}
+
 fn optional_color(tokens: &ResolvedTokens, path: &str, fallback: &str) -> Result<Hsla, ThemeError> {
     color(
         tokens,
@@ -1502,290 +1540,6 @@ fn optional_dimension_value(
         dimension(tokens, path)
     } else {
         Ok(fallback)
-    }
-}
-
-fn optional_color_value(
-    tokens: &ResolvedTokens,
-    path: &str,
-    fallback: Hsla,
-) -> Result<Hsla, ThemeError> {
-    if tokens.get(path).is_some() {
-        color(tokens, path)
-    } else {
-        Ok(fallback)
-    }
-}
-
-fn select_trigger_background_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    match state {
-        "hover" => semantic.secondary,
-        "pressed" => semantic.accent,
-        "disabled" => semantic.disabled_background,
-        _ => semantic.background,
-    }
-}
-
-fn select_trigger_foreground_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    if state == "disabled" {
-        semantic.disabled_foreground
-    } else {
-        semantic.foreground
-    }
-}
-
-fn select_trigger_placeholder_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    if state == "disabled" {
-        semantic.disabled_foreground
-    } else {
-        semantic.on_muted
-    }
-}
-
-fn select_trigger_border_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    match state {
-        "focus-visible" | "open" => semantic.ring,
-        "hover" | "pressed" => semantic.foreground,
-        "disabled" => semantic.disabled_border,
-        _ => semantic.input_border,
-    }
-}
-
-fn select_trigger_indicator_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    match state {
-        "normal" => semantic.on_muted,
-        "disabled" => semantic.disabled_foreground,
-        _ => semantic.foreground,
-    }
-}
-
-fn select_option_background_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    match state {
-        "hover" => semantic.secondary,
-        "active" => semantic.accent,
-        _ => semantic.surface,
-    }
-}
-
-fn select_option_foreground_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    match state {
-        "disabled" => semantic.disabled_foreground,
-        _ => semantic.foreground,
-    }
-}
-
-fn select_option_description_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    match state {
-        "disabled" => semantic.disabled_foreground,
-        "hover" | "active" => semantic.foreground,
-        _ => semantic.on_muted,
-    }
-}
-
-fn select_size_fallback(size: &str) -> (Pixels, Pixels, Pixels, Pixels, Pixels) {
-    match size {
-        "xs" => (
-            gpui::px(24.),
-            gpui::px(8.),
-            gpui::px(12.),
-            gpui::px(12.),
-            gpui::px(4.),
-        ),
-        "sm" => (
-            gpui::px(32.),
-            gpui::px(10.),
-            gpui::px(14.),
-            gpui::px(14.),
-            gpui::px(6.),
-        ),
-        "lg" => (
-            gpui::px(40.),
-            gpui::px(16.),
-            gpui::px(16.),
-            gpui::px(18.),
-            gpui::px(10.),
-        ),
-        _ => (
-            gpui::px(36.),
-            gpui::px(12.),
-            gpui::px(16.),
-            gpui::px(16.),
-            gpui::px(8.),
-        ),
-    }
-}
-
-fn input_background_fallback(semantic: SemanticColors, variant: &str, state: &str) -> Hsla {
-    if state == "disabled" {
-        return if matches!(variant, "borderless" | "underline") {
-            gpui::transparent_black()
-        } else {
-            semantic.disabled_background
-        };
-    }
-    if state == "read-only" {
-        return semantic.surface;
-    }
-    match variant {
-        "filled" => {
-            if state == "hover" {
-                semantic.accent
-            } else {
-                semantic.muted
-            }
-        }
-        "borderless" if matches!(state, "hover" | "invalid" | "invalid-focus-visible") => {
-            semantic.muted
-        }
-        "borderless" | "underline" => gpui::transparent_black(),
-        _ => semantic.background,
-    }
-}
-
-fn input_foreground_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    if state == "disabled" {
-        semantic.disabled_foreground
-    } else {
-        semantic.foreground
-    }
-}
-
-fn input_placeholder_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    if state == "disabled" {
-        semantic.disabled_foreground
-    } else {
-        semantic.on_muted
-    }
-}
-
-fn input_border_fallback(semantic: SemanticColors, variant: &str, state: &str) -> Hsla {
-    if state == "disabled" {
-        return if variant == "borderless" {
-            gpui::transparent_black()
-        } else {
-            semantic.disabled_border
-        };
-    }
-    if state == "invalid" {
-        return if variant == "borderless" {
-            gpui::transparent_black()
-        } else {
-            semantic.destructive
-        };
-    }
-    if matches!(state, "focus-visible" | "invalid-focus-visible") {
-        return semantic.ring;
-    }
-    if state == "hover" {
-        return match variant {
-            "borderless" => gpui::transparent_black(),
-            "filled" => semantic.input_border,
-            _ => semantic.border,
-        };
-    }
-    if state == "read-only" {
-        return if variant == "borderless" {
-            gpui::transparent_black()
-        } else {
-            semantic.border
-        };
-    }
-    if variant == "borderless" {
-        gpui::transparent_black()
-    } else {
-        semantic.input_border
-    }
-}
-
-fn input_caret_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    if state == "disabled" {
-        semantic.disabled_foreground
-    } else if state == "invalid" || state == "invalid-focus-visible" {
-        semantic.destructive
-    } else {
-        semantic.ring
-    }
-}
-
-fn input_selection_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    if state == "disabled" {
-        semantic.muted
-    } else {
-        semantic.accent
-    }
-}
-
-fn input_affix_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    if state == "disabled" {
-        semantic.disabled_foreground
-    } else if state == "normal" || state == "read-only" {
-        semantic.on_muted
-    } else {
-        semantic.foreground
-    }
-}
-
-fn input_status_fallback(semantic: SemanticColors, state: &str) -> Hsla {
-    if state == "disabled" {
-        semantic.disabled_foreground
-    } else {
-        semantic.destructive
-    }
-}
-
-fn input_size_fallback(size: &str) -> (Pixels, Pixels, Pixels, Pixels, Pixels, Pixels, Pixels) {
-    match size {
-        "xs" => (
-            gpui::px(24.),
-            gpui::px(6.),
-            gpui::px(16.),
-            gpui::px(12.),
-            gpui::px(12.),
-            gpui::px(12.),
-            gpui::px(4.),
-        ),
-        "sm" => (
-            gpui::px(32.),
-            gpui::px(8.),
-            gpui::px(20.),
-            gpui::px(14.),
-            gpui::px(14.),
-            gpui::px(14.),
-            gpui::px(6.),
-        ),
-        "lg" => (
-            gpui::px(40.),
-            gpui::px(12.),
-            gpui::px(24.),
-            gpui::px(20.),
-            gpui::px(20.),
-            gpui::px(20.),
-            gpui::px(10.),
-        ),
-        _ => (
-            gpui::px(36.),
-            gpui::px(10.),
-            gpui::px(20.),
-            gpui::px(16.),
-            gpui::px(16.),
-            gpui::px(16.),
-            gpui::px(8.),
-        ),
-    }
-}
-
-fn input_font_size_fallback(size: &str) -> &'static str {
-    match size {
-        "xs" => "foundation.font.size.xs",
-        "sm" => "foundation.font.size.sm",
-        _ => "foundation.font.size.md",
-    }
-}
-
-fn input_radius_fallback(size: &str) -> &'static str {
-    match size {
-        "xs" | "sm" => "foundation.radius.sm",
-        _ => "foundation.radius.md",
     }
 }
 

@@ -113,11 +113,15 @@ The host supplies `invalid`, `read_only`, and `disabled`. Disabled editors leave
 
 `InputState::value()` always returns the real value. User input, deletion, revealed cut, paste, undo, redo, IME commit, and built-in clear emit one `Changed` only when the value changes; IME preedit stays silent. Enter emits `Submitted` outside composition. Programmatic `set_value`, `clear`, and `reset` do not emit user semantic events.
 
+`set_value` synchronizes a host-owned authoritative value. An actual value change ends composition and clears stale undo/redo history, so later undo cannot cross that external synchronization boundary. `clear` follows the same rule; `reset` additionally resets selection, composition, scrolling, and layout caches. UTF-16 selections returned by an IME are normalized against the complete updated value at grapheme boundaries.
+
 ## Keyboard and accessibility
 
 - Arrow keys move by grapheme; platform word modifiers move by word. Home/End, Shift selection, Backspace/Delete, Select All, and Undo/Redo are supported.
+- macOS uses Option+Backspace/Delete for word deletion and Command+Backspace/Delete for deletion to the start/end of the line. Windows and Linux retain their existing Control-modifier conventions.
 - Only documented modifier combinations are consumed; unknown combinations continue bubbling.
 - The actual editor node uses the matching `InputType` role. Prefix, suffix, and attached suffix keep separate accessibility subtrees.
+- AccessKit exposes the same extended-grapheme selectable units as the editor, so ZWJ emoji and combining sequences have no internal caret stops.
 - A hidden password's painted text, accessibility value, and synthetic text runs contain masks only, never plaintext.
 
 ## API
@@ -138,6 +142,8 @@ Input implements [`Changeable<SharedString>`](/en/api/changeable), [`Focusable`]
 ## Themes, responsive behavior, and platforms
 
 Light, Dark, and System resolve borders, surfaces, text, placeholder, selection, caret, and state colors through the active theme. Input shrinks within available width, while excessive slot width reduces the editor area. GPUI supplies cross-platform text and IME behavior; command modifiers follow macOS and Windows/Linux conventions.
+
+Custom themes must now provide and validate every Input token when `ResolvedTheme::from_tokens` constructs the theme. Missing keys, wrong types, and invalid references return `ThemeError`; legacy theme fallback has been removed. Migrate custom themes by supplying all four variants, seven visual states, and four sizes, then replace string access with infallible `input_state(InputVariantKind, InputVisualState)` and `input_size(ThemeSize)` calls.
 
 ## Known limitations
 
