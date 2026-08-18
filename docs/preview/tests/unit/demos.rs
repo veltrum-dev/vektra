@@ -46,6 +46,18 @@ fn every_registered_demo_id_round_trips_through_query_parsing() {
 }
 
 #[test]
+fn tooltip_appearance_demos_keep_stable_and_encoded_ids() {
+    for demo_id in ["tooltip/appearance", "tooltip/no-arrow"] {
+        assert_eq!(parse_demo_query(&format!("?demo={demo_id}")).id(), demo_id);
+        let encoded_id = demo_id.replace('/', "%2F");
+        assert_eq!(
+            parse_demo_query(&format!("?demo={encoded_id}")).id(),
+            demo_id
+        );
+    }
+}
+
+#[test]
 fn input_demo_covers_types_password_security_events_and_existing_composition() {
     let source = include_str!("../../src/demos/input.rs");
 
@@ -302,8 +314,28 @@ fn focused_examples_cover_component_states_keyboard_sizes_and_tooltips() {
 
     let tooltip = include_str!("../../src/demos/tooltip.rs");
     assert!(tooltip.contains("// #region tooltip-example-appearance"));
-    assert!(tooltip.contains(".arrow(false)"));
-    assert!(tooltip.contains(".bg_color("));
+    let appearance = tooltip
+        .split("// #region tooltip-example-appearance")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion tooltip-example-appearance")
+        .next()
+        .unwrap();
+    assert_eq!(appearance.matches(".open(true)").count(), 1);
+    assert!(appearance.contains(".color("));
+    assert!(appearance.contains(".bg_color("));
+
+    assert!(tooltip.contains("// #region tooltip-example-no-arrow"));
+    let no_arrow = tooltip
+        .split("// #region tooltip-example-no-arrow")
+        .nth(1)
+        .unwrap()
+        .split("// #endregion tooltip-example-no-arrow")
+        .next()
+        .unwrap();
+    assert_eq!(no_arrow.matches(".open(true)").count(), 1);
+    assert!(no_arrow.contains(".arrow(false)"));
+    assert!(no_arrow.contains("Button::new(\"tooltip-no-arrow\")"));
     assert!(tooltip.contains("// #region tooltip-example-lifecycle"));
     assert!(tooltip.contains("Escape dismisses without moving focus"));
 

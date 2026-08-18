@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { cp, mkdir, rm } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -11,8 +11,12 @@ const publicDir = resolve(docsDir, "public");
 const publicPreviewsDir = resolve(publicDir, "previews");
 
 function assertInside(child: string, parent: string): void {
-  const relative = child.slice(parent.length);
-  if (child !== parent && !relative.startsWith("/")) {
+  const relativePath = relative(parent, child);
+  const outsideParent =
+    relativePath === ".." ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath);
+  if (outsideParent) {
     throw new Error(`路径 ${child} 不在允许目录 ${parent} 内`);
   }
 }

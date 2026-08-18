@@ -10,9 +10,9 @@ Tooltip 为 Button/IconButton 提供简短、补充性的纯文本说明。完�
 
 </VektraExample>
 
-## 受控显示
+## 显式显示
 
-<VektraExample demo="tooltip/controlled" title="Tooltip 受控显示" :height="280">
+<VektraExample demo="tooltip/controlled" title="Tooltip 显式显示" :height="280">
 
 <<< ../../preview/src/demos/tooltip.rs#tooltip-example-controlled{rust}
 
@@ -26,11 +26,21 @@ Tooltip 为 Button/IconButton 提供简短、补充性的纯文本说明。完�
 
 </VektraExample>
 
-## 箭头与颜色
+## 外观
 
-<VektraExample demo="tooltip/appearance" title="Tooltip 箭头与颜色" :height="300">
+### 自定义颜色
+
+<VektraExample demo="tooltip/appearance" title="Tooltip 自定义颜色" :height="260">
 
 <<< ../../preview/src/demos/tooltip.rs#tooltip-example-appearance{rust}
+
+</VektraExample>
+
+### 无箭头
+
+<VektraExample demo="tooltip/no-arrow" title="Tooltip 无箭头" :height="260">
+
+<<< ../../preview/src/demos/tooltip.rs#tooltip-example-no-arrow{rust}
 
 </VektraExample>
 
@@ -49,7 +59,7 @@ Tooltip 为 Button/IconButton 提供简短、补充性的纯文本说明。完�
 | API | 默认值与语义 |
 | --- | --- |
 | `Tooltip::new(text)` | 创建纯文本配置，默认自动触发、显示箭头并启用动画。 |
-| `.open(bool)` | 设置显式受控状态；未调用时使用 hover/键盘焦点自动触发。 |
+| `.open(bool)` | 设置显式可见状态；未调用时使用 hover/键盘焦点自动触发。 |
 | `.arrow(bool)` | 默认 `true`；`false` 不绘制箭头，也不预留箭头高度，但保留 anchor gap。 |
 | `.color(impl Into<Hsla>)` | 覆盖当前实例的文字色。 |
 | `.bg_color(impl Into<Hsla>)` | 覆盖当前实例的气泡和箭头背景。 |
@@ -57,16 +67,18 @@ Tooltip 为 Button/IconButton 提供简短、补充性的纯文本说明。完�
 
 `color` 与 `bg_color` 可直接接收 `gpui::rgb(...)`，无需调用 `.into()`。未覆盖的边框、阴影、圆角、padding、字号和定位 token 继续来自当前主题。
 
+`.open(true).color(...).bg_color(...)` 与 `.open(true).arrow(false)` 都是合法组合：前者显式显示使用自定义颜色的 Tooltip，后者显式显示隐藏箭头的 Tooltip。
+
 `aria_label` 是名称，`aria_description` 是辅助技术的补充说明，Tooltip 是视觉补充；Vektra 不在三者间自动复制。纯图标按钮的 Tooltip 不能替代 `aria_label`。
 
 ## 生命周期与交互
 
 - 未调用 `open(...)` 时，hover 或 Tab/Shift+Tab 产生的键盘焦点保持 500ms 后显示。
-- `open(true)` 在 trigger 挂载后立即显示，不要求 hover/focus；`open(false)` 强制关闭并忽略自动资格。运行时切换会执行对应显隐过渡。
+- `open(true)` 表示当前 trigger 显式请求显示自己的 Tooltip，在 trigger 挂载后立即显示且不要求 hover/focus；`open(false)` 显式阻止显示并忽略自动资格。运行时切换会执行对应显隐过渡，但 `open(true)` 不会把窗口级单 Tooltip 槽位变成多 Tooltip 容器。
 - 首次显示的 500ms 内离开、焦点移出或 owner 卸载会取消任务。显示后，指针离开 trigger 与气泡会进入 500ms 关闭宽限期，期限内移入任一区域会取消关闭；期限结束后才开始退出过渡。
 - 鼠标点击产生的 focus 不启动键盘路径。
 - Escape 关闭可见/等待中的 Tooltip，保留 trigger 焦点。自动模式必须离开并重新进入当前 hover/focus 周期；`open(true)` 则必须由调用方先传入 `false`、再传回 `true`，普通重渲染不会重新打开。
-- hover 与 focus 共用一份 trigger 状态，同一 trigger 不绘制两个 Tooltip；窗口每帧只绘制一个 Tooltip。键盘聚焦 trigger 与另一个 hovered trigger 同时具备资格时，指针输入会结束旧的键盘资格，由 hovered trigger 接管。
+- hover 与 focus 共用一份 trigger 状态，同一 trigger 不绘制两个 Tooltip；GPUI 限制每个窗口同一帧最多实际绘制一个 Tooltip，因此同一个窗口中不应依赖多个 trigger 的 `open(true)` Tooltip 同时可见。需要展示多个常驻 Tooltip 外观时，应使用独立的预览窗口。键盘聚焦 trigger 与另一个 hovered trigger 同时具备资格时，指针输入会结束旧的键盘资格，由 hovered trigger 接管。
 - disabled trigger 不进入 Tab 顺序且不能激活，但 hover Tooltip 仍可解释禁用原因。
 
 指针可以移入 Tooltip 气泡并维持其生命周期，但气泡仍不获取焦点、不进入 Tab 顺序、不接受鼠标点击，也不包含交互内容。Enter/Space 继续由 trigger 的业务回调处理。

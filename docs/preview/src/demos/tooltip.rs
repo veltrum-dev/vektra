@@ -60,15 +60,15 @@ pub(super) fn render_controlled(
     window: &mut Window,
     cx: &mut Context<PreviewApp>,
 ) -> AnyElement {
-    let title = match language {
-        PreviewLang::ZhCn => "受控显示",
-        PreviewLang::EnUs => "Controlled visibility",
+    let (title, label, tooltip) = match language {
+        PreviewLang::ZhCn => ("显式显示", "始终显示", "显式 Tooltip"),
+        PreviewLang::EnUs => ("Explicit visibility", "Always visible", "Explicit Tooltip"),
     };
     // #region tooltip-example-controlled
     let example = Button::new("controlled-tooltip")
-        .label("始终显示")
+        .label(label)
         .variant(ButtonVariant::Outline)
-        .tooltip(Tooltip::new("受控 Tooltip").open(true));
+        .tooltip(Tooltip::new(tooltip).open(true));
     // #endregion tooltip-example-controlled
 
     example_page("tooltip-example-controlled", title, example, window, cx)
@@ -79,29 +79,42 @@ pub(super) fn render_appearance(
     window: &mut Window,
     cx: &mut Context<PreviewApp>,
 ) -> AnyElement {
-    let (title, themed, plain) = match language {
-        PreviewLang::ZhCn => ("箭头与颜色", "自定义颜色", "无箭头"),
-        PreviewLang::EnUs => ("Arrow and colors", "Custom colors", "No arrow"),
+    let (title, label) = match language {
+        PreviewLang::ZhCn => ("自定义颜色", "自定义颜色 Tooltip"),
+        PreviewLang::EnUs => ("Custom colors", "Custom color Tooltip"),
     };
     // #region tooltip-example-appearance
-    let example = div().flex().gap(px(10.)).flex_wrap().children([
-        Button::new("tooltip-custom-color")
-            .label(themed)
-            .variant(ButtonVariant::Outline)
-            .tooltip(
-                Tooltip::new(themed)
-                    .open(true)
-                    .color(rgb(0xffffff))
-                    .bg_color(rgb(0x2457d6)),
-            ),
-        Button::new("tooltip-no-arrow")
-            .label(plain)
-            .variant(ButtonVariant::Outline)
-            .tooltip(Tooltip::new(plain).open(true).arrow(false)),
-    ]);
+    let example = Button::new("tooltip-custom-color")
+        .label(label)
+        .variant(ButtonVariant::Outline)
+        .tooltip(
+            Tooltip::new(label)
+                .open(true)
+                .color(rgb(0xffffff))
+                .bg_color(rgb(0x2457d6)),
+        );
     // #endregion tooltip-example-appearance
 
     example_page("tooltip-example-appearance", title, example, window, cx)
+}
+
+pub(super) fn render_no_arrow(
+    language: PreviewLang,
+    window: &mut Window,
+    cx: &mut Context<PreviewApp>,
+) -> AnyElement {
+    let (title, label) = match language {
+        PreviewLang::ZhCn => ("无箭头", "无箭头 Tooltip"),
+        PreviewLang::EnUs => ("No arrow", "No-arrow Tooltip"),
+    };
+    // #region tooltip-example-no-arrow
+    let example = Button::new("tooltip-no-arrow")
+        .label(label)
+        .variant(ButtonVariant::Outline)
+        .tooltip(Tooltip::new(label).open(true).arrow(false));
+    // #endregion tooltip-example-no-arrow
+
+    example_page("tooltip-example-no-arrow", title, example, window, cx)
 }
 
 pub(super) fn render_lifecycle(

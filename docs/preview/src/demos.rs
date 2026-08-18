@@ -71,6 +71,7 @@ pub(crate) enum DemoSelection {
     TooltipPlacements,
     TooltipControlled,
     TooltipAppearance,
+    TooltipNoArrow,
     TooltipLifecycle,
     TooltipComprehensive,
     ScrollbarBasic,
@@ -129,6 +130,7 @@ impl DemoSelection {
         "tooltip/placements",
         "tooltip/controlled",
         "tooltip/appearance",
+        "tooltip/no-arrow",
         "tooltip/lifecycle",
         "scrollbar/basic",
         "scrollbar/configuration",
@@ -187,6 +189,7 @@ impl DemoSelection {
         "tooltip/placements",
         "tooltip/controlled",
         "tooltip/appearance",
+        "tooltip/no-arrow",
         "tooltip/lifecycle",
         "tooltip/comprehensive",
         "scrollbar/basic",
@@ -249,6 +252,7 @@ impl DemoSelection {
             Some("tooltip/placements") => Self::TooltipPlacements,
             Some("tooltip/controlled") => Self::TooltipControlled,
             Some("tooltip/appearance") => Self::TooltipAppearance,
+            Some("tooltip/no-arrow") => Self::TooltipNoArrow,
             Some("tooltip/lifecycle") => Self::TooltipLifecycle,
             Some("tooltip/comprehensive") => Self::TooltipComprehensive,
             Some("scrollbar/basic") => Self::ScrollbarBasic,
@@ -312,6 +316,7 @@ impl DemoSelection {
             Self::TooltipPlacements => "tooltip/placements",
             Self::TooltipControlled => "tooltip/controlled",
             Self::TooltipAppearance => "tooltip/appearance",
+            Self::TooltipNoArrow => "tooltip/no-arrow",
             Self::TooltipLifecycle => "tooltip/lifecycle",
             Self::TooltipComprehensive => "tooltip/comprehensive",
             Self::ScrollbarBasic => "scrollbar/basic",
@@ -683,6 +688,9 @@ impl Render for PreviewApp {
             }
             DemoSelection::TooltipAppearance => {
                 tooltip::render_appearance(self.language, window, cx).into_any_element()
+            }
+            DemoSelection::TooltipNoArrow => {
+                tooltip::render_no_arrow(self.language, window, cx).into_any_element()
             }
             DemoSelection::TooltipLifecycle => {
                 tooltip::render_lifecycle(self.language, window, cx).into_any_element()

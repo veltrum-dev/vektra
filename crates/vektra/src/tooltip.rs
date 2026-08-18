@@ -150,11 +150,15 @@ impl Tooltip {
         }
     }
 
-    /// 设置 Tooltip 的显式打开状态。
+    /// 设置 Tooltip 的显式可见状态。
     ///
-    /// 未调用时由 hover 或键盘焦点自动触发；`true` 会立即显示，`false` 会强制
-    /// 关闭。Escape 可临时关闭 `true` 状态，之后必须让该值经历 `false -> true`
-    /// 才会再次打开。
+    /// 未调用时由 hover 或键盘焦点自动触发；`open(false)` 显式阻止显示，
+    /// `open(true)` 显式请求显示当前 trigger 的 Tooltip。GPUI 限制同一窗口同一帧
+    /// 最多实际绘制一个 Tooltip，因此不应在同一窗口中依赖多个 trigger 的
+    /// `open(true)` Tooltip 同时可见。
+    ///
+    /// Escape 可以撤销当前 `open(true)` 周期；调用方继续传递相同的 `true` 不会立即
+    /// 重新打开，必须先传 `false` 再传 `true`。
     pub fn open(mut self, open: bool) -> Self {
         self.open = Some(open);
         self

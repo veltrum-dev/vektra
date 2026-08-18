@@ -10,9 +10,9 @@ Tooltip provides short, supplementary plain-text help for Button and IconButton.
 
 </VektraExample>
 
-## Controlled Visibility
+## Explicit Visibility
 
-<VektraExample demo="tooltip/controlled" title="Tooltip controlled visibility" :height="280">
+<VektraExample demo="tooltip/controlled" title="Tooltip explicit visibility" :height="280">
 
 <<< ../../../preview/src/demos/tooltip.rs#tooltip-example-controlled{rust}
 
@@ -26,11 +26,21 @@ Tooltip provides short, supplementary plain-text help for Button and IconButton.
 
 </VektraExample>
 
-## Arrow and colors
+## Appearance
 
-<VektraExample demo="tooltip/appearance" title="Tooltip arrow and colors" :height="300">
+### Custom Colors
+
+<VektraExample demo="tooltip/appearance" title="Tooltip custom colors" :height="260">
 
 <<< ../../../preview/src/demos/tooltip.rs#tooltip-example-appearance{rust}
+
+</VektraExample>
+
+### No Arrow
+
+<VektraExample demo="tooltip/no-arrow" title="Tooltip no arrow" :height="260">
+
+<<< ../../../preview/src/demos/tooltip.rs#tooltip-example-no-arrow{rust}
 
 </VektraExample>
 
@@ -49,7 +59,7 @@ Tooltip provides short, supplementary plain-text help for Button and IconButton.
 | API | Default and semantics |
 | --- | --- |
 | `Tooltip::new(text)` | Creates plain-text configuration with automatic triggering, an arrow, and animation enabled. |
-| `.open(bool)` | Sets explicit controlled state. Omitting it uses hover/keyboard-focus triggering. |
+| `.open(bool)` | Sets explicit visibility. Omitting it uses hover/keyboard-focus triggering. |
 | `.arrow(bool)` | Defaults to `true`. `false` removes both arrow drawing and arrow-height reservation while keeping the anchor gap. |
 | `.color(impl Into<Hsla>)` | Overrides the text color for this instance. |
 | `.bg_color(impl Into<Hsla>)` | Overrides the bubble and arrow background for this instance. |
@@ -57,16 +67,18 @@ Tooltip provides short, supplementary plain-text help for Button and IconButton.
 
 `color` and `bg_color` accept `gpui::rgb(...)` directly, without `.into()`. Border, shadow, radius, padding, font size, and placement tokens still come from the active theme.
 
+`.open(true).color(...).bg_color(...)` and `.open(true).arrow(false)` are both valid combinations: the first explicitly shows a Tooltip with custom colors, while the second explicitly shows a Tooltip without an arrow.
+
 `aria_label` is the name, `aria_description` is supplementary assistive information, and Tooltip is visual help. Vektra does not copy among them. An icon-only button still requires `aria_label`.
 
 ## Lifecycle and Interaction
 
 - Without `open(...)`, hover or keyboard focus created by Tab/Shift+Tab shows after 500ms.
-- `open(true)` displays immediately after the trigger mounts, without hover/focus. `open(false)` forces the Tooltip closed and ignores automatic eligibility. Runtime changes use the matching transition.
+- `open(true)` means that the current trigger explicitly requests its own Tooltip to be visible, so it displays immediately after the trigger mounts without hover/focus. `open(false)` explicitly prevents display and ignores automatic eligibility. Runtime changes use the matching transition, but `open(true)` does not turn the window-level single-Tooltip slot into a multi-Tooltip container.
 - Leaving during the initial 500ms delay, blur, or owner removal cancels the task. After display, leaving both the trigger and bubble starts a 500ms close grace period. Entering either region before it expires cancels closing; otherwise the exit transition starts afterward.
 - Mouse-created focus does not start the keyboard path.
 - Escape dismisses a visible or pending Tooltip without moving trigger focus. Automatic mode requires leaving and re-entering the hover/focus cycle. For `open(true)`, the caller must send `false` and then `true`; unrelated rerenders do not reopen it.
-- Hover and focus share one trigger state, so one trigger never draws duplicate Tooltips. A window draws at most one Tooltip per frame. If a keyboard-focused trigger and a different hovered trigger are both eligible, pointer input ends the old keyboard eligibility and the hovered trigger takes over.
+- Hover and focus share one trigger state, so one trigger never draws duplicate Tooltips. Due to the GPUI limit of at most one Tooltip actually drawn per window per frame, callers should not rely on multiple triggers with `open(true)` being visible together in the same window. To show multiple persistent Tooltip appearances, use separate preview windows. If a keyboard-focused trigger and a different hovered trigger are both eligible, pointer input ends the old keyboard eligibility and the hovered trigger takes over.
 - A disabled trigger cannot focus or activate, but its hover Tooltip can explain the disabled reason.
 
 The pointer can enter the Tooltip bubble to keep its lifecycle active, but the bubble remains unfocusable, untabbable, unclickable, and free of interactive content. Enter and Space continue to activate the trigger's business callback.
