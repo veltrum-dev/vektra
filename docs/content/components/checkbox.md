@@ -40,7 +40,7 @@ checked、indeterminate 与 disabled 都是显式状态；indeterminate 的视�
 
 </VektraExample>
 
-`indicator_icons(unchecked, checked)` 使用两张状态图标替代默认方框。纯图标 Checkbox 不设置可见 label，但必须通过 `aria_label(...)` 提供可访问名称；整个命中区域仍可点击，hover 和 pressed 视觉只作用于状态图标。
+`indicator_icons(unchecked, checked)` 使用两张状态图标替代默认方框。纯图标 Checkbox 不设置可见 label，但必须通过 `aria_label(...)` 提供可访问名称；进入整个命中区域都会触发 hover/pressed，视觉仍只绘制在状态图标上，不会出现方形容器或边框。
 
 ## 尺寸
 
@@ -80,7 +80,7 @@ checked、indeterminate 与 disabled 都是显式状态；indeterminate 的视�
 
 ## 键盘与交互
 
-可用 Checkbox 可通过 Tab 聚焦。Space 激活；Enter 不激活。label 和方框共享同一个点击目标，单次激活只触发一次回调。disabled 状态不进入正常 Tab 顺序，不触发回调，并使用 disabled 视觉和光标。
+可用 Checkbox 可通过 Tab 聚焦。Space 激活；Enter 不激活。方框、label 和根 padding 共享同一个命中区域；鼠标进入其中任意位置都会驱动内部指示器的 hover/pressed 视觉，单次激活只触发一次回调。disabled 状态不进入正常 Tab 顺序，不触发回调，也不响应 hover/pressed，并使用 disabled 视觉和光标。
 
 `on_change` 与焦点生命周期相互独立：checked/indeterminate 变化不产生 focus/blur，焦点转换也不调用 `on_change`。同一 `ElementId` 重绘使用最新焦点 handler；`_in` 只表示 Entity 绑定，不是 DOM `focusin`。完整契约见 [`Focusable`](/api/focusable)。当前带 `on_change` 的鼠标激活会阻止 GPUI 默认鼠标焦点转移；Tab 与 GPUI 实际程序化焦点转换仍会触发回调。本次不新增 `focus()` 或 `focus_handle()`。
 

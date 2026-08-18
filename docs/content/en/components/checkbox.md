@@ -40,7 +40,7 @@ A parent Checkbox can derive `checked` and `indeterminate` from child items: che
 
 </VektraExample>
 
-`indicator_icons(unchecked, checked)` replaces the default box with two state icons. An icon-only Checkbox omits the visible label but must provide an accessible name through `aria_label(...)`. The full hit area remains clickable, while hover and pressed visuals apply only to the state icon.
+`indicator_icons(unchecked, checked)` replaces the default box with two state icons. An icon-only Checkbox omits the visible label but must provide an accessible name through `aria_label(...)`. The full hit area triggers hover and pressed feedback, while that feedback is still drawn only on the state icon, without a square container or border.
 
 ## Size
 
@@ -80,7 +80,7 @@ The root node uses `Role::CheckBox` and maps to `Toggled::False`, `Toggled::True
 
 ## Keyboard And Interaction
 
-Enabled Checkbox can be focused with Tab. Space activates; Enter does not. The label and box share one hit target, so one activation calls the callback once. Disabled Checkbox leaves the normal Tab order, does not call the handler, and uses disabled visuals and cursor.
+Enabled Checkbox can be focused with Tab. Space activates; Enter does not. The box, label, and root padding share one hit area; hovering or pressing anywhere in it drives the same internal indicator feedback, and one activation calls the callback once. Disabled Checkbox leaves the normal Tab order, does not call the handler, does not respond to hover or pressed states, and uses disabled visuals and cursor.
 
 `on_change` and the focus lifecycle are independent: checked/indeterminate changes do not produce focus/blur, and focus transitions do not call `on_change`. Rerendering the same `ElementId` uses the latest focus handler. `_in` means Entity binding, not DOM `focusin`; see [`Focusable`](/en/api/focusable). The current mouse activation path with `on_change` prevents GPUI's default pointer focus transfer. Tab and real GPUI programmatic focus transitions still invoke the callbacks. This release adds no `focus()` or `focus_handle()` API.
 

@@ -98,7 +98,7 @@ impl Checkbox {
 
     /// 设置可见文本 label。
     ///
-    /// label 与方框共享同一个交互区域，并默认作为可访问名称来源。
+    /// label、方框与根 padding 共享同一个交互区域，并默认作为可访问名称来源。
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
         self.label = Some(label.into());
         self
@@ -149,7 +149,7 @@ impl Checkbox {
     /// 未选中时显示 `unchecked_icon`，选中时显示 `checked_icon`；部分选中仍使用
     /// [`Self::indeterminate_icon`]，未设置时回退到内置横线。该设置不会移除可见
     /// label。构建纯图标 Checkbox 时不要设置 label，并应通过 [`Self::aria_label`]
-    /// 提供可访问名称。
+    /// 提供可访问名称。整个命中区域会驱动 hover/pressed，但视觉变化仍只绘制在状态图标上。
     pub fn indicator_icons(
         mut self,
         unchecked_icon: impl IntoIconSource,
@@ -381,6 +381,7 @@ impl RenderOnce for Checkbox {
         };
         let base_indicator_icon_color =
             indicator_icon_color(state, visible, icon_indicator, self.disabled);
+        let interaction_group: SharedString = format!("vektra-checkbox-{:?}", self.id).into();
         let indicator_id: ElementId = (self.id.clone(), "indicator").into();
 
         let box_element = div()
@@ -398,7 +399,7 @@ impl RenderOnce for Checkbox {
                     .bg(visible.box_background)
             })
             .when(!self.disabled, |this| {
-                this.hover(move |style| {
+                this.group_hover(interaction_group.clone(), move |style| {
                     if icon_indicator {
                         style.text_color(indicator_icon_color(state, states.hover, true, false))
                     } else {
@@ -408,7 +409,7 @@ impl RenderOnce for Checkbox {
                             .text_color(states.hover.icon)
                     }
                 })
-                .active(move |style| {
+                .group_active(interaction_group.clone(), move |style| {
                     if icon_indicator {
                         style.text_color(indicator_icon_color(state, states.pressed, true, false))
                     } else {
@@ -425,6 +426,7 @@ impl RenderOnce for Checkbox {
 
         let element = div()
             .id(self.id.clone())
+            .group(interaction_group)
             .debug_selector(|| "vektra-checkbox".into())
             .role(Role::CheckBox)
             .aria_toggled(toggled_state(state))

@@ -1563,10 +1563,10 @@ fn checkbox_border_fallback(visual_state: &str, state: &str) -> &'static str {
     } else if state == "disabled" {
         "semantic.disabled-border"
     } else if visual_state == "unchecked" {
-        if matches!(state, "hover" | "pressed") {
-            "semantic.border"
-        } else {
-            "semantic.input-border"
+        match state {
+            "hover" => "semantic.primary",
+            "pressed" => "semantic.primary-pressed",
+            _ => "semantic.input-border",
         }
     } else {
         match state {
