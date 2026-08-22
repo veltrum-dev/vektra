@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "reference": {
+    "platform": "dedicated per-OS runner",
+    "rust": "1.98.0",
+    "gpui_revision": "fd82517a115d97a07835b52f0512b22b38e38ccf",
+    "timing_regression_percent": 10,
+    "allocation_regression_percent": 5,
+    "rss_regression_percent": 10
+  },
+  "budgets": [
+    {
+      "benchmark": "stress/lazy_collections/virtual_list_first_draw/1000000",
+      "scale": 1000000,
+      "class": "stress",
+      "max_time_ms": 50,
+      "max_allocations_per_op": null,
+      "max_allocated_bytes_per_op": null,
+      "max_rss_bytes": 134217728,
+      "max_renderer_calls": 64,
+      "max_cached_rows": 0,
+      "hard_gate": true
+    },
+    {
+      "benchmark": "stress/lazy_collections/virtual_list_steady_redraw/1000000",
+      "scale": 1000000,
+      "class": "stress",
+      "max_time_ms": 8.33,
+      "max_allocations_per_op": null,
+      "max_allocated_bytes_per_op": null,
+      "max_rss_bytes": 134217728,
+      "max_renderer_calls": 64,
+      "max_cached_rows": 0,
+      "hard_gate": true
+    },
+    {
+      "benchmark": "stress/lazy_collections/select_first_open/1000000",
+      "scale": 1000000,
+      "class": "stress",
+      "max_time_ms": 50,
+      "max_allocations_per_op": null,
+      "max_allocated_bytes_per_op": null,
+      "max_rss_bytes": 134217728,
+      "max_renderer_calls": 96,
+      "max_cached_rows": 0,
+      "hard_gate": true
+    },
+    {
+      "benchmark": "input/render/equal_size_update_and_draw/1048576",
+      "scale": 1048576,
+      "class": "normal",
+      "max_time_ms": 16.67,
+      "max_allocations_per_op": null,
+      "max_allocated_bytes_per_op": 8388608,
+      "max_rss_bytes": null,
+      "max_renderer_calls": null,
+      "max_cached_rows": null,
+      "hard_gate": false
+    },
+    {
+      "benchmark": "theme/token_sets/allocation_observed_single_set/100000",
+      "scale": 100000,
+      "class": "normal",
+      "max_time_ms": 100,
+      "max_allocations_per_op": null,
+      "max_allocated_bytes_per_op": null,
+      "max_rss_bytes": null,
+      "max_renderer_calls": null,
+      "max_cached_rows": null,
+      "hard_gate": false
+    },
+    {
+      "benchmark": "component_wall/render/mixed_steady_redraw/100",
+      "scale": 100,
+      "class": "normal",
+      "max_time_ms": 4,
+      "max_allocations_per_op": null,
+      "max_allocated_bytes_per_op": null,
+      "max_rss_bytes": null,
+      "max_renderer_calls": 100,
+      "max_cached_rows": null,
+      "hard_gate": false
+    }
+  ]
+}

@@ -120,3 +120,9 @@ Switch 在 macOS、Windows、Linux 与 Web 预览中复用同一 GPUI 实现。�
 - 如果两个选项需要始终同时可见并可分别点击，应使用 Segmented Control，而不是扩展 Switch。
 - label 固定在 track 后方。
 - 桌面示例可运行：`cargo run --example switch`。
+
+## 性能契约
+
+- 标准负载为 100 个可见 Switch；构建、状态解析、布局与绘制为 O(1)。
+- transition/loading Task 由 keyed state 拥有，状态替换或 owner 移除后必须释放；无无界历史或缓存。
+- 10K/100K 同时可见通过 [`VirtualList`](/components/virtual-list) 解决；基准位于 `component_wall`。

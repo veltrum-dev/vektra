@@ -101,3 +101,9 @@ Checkbox 的 normal、hover、pressed、focus-visible、checked、mixed 与 disa
 - 首版 label 只支持纯文本。
 - 不提供非受控状态、`default_checked`、验证、错误消息或 FormControl。
 - 自定义图标只作为视觉图形，不创建额外可访问名称。
+
+## 性能契约
+
+- 标准负载为 100 个可见 Checkbox；构建、状态解析、布局与绘制均为 O(1)。
+- 不持有行缓存、历史或后台任务；warm rerender 的 keyed focus/订阅数量必须稳定。
+- 10K/100K 数据使用 [`VirtualList`](/components/virtual-list)；叶子墙基准位于 `component_wall`。

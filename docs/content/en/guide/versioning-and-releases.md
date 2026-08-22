@@ -2,6 +2,15 @@
 
 Vektra uses a GitHub Project, Issues, and Milestones for the long-term roadmap, executable capabilities, and release commitments respectively. This policy describes what version numbers promise and how work enters a release.
 
+## Select data-source migration
+
+The performance-architecture change tightens `Select<T>` from `Clone + PartialEq` to
+`Clone + Eq + Hash + 'static`. Business enums usually only need `#[derive(Eq, Hash)]`.
+Per-item `.option()`, `.group()`, and `.items()` remain available but now enter the shared virtual
+kernel through `OwnedSelectDataSource`. Million-item, paged, or remote data should use
+`.data_source(Rc<dyn SelectDataSource<T>>)` and provide key/value lookup, enabled navigation,
+typeahead, and range requests.
+
 ## What `0.1.0` means
 
 `0.1.0` is Vektra's first public release whose included functionality is complete, documented, and verified. Every component in scope must provide a complete and composable public API, with applicable states, keyboard and focus behavior, accessibility semantics, themes, documentation, examples, and deterministic tests.

@@ -1,28 +1,22 @@
-//! Select 的窗口私有交互状态、导航、测量分页与 typeahead。
+//! Select 的窗口私有交互状态、索引导航与 typeahead。
 
-use gpui::{
-    Bounds, Context, ElementId, Pixels, ScrollHandle, SharedString, Subscription, Task, Window,
-};
-use std::{cell::Cell, rc::Rc, time::Duration};
+use super::SelectDataSource;
+use crate::VirtualListState;
+use gpui::{Bounds, Context, ElementId, Pixels, Subscription, Task, Window};
+use std::{cell::Cell, hash::Hash, rc::Rc, time::Duration};
 use unicode_segmentation::UnicodeSegmentation as _;
 
 const TYPEAHEAD_TIMEOUT: Duration = Duration::from_millis(500);
 
-#[derive(Clone, PartialEq, Eq)]
-pub(super) struct OptionSnapshot {
-    pub(super) id: ElementId,
-    pub(super) disabled: bool,
-    pub(super) accessible_name: SharedString,
-}
-
 pub(super) struct SelectInteractionState {
     pub(super) open: bool,
     ready: bool,
-    pub(super) active_id: Option<ElementId>,
-    previous: Vec<OptionSnapshot>,
-    option_bounds: Vec<(ElementId, Bounds<Pixels>)>,
-    pub(super) scroll_handle: ScrollHandle,
-    pending_scroll: bool,
+    pub(super) active_index: Option<usize>,
+    active_key: Option<ElementId>,
+    preserve_active_on_open: bool,
+    source_revision: u64,
+    source_count: usize,
+    pub(super) virtual_list: VirtualListState,
     typeahead_buffer: String,
     typeahead_generation: u64,
     typeahead_task: Option<Task<()>>,
@@ -41,11 +35,12 @@ impl SelectInteractionState {
         Self {
             open: false,
             ready: false,
-            active_id: None,
-            previous: Vec::new(),
-            option_bounds: Vec::new(),
-            scroll_handle: ScrollHandle::new(),
-            pending_scroll: false,
+            active_index: None,
+            active_key: None,
+            preserve_active_on_open: false,
+            source_revision: 0,
+            source_count: 0,
+            virtual_list: VirtualListState::new(),
             typeahead_buffer: String::new(),
             typeahead_generation: 0,
             typeahead_task: None,
@@ -54,24 +49,29 @@ impl SelectInteractionState {
         }
     }
 
-    pub(super) fn reconcile(
+    pub(super) fn reconcile<T>(
         &mut self,
-        next: Vec<OptionSnapshot>,
+        source: &dyn SelectDataSource<T>,
         ready: bool,
         enabled: bool,
-        preferred: Option<&ElementId>,
+        preferred: Option<usize>,
         cx: &mut Context<Self>,
-    ) {
+    ) where
+        T: Clone + Eq + Hash + 'static,
+    {
         self.ready = ready;
-        self.option_bounds.retain(|(id, _)| {
-            next.iter()
-                .any(|option| option.id == *id && !option.disabled)
-        });
+        let source_changed =
+            self.source_revision != source.revision() || self.source_count != source.item_count();
+        self.source_revision = source.revision();
+        self.source_count = source.item_count();
+        self.virtual_list
+            .reconcile(self.source_count, self.source_revision);
+
         if !enabled {
-            let changed = self.open || self.active_id.take().is_some();
+            let changed = self.open || self.active_index.take().is_some();
             self.open = false;
-            self.previous = next;
-            self.pending_scroll = false;
+            self.active_key = None;
+            self.preserve_active_on_open = false;
             self.clear_typeahead();
             if changed {
                 cx.notify();
@@ -79,9 +79,9 @@ impl SelectInteractionState {
             return;
         }
         if !ready {
-            let changed = self.active_id.take().is_some();
-            self.previous = next;
-            self.pending_scroll = false;
+            let changed = self.active_index.take().is_some();
+            self.active_key = None;
+            self.preserve_active_on_open = false;
             self.clear_typeahead();
             if changed {
                 cx.notify();
@@ -89,70 +89,75 @@ impl SelectInteractionState {
             return;
         }
 
-        let previous_active = self.active_id.clone();
-        let options_changed = self.previous != next;
-        if let Some(active) = self.active_id.as_ref()
-            && next
-                .iter()
-                .any(|option| option.id == *active && !option.disabled)
-        {
-            self.previous = next;
-            if options_changed {
-                self.pending_scroll = true;
+        let previous = self.active_index;
+        if source_changed {
+            let preserved = self
+                .active_key
+                .as_ref()
+                .and_then(|key| source.index_of_key(key))
+                .filter(|index| source.is_enabled(*index));
+            if self.active_key.is_some() && preserved.is_none() {
+                self.preserve_active_on_open = false;
             }
-            return;
+            self.active_index = preserved.or_else(|| reconciled_active_index(source, previous));
+            self.active_key = self.active_index.map(|index| source.key(index));
+        } else if self
+            .active_index
+            .is_some_and(|index| !source.is_enabled(index))
+        {
+            self.active_index = reconciled_active_index(source, previous);
+            self.active_key = self.active_index.map(|index| source.key(index));
         }
 
-        self.active_id = reconciled_active_id(&self.previous, &next, self.active_id.as_ref());
-        if self.open && self.active_id.is_none() {
-            self.active_id = preferred
-                .filter(|id| {
-                    next.iter()
-                        .any(|option| option.id == **id && !option.disabled)
-                })
-                .cloned()
-                .or_else(|| {
-                    next.iter()
-                        .find(|option| !option.disabled)
-                        .map(|option| option.id.clone())
-                });
+        if self.open && self.active_index.is_none() {
+            self.active_index = preferred
+                .filter(|index| source.is_enabled(*index))
+                .or_else(|| source.first_enabled());
+            self.active_key = self.active_index.map(|index| source.key(index));
         }
-        self.previous = next;
-        if self.active_id != previous_active {
-            self.pending_scroll = true;
+        if self.active_index != previous {
+            self.reveal_active();
             cx.notify();
         }
     }
 
-    pub(super) fn open_with(
+    pub(super) fn open_with<T>(
         &mut self,
-        preferred: Option<ElementId>,
+        source: &dyn SelectDataSource<T>,
+        preferred: Option<usize>,
         from_end: bool,
         scroll_to_active: bool,
         cx: &mut Context<Self>,
-    ) {
+    ) where
+        T: Clone + Eq + Hash + 'static,
+    {
         self.open = true;
         if !self.ready {
-            self.active_id = None;
-            self.pending_scroll = false;
+            self.active_index = None;
+            self.active_key = None;
             cx.notify();
             return;
         }
-        self.active_id = preferred
-            .filter(|id| {
-                self.previous
-                    .iter()
-                    .any(|option| option.id == *id && !option.disabled)
+        self.active_index = preferred
+            .filter(|index| source.is_enabled(*index))
+            .or_else(|| {
+                self.preserve_active_on_open
+                    .then_some(self.active_index)
+                    .flatten()
+                    .filter(|index| source.is_enabled(*index))
             })
             .or_else(|| {
                 if from_end {
-                    self.previous.iter().rev().find(|option| !option.disabled)
+                    source.last_enabled()
                 } else {
-                    self.previous.iter().find(|option| !option.disabled)
+                    source.first_enabled()
                 }
-                .map(|option| option.id.clone())
             });
-        self.pending_scroll = scroll_to_active;
+        self.active_key = self.active_index.map(|index| source.key(index));
+        self.preserve_active_on_open = self.active_index.is_some();
+        if scroll_to_active {
+            self.reveal_active();
+        }
         cx.notify();
     }
 
@@ -161,165 +166,95 @@ impl SelectInteractionState {
             return false;
         }
         self.open = false;
-        self.pending_scroll = false;
         cx.notify();
         true
     }
 
-    pub(super) fn move_active(&mut self, movement: ActiveMovement, cx: &mut Context<Self>) -> bool {
-        if !self.ready {
+    pub(super) fn move_active<T>(
+        &mut self,
+        source: &dyn SelectDataSource<T>,
+        movement: ActiveMovement,
+        cx: &mut Context<Self>,
+    ) -> bool
+    where
+        T: Clone + Eq + Hash + 'static,
+    {
+        if !self.ready || source.first_enabled().is_none() {
             return false;
         }
-        let enabled = self
-            .previous
-            .iter()
-            .filter(|option| !option.disabled)
-            .collect::<Vec<_>>();
-        if enabled.is_empty() {
-            return false;
-        }
-        let current = self
-            .active_id
-            .as_ref()
-            .and_then(|id| enabled.iter().position(|option| option.id == *id));
-        let target = match movement {
-            ActiveMovement::Previous => current.unwrap_or(0).saturating_sub(1),
-            ActiveMovement::Next => current.map_or(0, |index| (index + 1).min(enabled.len() - 1)),
-            ActiveMovement::First => 0,
-            ActiveMovement::Last => enabled.len() - 1,
-            ActiveMovement::PagePrevious => self.page_target(&enabled, current, false),
-            ActiveMovement::PageNext => self.page_target(&enabled, current, true),
+        let current = self.active_index;
+        let next = match movement {
+            ActiveMovement::Previous => current
+                .and_then(|index| source.next_enabled(index, false, false))
+                .or(current)
+                .or_else(|| source.first_enabled()),
+            ActiveMovement::Next => current
+                .and_then(|index| source.next_enabled(index, true, false))
+                .or(current)
+                .or_else(|| source.first_enabled()),
+            ActiveMovement::First => source.first_enabled(),
+            ActiveMovement::Last => source.last_enabled(),
+            ActiveMovement::PagePrevious => self.page_target(source, false),
+            ActiveMovement::PageNext => self.page_target(source, true),
         };
-        let next = enabled[target].id.clone();
-        if self.active_id.as_ref() == Some(&next) {
+        let Some(next) = next else {
+            return false;
+        };
+        if self.active_index == Some(next) {
             return true;
         }
-        self.active_id = Some(next);
-        self.pending_scroll = true;
+        self.active_index = Some(next);
+        self.active_key = Some(source.key(next));
+        self.preserve_active_on_open = true;
+        self.reveal_active();
         cx.notify();
         true
     }
 
-    pub(super) fn set_hovered(&mut self, id: ElementId, cx: &mut Context<Self>) {
-        if !self.ready
-            || !self
-                .previous
-                .iter()
-                .any(|option| option.id == id && !option.disabled)
-        {
+    pub(super) fn set_hovered<T>(
+        &mut self,
+        source: &dyn SelectDataSource<T>,
+        index: usize,
+        cx: &mut Context<Self>,
+    ) where
+        T: Clone + Eq + Hash + 'static,
+    {
+        if !self.ready || !source.is_enabled(index) || self.active_index == Some(index) {
             return;
         }
-        self.pending_scroll = false;
-        if self.active_id.as_ref() != Some(&id) {
-            self.active_id = Some(id);
-            cx.notify();
-        }
+        self.active_index = Some(index);
+        self.active_key = Some(source.key(index));
+        self.preserve_active_on_open = true;
+        cx.notify();
     }
 
-    pub(super) fn take_scroll_request(&mut self, id: &ElementId) -> bool {
-        if self.ready && self.pending_scroll && self.active_id.as_ref() == Some(id) {
-            self.pending_scroll = false;
-            true
-        } else {
-            false
-        }
-    }
-
-    pub(super) fn submittable_active_id(&self) -> Option<ElementId> {
-        let active = self.active_id.as_ref()?;
-        (self.ready
-            && self
-                .previous
-                .iter()
-                .any(|option| option.id == *active && !option.disabled))
-        .then(|| active.clone())
-    }
-
-    pub(super) fn can_submit(&self, id: &ElementId) -> bool {
-        self.ready
-            && self
-                .previous
-                .iter()
-                .any(|option| option.id == *id && !option.disabled)
-    }
-
-    pub(super) fn update_option_bounds(&mut self, id: ElementId, bounds: Bounds<Pixels>) {
-        if let Some((_, previous)) = self
-            .option_bounds
-            .iter_mut()
-            .find(|(option_id, _)| *option_id == id)
-        {
-            *previous = bounds;
-        } else {
-            self.option_bounds.push((id, bounds));
-        }
-    }
-
-    fn page_target(
+    pub(super) fn submittable_active_index<T>(
         &self,
-        enabled: &[&OptionSnapshot],
-        current: Option<usize>,
-        forward: bool,
-    ) -> usize {
-        let current = current.unwrap_or(if forward { 0 } else { enabled.len() - 1 });
-        let viewport = self.scroll_handle.bounds();
-        if viewport.size.height <= Pixels::ZERO {
-            return current;
-        }
-        let Some(current_bounds) = self.option_bounds_for(&enabled[current].id) else {
-            return if forward {
-                (current + 1).min(enabled.len() - 1)
-            } else {
-                current.saturating_sub(1)
-            };
-        };
-
-        if forward {
-            let boundary = if current_bounds.bottom() < viewport.bottom() {
-                viewport.bottom()
-            } else {
-                current_bounds.bottom() + viewport.size.height
-            };
-            enabled
-                .iter()
-                .enumerate()
-                .skip(current + 1)
-                .take_while(|(_, option)| {
-                    self.option_bounds_for(&option.id)
-                        .is_some_and(|bounds| bounds.bottom() <= boundary)
-                })
-                .map(|(index, _)| index)
-                .last()
-                .unwrap_or(current)
-        } else {
-            let boundary = if current_bounds.top() > viewport.top() {
-                viewport.top()
-            } else {
-                current_bounds.top() - viewport.size.height
-            };
-            enabled
-                .iter()
-                .enumerate()
-                .take(current)
-                .rev()
-                .take_while(|(_, option)| {
-                    self.option_bounds_for(&option.id)
-                        .is_some_and(|bounds| bounds.top() >= boundary)
-                })
-                .map(|(index, _)| index)
-                .last()
-                .unwrap_or(current)
-        }
+        source: &dyn SelectDataSource<T>,
+    ) -> Option<usize>
+    where
+        T: Clone + Eq + Hash + 'static,
+    {
+        let active = self.active_index?;
+        (self.ready && source.is_enabled(active)).then_some(active)
     }
 
-    fn option_bounds_for(&self, id: &ElementId) -> Option<Bounds<Pixels>> {
-        self.option_bounds
-            .iter()
-            .find(|(option_id, _)| option_id == id)
-            .map(|(_, bounds)| *bounds)
+    pub(super) fn can_submit<T>(&self, source: &dyn SelectDataSource<T>, index: usize) -> bool
+    where
+        T: Clone + Eq + Hash + 'static,
+    {
+        self.ready && source.is_enabled(index)
     }
 
-    pub(super) fn typeahead(&mut self, text: &str, cx: &mut Context<Self>) -> bool {
+    pub(super) fn typeahead<T>(
+        &mut self,
+        source: &dyn SelectDataSource<T>,
+        text: &str,
+        cx: &mut Context<Self>,
+    ) -> bool
+    where
+        T: Clone + Eq + Hash + 'static,
+    {
         if !self.ready {
             return false;
         }
@@ -340,26 +275,55 @@ impl SelectInteractionState {
         };
         self.restart_typeahead_timer(cx);
 
-        let start = self
-            .active_id
-            .as_ref()
-            .and_then(|active| self.previous.iter().position(|option| option.id == *active))
-            .unwrap_or_else(|| self.previous.len().saturating_sub(1));
-        let next = (1..=self.previous.len()).find_map(|offset| {
-            let option = &self.previous[(start + offset) % self.previous.len()];
-            (!option.disabled && option.accessible_name.to_lowercase().starts_with(&query))
-                .then(|| option.id.clone())
-        });
-        let Some(next) = next else {
+        let Some(next) = source.search_prefix(&query, self.active_index) else {
             return false;
         };
         self.open = true;
-        self.pending_scroll = true;
-        if self.active_id.as_ref() != Some(&next) {
-            self.active_id = Some(next);
-        }
+        self.active_index = Some(next);
+        self.active_key = Some(source.key(next));
+        self.preserve_active_on_open = true;
+        self.reveal_active();
         cx.notify();
         true
+    }
+
+    fn page_target<T>(&self, source: &dyn SelectDataSource<T>, forward: bool) -> Option<usize>
+    where
+        T: Clone + Eq + Hash + 'static,
+    {
+        let mut target = self.active_index.or_else(|| {
+            if forward {
+                source.first_enabled()
+            } else {
+                source.last_enabled()
+            }
+        })?;
+        let row_steps = self
+            .virtual_list
+            .visible_range()
+            .len()
+            .saturating_sub(2)
+            .max(1);
+        let boundary = if forward {
+            target
+                .saturating_add(row_steps)
+                .min(self.source_count.saturating_sub(1))
+        } else {
+            target.saturating_sub(row_steps)
+        };
+        while let Some(next) = source.next_enabled(target, forward, false) {
+            if (forward && next > boundary) || (!forward && next < boundary) {
+                break;
+            }
+            target = next;
+        }
+        Some(target)
+    }
+
+    fn reveal_active(&self) {
+        if let Some(index) = self.active_index {
+            self.virtual_list.reveal_index(index);
+        }
     }
 
     fn restart_typeahead_timer(&mut self, cx: &mut Context<Self>) {
@@ -383,23 +347,18 @@ impl SelectInteractionState {
     }
 }
 
-pub(super) fn reconciled_active_id(
-    previous: &[OptionSnapshot],
-    next: &[OptionSnapshot],
-    active_id: Option<&ElementId>,
-) -> Option<ElementId> {
-    let old_position =
-        active_id.and_then(|active| previous.iter().position(|option| option.id == *active))?;
-    next.iter()
-        .skip(old_position.min(next.len()))
-        .find(|option| !option.disabled)
-        .or_else(|| {
-            next.iter()
-                .take(old_position.min(next.len()))
-                .rev()
-                .find(|option| !option.disabled)
-        })
-        .map(|option| option.id.clone())
+pub(super) fn reconciled_active_index<T>(
+    source: &dyn SelectDataSource<T>,
+    previous: Option<usize>,
+) -> Option<usize>
+where
+    T: Clone + Eq + Hash + 'static,
+{
+    let previous = previous?;
+    source
+        .next_enabled(previous.saturating_sub(1), true, false)
+        .or_else(|| source.next_enabled(previous.saturating_add(1), false, false))
+        .or_else(|| source.first_enabled())
 }
 
 #[derive(Clone, Copy)]

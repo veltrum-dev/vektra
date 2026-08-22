@@ -84,3 +84,9 @@ Light, Dark, and System resolve semantic tokens. Fixed Tooltip instance colors r
 - Tooltip is plain text and does not replace the accessible name.
 - No arbitrary padding, radius, background, or hit-area styling pass-through.
 - Pointer visuals still need real pointer verification; the preview requires WebGPU and host-provided Chinese fonts.
+
+## Performance contract
+
+- The standard load is 100 visible IconButtons; construction, layout, and paint are O(1).
+- SVG paths are delegated to GPUI's resource/SVG cache and must not be reparsed per frame by Vektra. Vektra adds no parallel icon cache.
+- 100K same-path construction and 10K visible stress cases are covered by `coverage/tooltip_icon_focus` and the stress target.

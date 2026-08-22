@@ -84,3 +84,9 @@ Light、Dark、System 均从语义 token 解析；Tooltip 固定实例颜色的�
 - Tooltip 只支持文本，不是可访问名称的替代品。
 - 不公开任意 padding、圆角、背景或命中区域样式透传。
 - hover/pressed 需在真实指针环境人工确认；预览需要 WebGPU 与宿主中文字体。
+
+## 性能契约
+
+- 标准负载为 100 个可见 IconButton；构建、布局与绘制为 O(1)。
+- SVG 路径交给 GPUI 资源/SVG 缓存，同一帧不得由 Vektra 重复解析；Vektra 自身不建立图标缓存。
+- 100K 同路径公共构建与 10K 可见压力场景由 `coverage/tooltip_icon_focus` 和 stress target 覆盖。

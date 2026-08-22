@@ -5,6 +5,9 @@ edition.workspace = true
 rust-version.workspace = true
 publish = false
 
+[lib]
+bench = false
+
 [dependencies]
 gpui = { workspace = true }
 unicode-script = { workspace = true }
@@ -15,6 +18,8 @@ vektra-macros = { workspace = true }
 vektra-theme = { workspace = true }
 
 [dev-dependencies]
+allocation-counter = { workspace = true }
+criterion = { workspace = true }
 gpui = { workspace = true, features = ["test-support"] }
 image = "0.25.10"
 trybuild = { workspace = true }
@@ -22,3 +27,13 @@ trybuild = { workspace = true }
 [features]
 default = []
 icons = ["dep:vektra-icons", "vektra-assets/icons"]
+stress-bench = []
+
+[[bench]]
+name = "component_scalability"
+harness = false
+
+[[bench]]
+name = "scalability_stress"
+harness = false
+required-features = ["stress-bench"]

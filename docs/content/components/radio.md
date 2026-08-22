@@ -88,3 +88,9 @@ Light、Dark 与 System 都解析 Radio 专用 normal、hover、pressed、focus-
 - 不提供非受控值、默认值、验证消息、异步任务或 loading 状态。
 - 方向只影响布局与可访问方向；为兼顾平台习惯，四个方向键始终可用。
 - 桌面示例：`cargo run --example radio`。
+
+## 性能契约
+
+- 标准负载为 100 个可见 Radio；单项构建/布局/绘制为 O(1)，组内方向导航为 O(组内项数)。
+- RadioGroup 不缓存历史、Element 或后台任务；大数据单选应使用惰性 Select/VirtualList，而不是构建超大 RadioGroup。
+- 叶子墙首次、稳态和更新基准位于 `component_wall`。

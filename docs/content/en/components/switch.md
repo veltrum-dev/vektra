@@ -120,3 +120,9 @@ Controlled checked changes move the thumb and content with a default 180ms fixed
 - If two choices must remain visible and separately clickable, use a Segmented Control instead of extending Switch.
 - The label is fixed after the track.
 - Run the desktop example with `cargo run --example switch`.
+
+## Performance contract
+
+- The standard load is 100 visible Switches; construction, state resolution, layout, and paint are O(1).
+- Transition/loading tasks are keyed-state owned and released after replacement or owner removal, with no unbounded history or cache.
+- Use [`VirtualList`](/en/components/virtual-list) for 10K/100K simultaneous items; see `component_wall`.

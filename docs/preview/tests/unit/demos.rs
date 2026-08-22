@@ -328,7 +328,8 @@ fn focused_examples_cover_component_states_keyboard_sizes_and_tooltips() {
     assert!(select.contains("SelectStatus::empty"));
     assert!(select.contains("SelectStatus::error"));
     assert!(select.contains(".disabled(true)"));
-    assert!(select.contains("for index in 1..=30"));
+    assert!(select.contains("LARGE_SELECT_ITEMS: usize = 1_000_000"));
+    assert!(select.contains(".data_source(source)"));
     assert!(scrollbar.contains(".scrollbar_with(ScrollbarConfig"));
     assert!(scrollbar.contains("ScrollAxis::Horizontal"));
     assert!(scrollbar.contains("ScrollVisibility::Always"));
@@ -348,6 +349,7 @@ fn component_pages_pair_every_preview_with_compiled_source_and_registered_id() {
         "input",
         "tooltip",
         "scrollbar",
+        "virtual-list",
     ];
     let mut documented_ids = BTreeSet::new();
 
@@ -401,7 +403,7 @@ fn getting_started_pages_use_public_git_dependencies_and_platform_application() 
             .expect("中英文快速开始文档必须可读取");
 
         for dependency in [
-            "gpui = { git = \"https://github.com/zed-industries/zed\", rev = \"87e698fb6fd09e69a16c66ae83060ac1e3af3fd6\" }",
+            "gpui = { git = \"https://github.com/zed-industries/zed\", rev = \"fd82517a115d97a07835b52f0512b22b38e38ccf\" }",
             "vektra = { git = \"https://github.com/veltrum-dev/vektra.git\" }",
             "[target.'cfg(target_os = \"macos\")'.dependencies]",
             "features = [\"font-kit\"]",

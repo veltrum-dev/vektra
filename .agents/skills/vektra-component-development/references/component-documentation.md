@@ -21,6 +21,8 @@ Vektra 文档站和组件预览默认使用简体中文。用户可见文案不�
 - 可运行 Rust 示例。
 - WASM 实时预览。
 - 已知限制。
+- 性能契约：正常/压力规模、时间与内存复杂度、是否惰性、overdraw、物化数量上界、缓存上限、
+  已验证平台、推荐/不推荐场景和 benchmark 命令。
 
 示例代码必须来自实际参与 Cargo/WASM 编译的 Rust 文件，再由 VitePress 导入展示。禁止在 Markdown 中维护无法编译的重复示例。
 
@@ -46,6 +48,9 @@ Vektra 文档站和组件预览默认使用简体中文。用户可见文案不�
 - 文档预览必须报告字体、WASM 和总体静态资源体积。
 - 浏览器验收必须包含实际 Canvas 中文显示。
 - 无法支持 WASM 的组件必须在设计阶段提出平台例外，不能静默省略。
+- 支持虚拟渲染的组件必须在同一个组件 example 中并列普通场景和明确标注的大数据场景，不能
+  把大数据能力藏在独立 `*-large` example。大数据场景显示规模、数据源类型、visible range、
+  物化数量与缓存上限，且百万级场景使用生成式/分页源，不预构建同规模 `Vec`。
 - 如果组件依赖桌面原生能力，应优先设计 Web 适配层。
 
 ## 推荐预览架构
@@ -65,11 +70,11 @@ Vektra 文档站和组件预览默认使用简体中文。用户可见文案不�
 
 ## 锁定 GPUI Web 参考
 
-当前仓库锁定 Zed revision `82aef44308540b576e4e51fb379efa71614e5c91`。参考本地路径：
+当前仓库锁定 Zed revision `fd82517a115d97a07835b52f0512b22b38e38ccf`。参考本地路径：
 
-- `/Users/coloxan/.cargo/git/checkouts/zed-a70e2ad075855582/82aef44/crates/gpui_platform/src/gpui_platform.rs`
-- `/Users/coloxan/.cargo/git/checkouts/zed-a70e2ad075855582/82aef44/crates/gpui_web/`
-- `/Users/coloxan/.cargo/git/checkouts/zed-a70e2ad075855582/82aef44/crates/gpui_web/examples/hello_web/main.rs`
+- `/Users/coloxan/.cargo/git/checkouts/zed-a70e2ad075855582/fd82517/crates/gpui_platform/src/gpui_platform.rs`
+- `/Users/coloxan/.cargo/git/checkouts/zed-a70e2ad075855582/fd82517/crates/gpui_web/`
+- `/Users/coloxan/.cargo/git/checkouts/zed-a70e2ad075855582/fd82517/crates/gpui_web/examples/hello_web/main.rs`
 
 已观察到 `gpui_platform::web_init()`、`gpui_platform::application()` 和 wasm-only `gpui_platform::single_threaded_web()`；实际预览运行时实现前必须通过最小 WASM 编译验证最终入口。
 

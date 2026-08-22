@@ -88,3 +88,9 @@ Light, Dark, and System resolve dedicated Radio tokens for normal, hover, presse
 - There is no uncontrolled value, default value, validation message, async task, or loading state.
 - Orientation changes layout and accessibility metadata; all four arrow keys remain active for platform compatibility.
 - Desktop example: `cargo run --example radio`.
+
+## Performance contract
+
+- The standard load is 100 visible Radios. Per-item construction/layout/paint is O(1); directional navigation is O(group size).
+- RadioGroup retains no history, Element cache, or background task. Large-data single selection should use lazy Select/VirtualList rather than a huge RadioGroup.
+- First, steady, and update leaf-wall coverage lives in `component_wall`.

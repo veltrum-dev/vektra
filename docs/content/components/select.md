@@ -1,6 +1,6 @@
 # Select
 
-`Select<T>` 用于从结构化选项中选择一个值，适合需要节省纵向空间的单选场景。它是强类型受控组件：`selected_value(Option<T>)` 是宿主持有的权威值，`on_change(T, ...)` 只请求下一值；方向导航只改变私有 active option，不会提前改变业务选择。
+`Select<T>` 用于从结构化或惰性数据源中选择一个值，适合需要节省纵向空间的单选场景。`T` 需要 `Clone + Eq + Hash + 'static`。它是强类型受控组件：`selected_value(Option<T>)` 是宿主持有的权威值，`on_change(T, ...)` 只请求下一值；方向导航只改变私有 active option，不会提前改变业务选择。
 
 如果少量互斥项需要始终可见，优先使用 [RadioGroup](/components/radio)。Select 不提供搜索、文本编辑或多选；这些能力分别属于未来的 [Combobox 路线图](https://github.com/veltrum-dev/vektra/issues/15) 与 [MultiSelect 路线图](https://github.com/veltrum-dev/vektra/issues/16)。
 
@@ -55,17 +55,17 @@ group 标题只用于可见与可访问分组，不进入 active、选择或键�
 
 带不支持修饰键的组合和未识别按键继续传播。Typeahead 仅匹配 enabled canonical option，使用 Unicode 大小写不敏感前缀，短暂停顿后清空缓冲；无匹配时保持当前 active。Enter 与 Space 使用 GPUI 完整 KeyDown/KeyUp 激活周期，一次交互最多产生一次变化请求。
 
-## 长列表、窄窗口与 resize
+## 百万项惰性数据、窄窗口与 resize
 
-<VektraExample demo="select/long-list" title="Select 长列表" :height="330">
+<VektraExample demo="select/long-list" title="Select 百万项惰性数据源" :height="390">
 
 <<< ../../preview/src/demos/select.rs#select-example-long-list{rust}
 
 </VektraExample>
 
-Popup 优先向下展开；下方不足时向上翻转，并受视口边距和最大高度限制。内容溢出时复用 Vektra Scrollbar，Arrow、Home、End、PageUp、PageDown、typeahead 以及首次打开都会让 active option 进入可见区域。分页使用当前 ScrollArea 视口和实际 option bounds，不依赖固定项数。布局与窗口 resize 时会重新测量 Trigger 和视口；窄窗口下 Popup 会水平收敛，不超出可用区域。
+Popup 使用固定行高 `VirtualList`，只创建当前可见 option/group 行；外部百万项数据源不建立全量 catalog、HashSet 或 Element 树。Arrow、Home、End、PageUp、PageDown、typeahead 和 active reveal 都调用数据源索引，不依赖目标行已渲染。Popup 优先向下展开，下方不足时向上翻转，并受视口边距和最大高度限制；窄窗口会水平收敛。
 
-当前实现不虚拟化，也不承诺无界 option 数量的性能；大数据量能力跟踪在 [Issue #6](https://github.com/veltrum-dev/vektra/issues/6)。
+`cargo run --example select` 在同一个 Select 示例入口中同时展示普通场景与明确标注的百万项生成式场景，并显示 visible range、item 读取次数和零行缓存上限。
 
 ## Anatomy
 
@@ -73,7 +73,7 @@ Popup 优先向下展开；下方不足时向上翻转，并受视口边距和�
 Select Trigger（ComboBox、真实 Tab stop、expanded）
 └─ 当前 label / placeholder + ChevronDown / ChevronUp 指示器
 Select Popup（ListBox、私有视口约束浮层）
-└─ ScrollArea
+└─ VirtualList + Vektra Scrollbar
    ├─ SelectGroup（Group）
    │  ├─ group label（Label）
    │  └─ SelectOption（ListBoxOption）
@@ -90,6 +90,8 @@ Select Popup（ListBox、私有视口约束浮层）
 | `.selected_value(Option<T>)` | 设置宿主持有的权威业务值。 |
 | `.option(SelectOption<T>)` | 添加顶层结构化 option。 |
 | `.group(SelectGroup<T>)` | 添加带标题的结构化 option 组。 |
+| `.items(Vec/array)` | 通过 owned adapter 添加多项，进入同一惰性内核。 |
+| `.data_source(Rc<dyn SelectDataSource<T>>)` | 使用生成式、分页或远程惰性数据源。 |
 | `.placeholder(text)` | 设置无有效选中项时的 Trigger 文案；默认“请选择”。 |
 | `.status(SelectStatus)` | 设置 `Ready`、`Loading`、`Empty` 或 `Error`。 |
 | `.on_change` / `.on_change_in` | 请求下一值；不会乐观修改选择。 |
@@ -105,6 +107,8 @@ Select Popup（ListBox、私有视口约束浮层）
 | `SelectGroup::new(id, label)` | 创建稳定 ID 与可见标题的组。 |
 | `.aria_label(text)` | 覆盖组的可访问名称。 |
 | `.option(SelectOption<T>)` | 添加同一值类型的结构化 option。 |
+| `OwnedSelectDataSource` | 将 owned option/entry 适配到统一协议。 |
+| `SelectDataSource<T>` | 提供 count/revision/key/item、value/key 定位、enabled navigation、typeahead、加载状态和 range request。 |
 
 Select 实现 [`Changeable<T>`](/api/changeable)、[`Disableable`](/api/disableable)、[`Sizable`](/api/sizable) 与 [`Focusable`](/api/focusable)。SelectOption 实现 `Disableable`。Select 不实现 `Clickable`：Trigger 的打开/关闭和 option 的变化请求是复合选择语义，不能等同于一个原始 click 回调。Select 也不实现接收任意 `Element` 的 `ParentElement`。
 
@@ -121,7 +125,7 @@ Select 实现 [`Changeable<T>`](/api/changeable)、[`Disableable`](/api/disablea
 
 Trigger 是唯一真实焦点和普通 Tab stop；Popup 打开时焦点仍留在 Trigger，option 通过 GPUI/AccessKit 的 active-descendant 语义报告。点击可用 option 后关闭并恢复 Trigger 焦点；再次点击 Trigger、外部点击、Escape、Tab/Shift+Tab 或窗口失活都会关闭 Popup。Popup 内点击、滚轮与 Scrollbar 交互不会被当作外部点击。
 
-Trigger 报告 `ComboBox`、名称、描述、expanded 与 disabled；未选中时只报告 placeholder，不把它重复为 value，选中后 value 使用选中项的可访问名称。Popup、Group、Label、Option 分别报告 `ListBox`、`Group`、`Label`、`ListBoxOption`，option 报告 selected、disabled 以及按全部实际渲染 option（含 disabled 与重复冲突项）统计的 `posinset`/`setsize`。Loading/Empty 使用 `Status`，Error 使用 `Alert`。Popup 打开时，Trigger 通过 AccessKit `controls` 关联到同一首帧真实的 `ListBox` 节点；键盘 active option 继续通过 active-descendant 暴露，不会与业务 selected 混用。
+Trigger 报告 `ComboBox`、名称、描述、expanded 与 disabled；未选中时只报告 placeholder，不把它重复为 value，选中后 value 使用选中项的可访问名称。Popup、Group 和 Option 分别报告 `ListBox`、`Group`、`ListBoxOption`，option 报告 selected、disabled 与全数据集 `posinset`/`setsize`。虚拟化只导出当前可见行的 AccessKit children，active option 会先滚入并物化。Loading/Empty 使用 `Status`，Error 使用 `Alert`。Popup 打开时，Trigger 通过 AccessKit `controls` 关联真实 `ListBox` 节点。
 
 disabled、expanded、selected、名称、描述和值映射具有确定性 AccessKit 节点断言；角色、active-descendant 与焦点路径由锁定 GPUI API 的编译和交互测试覆盖。GPUI 的普通测试平台不会激活完整辅助技术树，因此真实 VoiceOver、NVDA、Narrator、Orca 以及各平台朗读体验尚未人工验证。
 
@@ -131,13 +135,20 @@ Light、Dark 与 System 都解析 Select 专用 Trigger、Popup、Option、group
 
 自定义主题现在必须由 `ResolvedTheme::from_tokens` 一次性完整验证 Select token；缺键、类型错误或无效引用返回 `ThemeError`，旧主题缺失扩展的 fallback 已移除。迁移时补齐六种 Trigger state、五种 Option state 与四种 size，并把字符串访问改为不可失败的 `select_trigger_state(SelectTriggerState)`、`select_option_state(SelectOptionState)` 和 `select_size(ThemeSize)`。
 
-代码目标覆盖 GPUI 支持的 macOS、Windows、Linux 与 Web/WASM。当前完成了本机编译、确定性交互测试、1.25x/1.5x/2x 测试缩放下的弹层约束与共享 WASM 构建；Linux、物理高 DPI 屏幕的像素一致性、屏幕阅读器与大列表性能仍未人工验证。
+代码目标覆盖 GPUI 支持的 macOS、Windows、Linux 与 Web/WASM。当前完成了本机编译、确定性交互测试、1.25x/1.5x/2x 测试缩放约束、百万项外部数据源物化上限和共享 WASM 构建；Windows/Linux 专用性能、物理高 DPI 与屏幕阅读器仍未人工验证。
+
+## 性能契约
+
+- owned adapter 构造使用临时 HashSet 做预期 O(n) canonical 校验，随后释放；不复制搜索文本。
+- 外部大数据源负责唯一性、key/value 定位、enabled navigation 和 typeahead 索引。
+- Popup Element、布局、prepaint、paint 与 AccessKit 为 O(visible)，overdraw 0，行缓存硬上限 0。
+- 正常基准：10K 完整行为；压力基准：1M 惰性数据源。目标和命令见[性能架构](/guide/performance)。
 
 ## 已知限制
 
 - 单选且不可编辑；不提供搜索、过滤、IME、Combobox 或 MultiSelect。
 - option 只接受 label、可选 `IconSource` 与 description，不接受任意 Element 或 slot。
 - 状态完全由宿主驱动，Select 不拥有异步任务和重试逻辑。
-- Popup 是 Select 私有实现，不公开 Popover、Menu、List 或 VirtualList。
-- 不提供虚拟化；参见 [性能 Issue #6](https://github.com/veltrum-dev/vektra/issues/6)。
+- Popup 是 Select 私有实现；公共固定行高集合能力由 `VirtualList` 提供。
+- owned group/description 行统一使用固定最大行高；不提供可变高度精确索引。
 - 桌面示例：`cargo run --example select`。

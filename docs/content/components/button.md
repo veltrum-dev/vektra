@@ -191,3 +191,9 @@ Button 在 macOS、Windows、Linux 与 Web 预览中复用同一套 GPUI 组件�
 - `Link` 是按钮语义的链接外观，不会变成导航链接。
 - 图标插槽不支持单独指定像素尺寸，尺寸由 ComponentSize token 决定。
 - 预览运行依赖浏览器 WebGPU 和文档预览宿主提供的字体资源。
+
+## 性能契约
+
+- 标准负载为 100 个可见 Button：稳态重绘目标 ≤4ms，10% 更新+绘制 ≤8.33ms，100% 更新+绘制 ≤16.67ms。
+- 单个 Button 构建、状态解析、布局与绘制为 O(1)，不持有无界缓存；loading 动画 Task 由 keyed state 拥有并随 owner 释放。
+- 10K/100K 同时可见不是叶子组件承诺；大集合使用 [`VirtualList`](/components/virtual-list)。基准位于 `component_wall`。

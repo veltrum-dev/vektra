@@ -11,6 +11,7 @@
 
 mod button;
 mod checkbox;
+mod data_source;
 mod focus;
 pub mod icon;
 mod icon_button;
@@ -23,9 +24,11 @@ mod switch;
 mod theme;
 mod tooltip;
 pub mod traits;
+mod virtual_list;
 
 pub use button::{Button, ButtonVariant};
 pub use checkbox::Checkbox;
+pub use data_source::{LazyDataSource, OwnedDataSource};
 #[cfg(feature = "icons")]
 pub use icon::IconName;
 pub use icon::{Icon, IconSource, IntoIconSource};
@@ -35,7 +38,10 @@ pub use radio::{Radio, RadioGroup};
 pub use scrollbar::{
     ScrollArea, ScrollAxis, ScrollGutter, ScrollVisibility, ScrollableExt, ScrollbarConfig,
 };
-pub use select::{Select, SelectGroup, SelectOption, SelectStatus};
+pub use select::{
+    OwnedSelectDataSource, Select, SelectDataSource, SelectEntry, SelectGroup, SelectGroupHeader,
+    SelectOption, SelectStatus,
+};
 pub use size::{ComponentSize, component_size, set_component_size};
 pub use switch::{Switch, SwitchContent};
 pub use theme::{current_theme, resolved_theme_mode, semantic_colors, set_theme_mode, theme_mode};
@@ -49,6 +55,7 @@ pub use vektra_theme::{
     SelectTriggerState, SelectTriggerStateTokens, SemanticColors, ThemeMode, ThemeSize,
     TooltipTokens,
 };
+pub use virtual_list::{VirtualList, VirtualListMetrics, VirtualListState};
 
 /// Vektra 自带资源。
 ///

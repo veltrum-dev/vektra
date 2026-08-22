@@ -51,3 +51,7 @@ path = "input/src/main.rs"
 [[example]]
 name = "scrollbar"
 path = "scrollbar/src/main.rs"
+
+[[example]]
+name = "virtual-list"
+path = "virtual_list/src/main.rs"

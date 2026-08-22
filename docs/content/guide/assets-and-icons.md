@@ -2,6 +2,10 @@
 
 Vektra 的运行时资源统一位于仓库根 `assets/`。`vektra-assets` 提供 GPUI `AssetSource`，默认包含 `themes/default/**/*`；启用 `icons` feature 后会额外包含内置 SVG 图标。
 
+## Icon 性能契约
+
+`Icon` 公共构建、尺寸/颜色解析为 O(1)，不自行读取文件或解析 SVG；路径交给 GPUI 的资源与 SVG 缓存。同一路径每帧不得由 Vektra 重复解析。正常规模为 100 个可见图标，压力覆盖 100K 同路径构建与 10K 可见图标；不同路径的缓存容量和淘汰由 GPUI 决定，Vektra 不建立无界并行缓存。
+
 ```toml
 [dependencies]
 vektra = { path = "crates/vektra" }

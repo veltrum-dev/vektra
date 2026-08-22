@@ -1,6 +1,6 @@
 # Select
 
-`Select<T>` chooses one value from structured options while conserving vertical space. It is strongly typed and controlled: `selected_value(Option<T>)` is the host-owned authoritative value, while `on_change(T, ...)` only requests the next value. Arrow navigation changes a private active option and never changes business selection early.
+`Select<T>` chooses one value from structured options or a lazy data source while conserving vertical space. `T` requires `Clone + Eq + Hash + 'static`. It is strongly typed and controlled: `selected_value(Option<T>)` is the host-owned authoritative value, while `on_change(T, ...)` only requests the next value.
 
 Use [RadioGroup](/en/components/radio) when a small set of mutually exclusive choices should stay visible. Select has no search, text editing, or multiple selection; those belong to the future [Combobox roadmap](https://github.com/veltrum-dev/vektra/issues/15) and [MultiSelect roadmap](https://github.com/veltrum-dev/vektra/issues/16).
 
@@ -55,17 +55,17 @@ Group labels provide visible and accessible grouping only. They never enter acti
 
 Unsupported modifiers and unknown keys propagate. Typeahead considers enabled canonical options only, applies a Unicode case-insensitive prefix match, and clears its buffer after a short pause; no match preserves the current active option. Enter and Space use GPUI's complete KeyDown/KeyUp activation cycle; one interaction emits at most one value request.
 
-## Long lists, narrow windows, and resize
+## Million-item lazy data, narrow windows, and resize
 
-<VektraExample demo="select/long-list" title="Select long list" :height="330">
+<VektraExample demo="select/long-list" title="Select million-item lazy source" :height="390">
 
 <<< ../../../preview/src/demos/select.rs#select-example-long-list{rust}
 
 </VektraExample>
 
-The popup prefers opening below, flips above when needed, and is constrained by viewport padding and maximum height. Overflow reuses the Vektra Scrollbar. Arrow, Home, End, PageUp, PageDown, typeahead, and initial opening keep the active option visible. Paging uses the current ScrollArea viewport and measured option bounds rather than a fixed item count. Trigger and viewport geometry are measured again after layout and window resize; narrow windows constrain the popup horizontally.
+The popup uses a fixed-height `VirtualList` and creates only visible option/group rows. An external million-item source receives no full Vektra catalog, HashSet, or Element tree. Arrow, Home, End, PageUp, PageDown, typeahead, and active reveal call source indexes and do not depend on the target row being rendered. The popup flips and constrains itself to the viewport.
 
-The implementation is not virtualized and makes no unbounded option-count performance promise. Large-data work is tracked in [Issue #6](https://github.com/veltrum-dev/vektra/issues/6).
+`cargo run --example select` keeps normal and explicitly labeled million-item generated scenarios in the same Select example entry, including visible range, item-read count, and the zero-row cache limit.
 
 ## Anatomy
 
@@ -73,7 +73,7 @@ The implementation is not virtualized and makes no unbounded option-count perfor
 Select trigger (ComboBox, real Tab stop, expanded)
 └─ current label / placeholder + ChevronDown / ChevronUp indicator
 Select popup (ListBox, private viewport-constrained overlay)
-└─ ScrollArea
+└─ VirtualList + Vektra Scrollbar
    ├─ SelectGroup (Group)
    │  ├─ group label (Label)
    │  └─ SelectOption (ListBoxOption)
@@ -90,6 +90,8 @@ Selection uses a trailing Check icon while the active option uses a subtle backg
 | `.selected_value(Option<T>)` | Supplies the host-owned authoritative value. |
 | `.option(SelectOption<T>)` | Adds a top-level structured option. |
 | `.group(SelectGroup<T>)` | Adds a titled structured option group. |
+| `.items(Vec/array)` | Adds owned options through the same lazy kernel. |
+| `.data_source(Rc<dyn SelectDataSource<T>>)` | Uses a generated, paged, or remote lazy source. |
 | `.placeholder(text)` | Sets trigger text when no valid selection exists; defaults to “请选择”. |
 | `.status(SelectStatus)` | Sets `Ready`, `Loading`, `Empty`, or `Error`. |
 | `.on_change` / `.on_change_in` | Requests the next value without optimistic selection. |
@@ -105,6 +107,8 @@ Selection uses a trailing Check icon while the active option uses a subtle backg
 | `SelectGroup::new(id, label)` | Creates a group with a stable ID and visible heading. |
 | `.aria_label(text)` | Overrides the group's accessible name. |
 | `.option(SelectOption<T>)` | Adds a structured option of the same value type. |
+| `OwnedSelectDataSource` | Adapts owned options/entries into the unified protocol. |
+| `SelectDataSource<T>` | Supplies count/revision/key/item, key/value lookup, enabled navigation, typeahead, loading state, and range requests. |
 
 Select implements [`Changeable<T>`](/en/api/changeable), [`Disableable`](/en/api/disableable), [`Sizable`](/en/api/sizable), and [`Focusable`](/en/api/focusable). SelectOption implements `Disableable`. Select deliberately does not implement `Clickable`: opening/closing the trigger and requesting an option are composite selection semantics, not one raw click contract. It also does not implement arbitrary-Element `ParentElement`.
 
@@ -121,7 +125,7 @@ Select implements [`Changeable<T>`](/en/api/changeable), [`Disableable`](/en/api
 
 The trigger is the only real focus target and normal Tab stop. While open, focus stays on it and the active option is reported through GPUI/AccessKit active-descendant semantics. Submitting an enabled option closes and restores trigger focus. Clicking the trigger again, clicking outside, Escape, Tab/Shift+Tab, or window deactivation closes the popup. Internal clicks, wheel input, and Scrollbar interaction are not treated as outside clicks.
 
-The trigger reports `ComboBox`, name, description, expanded, and disabled. When unselected it reports only a placeholder rather than duplicating it as a value; once selected, its value is the option's accessible name. Popup, group, label, and option report `ListBox`, `Group`, `Label`, and `ListBoxOption`; options report selected, disabled, and `posinset`/`setsize` across every rendered option, including disabled and duplicate-conflict options. Loading/empty use `Status`, and error uses `Alert`. While the popup is open, the trigger uses AccessKit `controls` to reference the real `ListBox` node in the same first frame. The keyboard-active option remains exposed through active-descendant and is not conflated with the business selection.
+The trigger reports `ComboBox`, name, description, expanded, and disabled. Popup, group, and option report `ListBox`, `Group`, and `ListBoxOption`; options report selected, disabled, and whole-source `posinset`/`setsize`. Virtualization exports visible AccessKit children only, and the active option is revealed before materialization. Loading/empty use `Status`, and error uses `Alert`.
 
 Disabled, expanded, selected, name, description, and value mappings have deterministic AccessKit node assertions. Roles, active-descendant, and focus paths are covered by locked-GPUI compilation and interaction tests. GPUI's regular test platform does not activate a complete assistive-technology tree, so VoiceOver, NVDA, Narrator, Orca, and platform announcement behavior have not been manually verified.
 
@@ -131,13 +135,20 @@ Light, Dark, and System resolve dedicated Select trigger, popup, option, group, 
 
 Custom themes must now pass complete Select tokens through `ResolvedTheme::from_tokens`. Missing keys, wrong types, or invalid references return `ThemeError`; the legacy missing-extension fallback is gone. Migrate by supplying all six trigger states, five option states, and four sizes, then replace string access with infallible `select_trigger_state(SelectTriggerState)`, `select_option_state(SelectOptionState)`, and `select_size(ThemeSize)` calls.
 
-The code targets GPUI-supported macOS, Windows, Linux, and Web/WASM. Local compilation, deterministic interaction tests, popup constraints under 1.25x/1.5x/2x test scaling, and the shared WASM build are covered. Linux behavior, physical-display high-DPI pixel parity, screen readers, and large-list performance are not manually verified.
+The code targets GPUI-supported macOS, Windows, Linux, and Web/WASM. Local compilation, deterministic interaction tests, popup constraints under 1.25x/1.5x/2x test scaling, million-item materialization bounds, and the shared WASM build are covered. Dedicated Windows/Linux performance, physical high-DPI, and screen readers remain unverified.
+
+## Performance contract
+
+- The owned adapter performs expected-O(n) canonical validation with temporary HashSets, then releases them; search text is not duplicated.
+- External large sources own uniqueness, key/value lookup, enabled navigation, and typeahead indexes.
+- Popup Element/layout/prepaint/paint/AccessKit is O(visible), with zero overdraw and a hard row-cache limit of zero.
+- Normal benchmark: complete 10K behavior; stress benchmark: 1M lazy source. See [Performance Architecture](/en/guide/performance).
 
 ## Known limitations
 
 - Single selection and non-editable: no search, filtering, IME, Combobox, or MultiSelect.
 - Options accept a label, optional `IconSource`, and description, not arbitrary Elements or slots.
 - Status is entirely host-driven; Select owns no async task or retry logic.
-- The popup remains a private Select implementation; no public Popover, Menu, List, or VirtualList is added.
-- No virtualization; see [performance Issue #6](https://github.com/veltrum-dev/vektra/issues/6).
+- The popup remains private; `VirtualList` provides the public fixed-height collection primitive.
+- Owned group/description rows share one fixed maximum row height; no variable-height exact index is provided.
 - Desktop example: `cargo run --example select`.

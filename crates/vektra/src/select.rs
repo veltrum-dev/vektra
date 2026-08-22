@@ -1,22 +1,23 @@
 //! 强类型、受控的单值 Select 组件。
 
 mod a11y;
+mod data_source;
 mod overlay;
 mod render;
 mod state;
 mod types;
 
 use a11y::*;
+pub use data_source::{OwnedSelectDataSource, SelectDataSource, SelectEntry};
 use overlay::*;
 use render::*;
 use state::*;
 use types::SelectChild;
-pub use types::{SelectGroup, SelectOption, SelectStatus};
+pub use types::{SelectGroup, SelectGroupHeader, SelectOption, SelectStatus};
 
 use crate::{
-    Icon, IconSource,
+    Icon, IconSource, VirtualList,
     focus::{self, FocusHandler},
-    scrollbar::ScrollableExt,
     size::{ComponentSize, component_size},
     theme,
     traits::{Changeable, Disableable, Focusable, Sizable},
@@ -25,8 +26,8 @@ use gpui::{
     A11ySubtreeBuilder, AnyElement, App, AvailableSpace, Bounds, BoxShadow, Context, CursorStyle,
     Div, Element, ElementId, Entity, GlobalElementId, InspectorElementId, InteractiveElement,
     IntoElement, KeyDownEvent, LayoutId, Modifiers, MouseButton, ParentElement, Pixels, Point,
-    RenderOnce, Role, ScrollHandle, SharedString, Size, Stateful, StatefulInteractiveElement,
-    Style, Styled, WeakEntity, Window, deferred, div, point, prelude::FluentBuilder,
+    RenderOnce, Role, SharedString, Size, Stateful, StatefulInteractiveElement, Style, Styled,
+    WeakEntity, Window, deferred, div, point, prelude::FluentBuilder,
 };
 use std::hash::{Hash, Hasher};
 use std::{cell::Cell, rc::Rc};
@@ -50,11 +51,12 @@ const SELECT_CHECK_ICON: &str = "components/checkbox/check.svg";
 #[derive(IntoElement)]
 pub struct Select<T>
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
     id: ElementId,
     selected_value: Option<T>,
     children: Vec<SelectChild<T>>,
+    data_source: Option<Rc<dyn SelectDataSource<T>>>,
     placeholder: SharedString,
     status: SelectStatus,
     disabled: bool,
@@ -68,7 +70,7 @@ where
 
 impl<T> Select<T>
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
     /// 创建一个默认无选中值的 Select。
     pub fn new(id: impl Into<ElementId>) -> Self {
@@ -76,6 +78,7 @@ where
             id: id.into(),
             selected_value: None,
             children: Vec::new(),
+            data_source: None,
             placeholder: "请选择".into(),
             status: SelectStatus::Ready,
             disabled: false,
@@ -96,13 +99,34 @@ where
 
     /// 添加一个顶层结构化 option。
     pub fn option(mut self, option: SelectOption<T>) -> Self {
+        self.data_source = None;
         self.children.push(SelectChild::Option(option));
         self
     }
 
     /// 添加一组结构化 option。
     pub fn group(mut self, group: SelectGroup<T>) -> Self {
+        self.data_source = None;
         self.children.push(SelectChild::Group(group));
+        self
+    }
+
+    /// 添加一组 owned option；`Vec` 与数组均通过同一个 owned adapter 进入惰性内核。
+    pub fn items(mut self, options: impl IntoIterator<Item = SelectOption<T>>) -> Self {
+        self.data_source = None;
+        self.children
+            .extend(options.into_iter().map(SelectChild::Option));
+        self
+    }
+
+    /// 使用外部惰性数据源。
+    ///
+    /// 调用后会清空此前通过 `option`、`group` 或 `items` 添加的 owned 数据。大型、分页、
+    /// 生成式和远程数据应使用此入口，并由数据源提供唯一性、定位、enabled navigation
+    /// 与 typeahead 索引。
+    pub fn data_source(mut self, source: Rc<dyn SelectDataSource<T>>) -> Self {
+        self.children.clear();
+        self.data_source = Some(source);
         self
     }
 
@@ -200,7 +224,7 @@ where
 
 impl<T> Changeable<T> for Select<T>
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
     fn on_change(self, handler: impl Fn(T, &mut Window, &mut App) + 'static) -> Self {
         Select::on_change(self, handler)
@@ -217,7 +241,7 @@ where
 
 impl<T> Disableable for Select<T>
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
     fn disabled(self, disabled: bool) -> Self {
         Select::disabled(self, disabled)
@@ -226,7 +250,7 @@ where
 
 impl<T> Sizable for Select<T>
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
     fn size(self, size: ComponentSize) -> Self {
         Select::size(self, size)
@@ -235,7 +259,7 @@ where
 
 impl<T> Focusable for Select<T>
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
     fn on_focus(self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         Select::on_focus(self, handler)
@@ -246,18 +270,6 @@ where
     }
 }
 
-#[derive(Clone)]
-struct OptionMetadata<T> {
-    id: ElementId,
-    value: T,
-    label: SharedString,
-    accessible_name: SharedString,
-    canonical: bool,
-    disabled: bool,
-    position: usize,
-    set_size: usize,
-}
-
 #[derive(Debug, PartialEq, Eq)]
 struct TriggerAccessibility {
     value: Option<SharedString>,
@@ -265,94 +277,40 @@ struct TriggerAccessibility {
 }
 
 fn trigger_accessibility<T>(
-    selected: Option<&OptionMetadata<T>>,
+    selected: Option<&SelectOption<T>>,
     placeholder: &SharedString,
 ) -> TriggerAccessibility {
     TriggerAccessibility {
-        value: selected.map(|option| option.accessible_name.clone()),
+        value: selected.map(SelectOption::accessible_label),
         placeholder: selected.is_none().then(|| placeholder.clone()),
     }
 }
 
-fn option_catalog<T: Clone + PartialEq>(children: &[SelectChild<T>]) -> Vec<OptionMetadata<T>> {
-    let set_size = children
-        .iter()
-        .map(|child| match child {
-            SelectChild::Option(_) => 1,
-            SelectChild::Group(group) => group.options.len(),
-        })
-        .sum();
-    let mut result: Vec<OptionMetadata<T>> = Vec::with_capacity(set_size);
-    for child in children {
-        match child {
-            SelectChild::Option(option) => {
-                push_option_metadata(&mut result, option, set_size);
-            }
-            SelectChild::Group(group) => {
-                for option in &group.options {
-                    push_option_metadata(&mut result, option, set_size);
-                }
-            }
-        }
-    }
-    result
-}
-
-fn push_option_metadata<T: Clone + PartialEq>(
-    result: &mut Vec<OptionMetadata<T>>,
-    option: &SelectOption<T>,
-    set_size: usize,
-) {
-    let canonical = !result
-        .iter()
-        .any(|previous| previous.id == option.id || previous.value == option.value);
-    result.push(OptionMetadata {
-        id: option.id.clone(),
-        value: option.value.clone(),
-        label: option.label.clone(),
-        accessible_name: option.accessible_label(),
-        canonical,
-        disabled: option.disabled || !canonical,
-        position: result.len(),
-        set_size,
-    });
-}
-
 impl<T> RenderOnce for Select<T>
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let resolved_size = self.size.unwrap_or_else(|| component_size(cx));
         let theme = theme::current_theme(window, cx);
         let size = theme.select_size(resolved_size.theme_size());
-        let catalog = option_catalog(&self.children);
-        let selected = self.selected_value.as_ref().and_then(|selected| {
-            catalog
-                .iter()
-                .find(|entry| entry.canonical && entry.value == *selected)
+        let source: Rc<dyn SelectDataSource<T>> = self
+            .data_source
+            .unwrap_or_else(|| Rc::new(OwnedSelectDataSource::from_children(self.children)));
+        let selected_index = self
+            .selected_value
+            .as_ref()
+            .and_then(|selected| source.index_of_value(selected));
+        let selected = selected_index.and_then(|index| match source.item(index) {
+            Some(SelectEntry::Option(option)) if option.canonical => Some(option),
+            _ => None,
         });
-        let selected_enabled_id = selected
-            .filter(|option| !option.disabled)
-            .map(|option| option.id.clone());
-        let snapshots = catalog
-            .iter()
-            .filter(|entry| entry.canonical)
-            .map(|entry| OptionSnapshot {
-                id: entry.id.clone(),
-                disabled: entry.disabled,
-                accessible_name: entry.accessible_name.clone(),
-            })
-            .collect::<Vec<_>>();
-        let canonical_values = if self.status.is_ready() {
-            catalog
-                .iter()
-                .filter(|entry| entry.canonical && !entry.disabled)
-                .map(|entry| (entry.id.clone(), entry.value.clone()))
-                .collect::<Vec<_>>()
-        } else {
-            Vec::new()
-        };
+        let selected_enabled_index = selected_index.filter(|index| {
+            matches!(
+                source.item(*index),
+                Some(SelectEntry::Option(option)) if option.canonical && !option.disabled
+            )
+        });
         let state = window.use_keyed_state(
             (self.id.clone(), "select-interaction"),
             cx,
@@ -360,10 +318,10 @@ where
         );
         state.update(cx, |state, cx| {
             state.reconcile(
-                snapshots,
+                source.as_ref(),
                 self.status.is_ready(),
                 !self.disabled,
-                selected_enabled_id.as_ref(),
+                selected_enabled_index,
                 cx,
             )
         });
@@ -388,9 +346,9 @@ where
             cx,
         );
         let is_open = state.read(cx).open;
-        let active_id = state.read(cx).active_id.clone();
+        let active_index = state.read(cx).active_index;
         let trigger_bounds = state.read(cx).trigger_bounds.clone();
-        let scroll_handle = state.read(cx).scroll_handle.clone();
+        let virtual_list = state.read(cx).virtual_list.clone();
         let trigger_states = ResolvedTriggerStates::new(&theme);
         let focus_width = theme.select.focus_width;
         let trigger_visible = if self.disabled {
@@ -400,8 +358,8 @@ where
         } else {
             trigger_states.normal
         };
-        let display_label = selected.map(|option| option.label.clone());
-        let trigger_accessibility = trigger_accessibility(selected, &self.placeholder);
+        let display_label = selected.as_ref().map(|option| option.label.clone());
+        let trigger_accessibility = trigger_accessibility(selected.as_ref(), &self.placeholder);
         let trigger_name = self
             .aria_label
             .clone()
@@ -450,9 +408,9 @@ where
             );
 
         let state_for_click = state.downgrade();
-        let selected_for_click = selected_enabled_id.clone();
+        let selected_for_click = selected_enabled_index;
         let authoritative_value = self.selected_value.clone();
-        let click_values = canonical_values;
+        let click_source = source.clone();
         let trigger_handler = self.on_change.clone();
         let click_focus = focus_handle.clone();
         let mut trigger = div()
@@ -510,12 +468,12 @@ where
                 .on_click(move |event, window, cx| {
                     let _ = state_for_click.update(cx, |state, cx| match event {
                         gpui::ClickEvent::Keyboard(_) if state.open => {
-                            let requested = state.submittable_active_id().and_then(|active| {
-                                click_values
-                                    .iter()
-                                    .find(|(id, _)| *id == active)
-                                    .map(|(_, value)| value.clone())
-                            });
+                            let requested = state
+                                .submittable_active_index(click_source.as_ref())
+                                .and_then(|index| match click_source.item(index) {
+                                    Some(SelectEntry::Option(option)) => Some(option.value),
+                                    _ => None,
+                                });
                             state.close(cx);
                             click_focus.focus(window, cx);
                             if let Some(requested) = requested
@@ -526,13 +484,25 @@ where
                             }
                         }
                         gpui::ClickEvent::Keyboard(_) => {
-                            state.open_with(selected_for_click.clone(), false, true, cx);
+                            state.open_with(
+                                click_source.as_ref(),
+                                selected_for_click,
+                                false,
+                                true,
+                                cx,
+                            );
                         }
                         gpui::ClickEvent::Mouse(_) | gpui::ClickEvent::Touch(_) => {
                             if state.open {
                                 state.close(cx);
                             } else {
-                                state.open_with(selected_for_click.clone(), false, false, cx);
+                                state.open_with(
+                                    click_source.as_ref(),
+                                    selected_for_click,
+                                    false,
+                                    true,
+                                    cx,
+                                );
                             }
                         }
                     });
@@ -541,25 +511,32 @@ where
         }
 
         let key_state = state.downgrade();
-        let key_selected = selected_enabled_id;
+        let key_selected = selected_enabled_index;
+        let key_source = source.clone();
         trigger = trigger.on_key_down(move |event: &KeyDownEvent, window, cx| {
-            handle_trigger_key(event, &key_state, key_selected.as_ref(), window, cx);
+            handle_trigger_key(
+                event,
+                &key_state,
+                key_source.as_ref(),
+                key_selected,
+                window,
+                cx,
+            );
         });
 
         if is_open {
             let popup_node_id = select_popup_node_id(self.id.clone(), window);
             let popup = render_popup(
-                self.children,
-                catalog,
+                source,
                 self.status,
                 self.selected_value,
-                active_id,
+                active_index,
                 state.clone(),
+                virtual_list,
                 focus_handle,
-                scroll_handle,
                 self.on_change,
                 size,
-                &theme,
+                theme.clone(),
                 trigger_bounds.clone(),
                 popup_name,
             );

@@ -2,6 +2,10 @@
 
 Vektra runtime assets live under the repository root `assets/` directory. `vektra-assets` provides a GPUI `AssetSource` and includes `themes/default/**/*` by default. With the `icons` feature enabled, it also includes the built-in SVG icons.
 
+## Icon performance contract
+
+Public `Icon` construction and size/color resolution are O(1). Vektra neither reads files nor parses SVG itself; paths are delegated to GPUI's resource and SVG cache, so Vektra must not reparse the same path every frame. Normal scale is 100 visible icons, with stress coverage for 100K same-path construction and 10K visible icons. GPUI owns different-path cache capacity and eviction; Vektra adds no unbounded parallel cache.
+
 ```toml
 [dependencies]
 vektra = { path = "crates/vektra" }

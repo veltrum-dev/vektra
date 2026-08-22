@@ -1,5 +1,7 @@
 # Scrollbar
 
+`ScrollArea` owns the scroll model, O(1) Scrollbar geometry, and interaction; it does not automatically virtualize an arbitrary fully built `Div`. Collections at 100K/1M scale must use [`VirtualList`](/en/components/virtual-list) and then reuse the same Always/Auto/Never, Overlay/Stable, wheel, keyboard, track, and thumb behavior.
+
 Scrollbar turns any GPUI `Div` into a scroll area with Vektra-drawn scrollbars. It needs no public `window`, `cx`, Root, or Provider. Configure layout and children first, then call `.scrollbar()`.
 
 ## Basic Usage
@@ -90,3 +92,9 @@ Vektra does not expose `window` or `cx` parameters. Keyed state inside the GPUI 
 - `Never` hides only Vektra's painted scrollbar. Native input and an external `ScrollHandle` can still scroll the content.
 - V1 intentionally has no `System` visibility mode. GPUI desktop backends do not currently expose one consistent, dependable system scrollbar preference, so that name would promise behavior the component cannot guarantee.
 - Treat `scrollbar()` as the final structural conversion after layout, size, children, and existing interactions. The returned `ScrollArea` exposes only explicit Scrollbar configuration.
+
+## Performance contract
+
+- Scrollbar geometry, track clicks, thumb dragging, and keyboard stepping are O(1), with constant-bounded interaction state and tasks.
+- ScrollArea does not virtualize caller children; 100K/1M eager children still form a full Element tree. Large collections must use [`VirtualList`](/en/components/virtual-list).
+- Geometry, first/steady layout+draw, and scroll updates are covered by `scrollbar` benchmarks.

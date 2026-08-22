@@ -2,8 +2,8 @@
 
 use crate::theme;
 use gpui::{
-    App, BorderStyle, Bounds, BoxShadow, Context, CursorStyle, DispatchPhase, Div, Element,
-    ElementId, Entity, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId,
+    AnyElement, App, BorderStyle, Bounds, BoxShadow, Context, CursorStyle, DispatchPhase, Div,
+    Element, ElementId, Entity, GlobalElementId, Hitbox, HitboxBehavior, InspectorElementId,
     InteractiveElement, IntoElement, KeyDownEvent, LayoutId, Modifiers, MouseButton,
     MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, Role, ScrollHandle,
     ScrollWheelEvent, SharedString, Stateful, StatefulInteractiveElement, Styled, Task, Window,
@@ -632,6 +632,210 @@ pub struct ScrollbarPrepaint {
     horizontal: Option<(AxisGeometry, Hitbox)>,
     viewport_bounds: Bounds<Pixels>,
     opacity: f32,
+}
+
+pub(crate) fn virtual_scroll_area(
+    id: impl Into<ElementId>,
+    child: AnyElement,
+    handle: ScrollHandle,
+    mut config: ScrollbarConfig,
+) -> impl IntoElement {
+    config.axis = ScrollAxis::Vertical;
+    VirtualScrollArea {
+        id: id.into(),
+        child: Some(child),
+        handle,
+        config,
+    }
+}
+
+pub(crate) fn handle_virtual_list_key(event: &KeyDownEvent, handle: &ScrollHandle) -> bool {
+    handle_scroll_key(event, ScrollAxis::Vertical, handle)
+}
+
+struct VirtualScrollArea {
+    id: ElementId,
+    child: Option<AnyElement>,
+    handle: ScrollHandle,
+    config: ScrollbarConfig,
+}
+
+struct VirtualScrollLayout {
+    child: AnyElement,
+    state: Entity<ScrollAreaState>,
+    tokens: ScrollbarTokens,
+}
+
+struct VirtualScrollPrepaint {
+    viewport_hitbox: Option<Hitbox>,
+    vertical: Option<(AxisGeometry, Hitbox)>,
+    viewport_bounds: Bounds<Pixels>,
+    opacity: f32,
+}
+
+impl IntoElement for VirtualScrollArea {
+    type Element = Self;
+
+    fn into_element(self) -> Self::Element {
+        self
+    }
+}
+
+impl Element for VirtualScrollArea {
+    type RequestLayoutState = VirtualScrollLayout;
+    type PrepaintState = VirtualScrollPrepaint;
+
+    fn id(&self) -> Option<ElementId> {
+        Some(self.id.clone())
+    }
+
+    fn source_location(&self) -> Option<&'static Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (LayoutId, Self::RequestLayoutState) {
+        let state =
+            window.use_keyed_state((self.id.clone(), "virtual-scrollbar-state"), cx, |_, _| {
+                ScrollAreaState::new()
+            });
+        let tokens = theme::current_theme(window, cx).scrollbar;
+        let mut child = self
+            .child
+            .take()
+            .expect("VirtualScrollArea 每帧只允许布局一次");
+        let layout_id = child.request_layout(window, cx);
+        (
+            layout_id,
+            VirtualScrollLayout {
+                child,
+                state,
+                tokens,
+            },
+        )
+    }
+
+    fn prepaint(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        layout: &mut Self::RequestLayoutState,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Self::PrepaintState {
+        layout.child.prepaint(window, cx);
+        let geometry = scrollbar_geometry(bounds, &self.handle, self.config.axis, layout.tokens);
+        let (paint_visible, opacity) = match self.config.visibility {
+            ScrollVisibility::Always => (true, 1.),
+            ScrollVisibility::Never => (false, 0.),
+            ScrollVisibility::Auto => {
+                let state = layout.state.read(cx);
+                (state.auto_visible, state.opacity)
+            }
+        };
+        let viewport_hitbox = (self.config.visibility != ScrollVisibility::Never)
+            .then(|| window.insert_hitbox(bounds, HitboxBehavior::Normal));
+        let vertical = geometry.vertical.filter(|_| paint_visible).map(|geometry| {
+            let hitbox = window.insert_hitbox(
+                geometry.track_bounds,
+                HitboxBehavior::BlockMouseExceptScroll,
+            );
+            (geometry, hitbox)
+        });
+        VirtualScrollPrepaint {
+            viewport_hitbox,
+            vertical,
+            viewport_bounds: bounds,
+            opacity,
+        }
+    }
+
+    fn paint(
+        &mut self,
+        _id: Option<&GlobalElementId>,
+        _inspector_id: Option<&InspectorElementId>,
+        _bounds: Bounds<Pixels>,
+        layout: &mut Self::RequestLayoutState,
+        prepaint: &mut Self::PrepaintState,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        layout.child.paint(window, cx);
+        if self.config.visibility == ScrollVisibility::Never {
+            layout
+                .state
+                .update(cx, |state, cx| state.reset_interaction(cx));
+        }
+        let (hovered_axis, hovered_thumb_axis, dragging_axis) = {
+            let state = layout.state.read(cx);
+            (
+                state.hovered_axis,
+                state.hovered_thumb_axis,
+                state.drag.map(|drag| drag.axis),
+            )
+        };
+        if let Some((geometry, hitbox)) = prepaint.vertical.as_ref() {
+            window.set_cursor_style(CursorStyle::Arrow, hitbox);
+            if track_is_visible(geometry.axis, hovered_axis, dragging_axis) {
+                window.paint_quad(quad(
+                    geometry.visual_track_bounds,
+                    layout.tokens.radius,
+                    layout.tokens.track.opacity(prepaint.opacity),
+                    Pixels::ZERO,
+                    gpui::transparent_black(),
+                    BorderStyle::default(),
+                ));
+            }
+            let thumb_color = if dragging_axis == Some(geometry.axis) {
+                layout.tokens.thumb_pressed
+            } else if hovered_thumb_axis == Some(geometry.axis) {
+                layout.tokens.thumb_hover
+            } else {
+                layout.tokens.thumb
+            };
+            let thumb_active =
+                hovered_thumb_axis == Some(geometry.axis) || dragging_axis == Some(geometry.axis);
+            let thumb_bounds = thumb_bounds_with_thickness(
+                *geometry,
+                if thumb_active {
+                    layout.tokens.thumb_hover_thickness
+                } else {
+                    layout.tokens.thickness
+                }
+                .min(layout.tokens.hit_thickness),
+            );
+            window.paint_quad(quad(
+                thumb_bounds,
+                pill_radius(thumb_bounds),
+                thumb_color.opacity(prepaint.opacity),
+                Pixels::ZERO,
+                gpui::transparent_black(),
+                BorderStyle::default(),
+            ));
+        }
+        register_scrollbar_events(
+            ScrollbarEventContext {
+                state: layout.state.clone(),
+                handle: self.handle.clone(),
+                visibility: self.config.visibility,
+                viewport_bounds: prepaint.viewport_bounds,
+                viewport_hitbox: prepaint.viewport_hitbox.clone(),
+                vertical: prepaint.vertical.clone(),
+                horizontal: None,
+                thumb_hover_thickness: layout
+                    .tokens
+                    .thumb_hover_thickness
+                    .min(layout.tokens.hit_thickness),
+            },
+            window,
+        );
+    }
 }
 
 impl Element for ScrollArea {

@@ -145,6 +145,14 @@ Light、Dark 与 System 通过当前主题解析边框、表面、文字、place
 
 自定义主题现在必须在 `ResolvedTheme::from_tokens` 构造阶段完整提供并验证所有 Input token；缺键、类型错误或无效引用会直接返回 `ThemeError`，不再从旧主题静默回退。迁移自定义主题时补齐四种 variant、七种 visual state 与四种 size，并把字符串访问改为不可失败的 `input_state(InputVariantKind, InputVisualState)` 和 `input_size(ThemeSize)`。
 
+## 性能契约
+
+- 正常规模：64KiB 与 1MiB；16MiB 为压力规模。
+- 64KiB 更新+绘制目标 ≤4ms，1MiB 目标 ≤16.67ms；16MiB 要求线性、无 OOM，不承诺单帧完成。
+- 程序化等规模替换会清空 undo/redo，显示文本使用 revision 绑定的共享缓存，不保留旧文本。
+- 等规模更新 allocated bytes 目标不超过输入大小 8 倍；当前未达标时以 [`PERFORMANCE.md`](https://github.com/veltrum-dev/vektra/blob/main/PERFORMANCE.md) 的实测差距为准。
+- 基准：`input/state`、`input/render`、`input/interaction_and_draw`；参见[基准指南](/guide/benchmarks)。
+
 ## 已知限制
 
 - 仅支持单行纯文本，不提供多行、Number、Date、Time、格式化模板或内建校验消息。

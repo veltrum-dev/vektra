@@ -6,7 +6,7 @@
 use crate::error::ThemeError;
 use gpui::{Hsla, Pixels, hsla, px};
 use serde_json::Value;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 /// DTCG token 类型。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -196,7 +196,7 @@ pub struct ResolvedToken {
 /// 已解析 token 集。
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ResolvedTokens {
-    tokens: BTreeMap<String, ResolvedToken>,
+    tokens: HashMap<String, ResolvedToken>,
 }
 
 impl ResolvedTokens {
@@ -247,35 +247,31 @@ pub fn parse_token_sets(sources: &[&str]) -> Result<ResolvedTokens, ThemeError> 
     for source in sources {
         let value: Value =
             serde_json::from_str(source).map_err(|err| ThemeError::Json(err.to_string()))?;
-        flatten_group(&value, None, &mut Vec::new(), &mut raw)?;
+        flatten_group(value, None, &mut Vec::new(), &mut raw)?;
     }
 
-    let mut resolved = BTreeMap::new();
-    let paths = raw.keys().cloned().collect::<Vec<_>>();
-    for path in paths {
-        let token = resolve_token(
-            &path,
-            &raw,
-            &mut Vec::new(),
-            &mut HashSet::new(),
-            &mut resolved,
-        )?;
-        resolved.insert(path, token);
+    let mut resolved = HashMap::with_capacity(raw.len());
+    let mut stack = Vec::new();
+    let mut visiting = HashSet::new();
+    for path in raw.keys() {
+        resolve_token(path, &raw, &mut stack, &mut visiting, &mut resolved)?;
     }
 
     Ok(ResolvedTokens { tokens: resolved })
 }
 
 fn flatten_group(
-    value: &Value,
+    value: Value,
     inherited_type: Option<TokenType>,
     path: &mut Vec<String>,
     raw: &mut HashMap<String, RawToken>,
 ) -> Result<(), ThemeError> {
-    let object = value.as_object().ok_or_else(|| ThemeError::InvalidValue {
-        path: path.join("."),
-        message: "group 必须是 JSON object".to_owned(),
-    })?;
+    let Value::Object(mut object) = value else {
+        return Err(ThemeError::InvalidValue {
+            path: path.join("."),
+            message: "group 必须是 JSON object".to_owned(),
+        });
+    };
 
     let local_type = object
         .get("$type")
@@ -284,7 +280,7 @@ fn flatten_group(
         .transpose()?
         .or(inherited_type);
 
-    if let Some(token_value) = object.get("$value") {
+    if let Some(token_value) = object.remove("$value") {
         let full_path = path.join(".");
         let token_type = local_type.ok_or_else(|| ThemeError::MissingType {
             path: full_path.clone(),
@@ -293,12 +289,13 @@ fn flatten_group(
             full_path,
             RawToken {
                 token_type,
-                value: token_value.clone(),
+                value: token_value,
                 description: object
-                    .get("$description")
+                    .remove("$description")
+                    .as_ref()
                     .and_then(Value::as_str)
                     .map(ToOwned::to_owned),
-                extensions: object.get("$extensions").cloned(),
+                extensions: object.remove("$extensions"),
             },
         );
         return Ok(());
@@ -308,7 +305,7 @@ fn flatten_group(
         if key.starts_with('$') {
             continue;
         }
-        path.push(key.clone());
+        path.push(key);
         flatten_group(child, local_type, path, raw)?;
         path.pop();
     }
@@ -316,30 +313,33 @@ fn flatten_group(
     Ok(())
 }
 
-fn resolve_token(
-    path: &str,
-    raw: &HashMap<String, RawToken>,
-    stack: &mut Vec<String>,
-    visiting: &mut HashSet<String>,
-    resolved: &mut BTreeMap<String, ResolvedToken>,
-) -> Result<ResolvedToken, ThemeError> {
-    if let Some(token) = resolved.get(path) {
-        return Ok(token.clone());
+fn resolve_token<'a>(
+    requested_path: &'a str,
+    raw: &'a HashMap<String, RawToken>,
+    stack: &mut Vec<&'a str>,
+    visiting: &mut HashSet<&'a str>,
+    resolved: &mut HashMap<String, ResolvedToken>,
+) -> Result<(), ThemeError> {
+    if resolved.contains_key(requested_path) {
+        return Ok(());
     }
 
-    if !visiting.insert(path.to_owned()) {
-        stack.push(path.to_owned());
+    let (canonical_path, token) =
+        raw.get_key_value(requested_path)
+            .ok_or_else(|| ThemeError::MissingReference {
+                path: requested_path.to_owned(),
+                reference: requested_path.to_owned(),
+            })?;
+    let path = canonical_path.as_str();
+
+    if !visiting.insert(path) {
+        stack.push(path);
         return Err(ThemeError::CircularReference {
             path: path.to_owned(),
             cycle: stack.join(" -> "),
         });
     }
-    stack.push(path.to_owned());
-
-    let token = raw.get(path).ok_or_else(|| ThemeError::MissingReference {
-        path: path.to_owned(),
-        reference: path.to_owned(),
-    })?;
+    stack.push(path);
 
     let value = if let Some(reference) = alias_reference(&token.value) {
         let target = raw
@@ -355,7 +355,10 @@ fn resolve_token(
                 found: target.token_type.as_str().to_owned(),
             });
         }
-        resolve_token(reference, raw, stack, visiting, resolved)?
+        resolve_token(reference, raw, stack, visiting, resolved)?;
+        resolved
+            .get(reference)
+            .expect("已成功解析的 alias target 必须存在")
             .value
             .clone()
     } else {
@@ -365,14 +368,16 @@ fn resolve_token(
     stack.pop();
     visiting.remove(path);
 
-    let resolved_token = ResolvedToken {
-        path: path.to_owned(),
-        value,
-        description: token.description.clone(),
-        extensions: token.extensions.clone(),
-    };
-    resolved.insert(path.to_owned(), resolved_token.clone());
-    Ok(resolved_token)
+    resolved.insert(
+        path.to_owned(),
+        ResolvedToken {
+            path: path.to_owned(),
+            value,
+            description: token.description.clone(),
+            extensions: token.extensions.clone(),
+        },
+    );
+    Ok(())
 }
 
 fn parse_value(path: &str, token_type: TokenType, value: &Value) -> Result<TokenValue, ThemeError> {

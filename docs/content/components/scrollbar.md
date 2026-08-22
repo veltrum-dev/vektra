@@ -1,5 +1,7 @@
 # Scrollbar
 
+`ScrollArea` 只负责滚动模型、O(1) Scrollbar geometry 和交互，不会把已经完整构建的任意 `Div` 自动虚拟化。100K/1M 集合必须使用 [`VirtualList`](/components/virtual-list)，再复用同一套 Always/Auto/Never、Overlay/Stable、滚轮、键盘、轨道与 thumb 交互。
+
 Scrollbar 把任意 GPUI `Div` 变成带 Vektra 自绘滚动条的滚动区域。它不要求 `window`、`cx`、Root 或 Provider；布局与子项先配置，最后调用 `.scrollbar()`。
 
 ## 基础用法
@@ -90,3 +92,9 @@ Vektra 不公开要求调用方传入的 `window` 或 `cx`。组件在 GPUI Elem
 - `Never` 只隐藏 Vektra 自绘滚动条，内容仍可通过原生滚动和外部 `ScrollHandle` 滚动。
 - V1 不提供 `System` 显隐策略：GPUI 各桌面后端当前没有一致且可依赖的系统 scrollbar 偏好接口，使用该名称会制造错误承诺。
 - `scrollbar()` 应作为布局、尺寸、子项和原有交互配置之后的最后一个结构转换调用；返回的 `ScrollArea` 只开放明确的 Scrollbar 配置。
+
+## 性能契约
+
+- Scrollbar geometry、轨道点击、thumb drag 和键盘步进为 O(1)，交互状态和 Task 数量有常数上界。
+- ScrollArea 不虚拟化调用方 children；100K/1M eager children 的成本属于完整 Element 树。大集合必须使用 [`VirtualList`](/components/virtual-list)。
+- geometry、首次/稳态布局绘制和滚动更新由 `scrollbar` benchmark 覆盖。

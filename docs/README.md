@@ -4,8 +4,8 @@
 
 ## 环境要求
 
-- Rust `1.95`，workspace 使用 edition 2024。
-- Bun `1.3.14`。
+- Rust `1.98.0`，workspace 使用 edition 2024。
+- Bun `1.4.0`。
 - Rust target：`wasm32-unknown-unknown`。
 - Trunk `0.21.14`。
 - 支持 WebGPU 的浏览器。

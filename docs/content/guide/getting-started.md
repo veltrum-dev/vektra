@@ -10,8 +10,8 @@ crates.io 上的 `vektra` 0.0.1 只用于保留项目名称，不包含当前组
 
 ## 环境要求
 
-- Rust workspace 使用 edition 2024，`rust-version` 为 `1.97.1`。
-- GPUI 依赖由仓库根 `Cargo.toml` 锁定到 Zed revision `87e698fb6fd09e69a16c66ae83060ac1e3af3fd6`。
+- Rust workspace 使用 edition 2024，`rust-version` 为 `1.98.0`。
+- GPUI 依赖由仓库根 `Cargo.toml` 锁定到 Zed revision `fd82517a115d97a07835b52f0512b22b38e38ccf`。
 - 文档预览的 Web 构建需要 `wasm32-unknown-unknown` target 和 Trunk `0.21.14`。
 - 文档站使用 Bun 管理前端依赖。
 
@@ -21,17 +21,17 @@ crates.io 上的 `vektra` 0.0.1 只用于保留项目名称，不包含当前组
 
 ```toml
 [dependencies]
-gpui = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6" }
+gpui = { git = "https://github.com/zed-industries/zed", rev = "fd82517a115d97a07835b52f0512b22b38e38ccf" }
 vektra = { git = "https://github.com/veltrum-dev/vektra.git" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6", features = ["font-kit"] }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "fd82517a115d97a07835b52f0512b22b38e38ccf", features = ["font-kit"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6", features = ["wayland", "x11"] }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "fd82517a115d97a07835b52f0512b22b38e38ccf", features = ["wayland", "x11"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "fd82517a115d97a07835b52f0512b22b38e38ccf" }
 ```
 
 `gpui` 与 `gpui_platform` 必须使用 Vektra 当前锁定的同一 revision。省略 `rev` 会让 Cargo 同时引入 Zed 最新提交与 Vektra 锁定提交，造成 GPUI 类型不兼容。

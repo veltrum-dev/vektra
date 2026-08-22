@@ -97,3 +97,9 @@ The default enter animation is about 120ms, fading in with roughly 2px of travel
 - No Root, Provider, global initialization, general Overlay, or public `Tooltipable` trait.
 - Due to a GPUI constraint, a window draws at most one Tooltip per frame; Vektra adds no global arbitration layer.
 - The host still maps real Tab/Shift+Tab keys to GPUI focus traversal.
+
+## Performance contract
+
+- Normal scale is 100 triggers; stress scale is 1K interactive triggers / 10K configured triggers.
+- Per-trigger state, placement, and paint are O(1). Delay/close/animation tasks have one owner, replacement cancels the prior task, and owner removal releases them.
+- 1K focus+delay+draw and 10K build coverage live in `coverage/tooltip_icon_focus` / `stress/coverage`; deterministic owner-removal tests gate lifetime release.

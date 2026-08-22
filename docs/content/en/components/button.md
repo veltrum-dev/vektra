@@ -191,3 +191,9 @@ Button uses the same GPUI component implementation on macOS, Windows, Linux, and
 - `Link` is link appearance with Button semantics; it does not become a navigation link.
 - Icon slots do not accept per-slot pixel sizes. The icon size comes from `ComponentSize`.
 - The preview requires browser WebGPU and the font asset provided by the docs preview host.
+
+## Performance contract
+
+- The standard load is 100 visible Buttons: ≤4ms steady redraw, ≤8.33ms for 10% update+draw, and ≤16.67ms for 100% update+draw.
+- Per-Button construction, state resolution, layout, and paint are O(1), with no unbounded cache. Loading tasks are keyed-state owned and released with their owner.
+- 10K/100K simultaneously visible leaves are handled by [`VirtualList`](/en/components/virtual-list), not promised by the leaf. See `component_wall` benchmarks.

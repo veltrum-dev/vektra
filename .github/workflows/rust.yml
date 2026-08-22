@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@1.97.1
+        uses: dtolnay/rust-toolchain@1.98.0
         with:
           components: rustfmt, clippy
 
@@ -38,6 +38,22 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace
+
+      - name: Smoke-test regular benchmark harnesses
+        run: cargo test --workspace --benches
+
+      - name: Check stress benchmark targets
+        run: |
+          cargo check -p vektra --bench scalability_stress --features stress-bench
+          cargo check -p vektra-theme --bench theme_stress --features stress-bench
+
+      - name: Validate performance budgets
+        run: python -m json.tool performance-budgets.json > /dev/null
+
+      - name: Run lazy materialization invariants
+        run: |
+          cargo test -p vektra --test virtual_list_behavior
+          cargo test -p vektra --test select_lazy_data_source
 
   select-platforms:
     name: Select behavior (${{ matrix.os }})
@@ -69,7 +85,7 @@ jobs:
             libxkbcommon-x11-dev
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@1.97.1
+        uses: dtolnay/rust-toolchain@1.98.0
 
       - name: Run Select behavior tests
         run: cargo test -p vektra --test select_behavior

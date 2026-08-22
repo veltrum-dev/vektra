@@ -10,7 +10,7 @@ use vektra::{
     SelectStatus, Sizable, ThemeMode, set_theme_mode,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Plan {
     Free,
     Team,
@@ -1220,7 +1220,10 @@ fn measured_page_navigation_skips_grouped_disabled_and_duplicate_options(cx: &mu
         cx.debug_bounds("vektra-select-option-duplicate-zero")
             .is_some()
     );
-    assert!(cx.debug_bounds("vektra-select-option-mixed-2").is_some());
+    assert!(
+        cx.debug_bounds("vektra-select-option-mixed-2").is_none(),
+        "虚拟 Popup 不应为视口外 option 创建 Element"
+    );
 
     key_down("pagedown", cx);
     key_cycle("enter", cx);

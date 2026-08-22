@@ -151,7 +151,7 @@ impl InputClear {
 
 #[derive(Clone)]
 struct EditSnapshot {
-    value: String,
+    value: SharedString,
     selection: Range<usize>,
     selection_reversed: bool,
 }
@@ -205,13 +205,20 @@ impl InputRuntime {
     }
 }
 
+fn normalize_shared_single_line(value: SharedString) -> SharedString {
+    if !value.as_bytes().contains(&b'\r') && !value.as_bytes().contains(&b'\n') {
+        return value;
+    }
+    normalize_single_line(&value).into()
+}
+
 /// 调用方持有的单行文本编辑状态。
 ///
 /// `InputState` 管理文本、UTF-8/UTF-16 索引、选区、IME marked range、撤销历史、
 /// 焦点、布局与水平滚动。required、错误消息、dirty、touched 等表单元数据应由未来的
 /// 外围表单容器持有，不属于本类型。
 pub struct InputState {
-    value: String,
+    value: SharedString,
     selection: Range<usize>,
     selection_reversed: bool,
     marked_range: Option<Range<usize>>,
@@ -240,7 +247,7 @@ pub struct InputState {
 impl InputState {
     /// 创建由调用方持有的 Input 编辑状态。
     pub fn new(initial_value: impl Into<SharedString>, cx: &mut Context<Self>) -> Self {
-        let value = normalize_single_line(initial_value.into().as_ref());
+        let value = normalize_shared_single_line(initial_value.into());
         let caret = value.len();
         Self {
             value,
@@ -284,7 +291,7 @@ impl InputState {
     /// 程序化同步边界。它会安全结束 IME 组合并把光标放在新值末尾；换行会转换为空格，
     /// 文本不会被 trim。
     pub fn set_value(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
-        let value = normalize_single_line(value.into().as_ref());
+        let value = normalize_shared_single_line(value.into());
         if self.value == value && self.marked_range.is_none() {
             return;
         }
@@ -311,7 +318,7 @@ impl InputState {
     ///
     /// 该操作不发送 [`InputEvent::Changed`]。
     pub fn reset(&mut self, value: impl Into<SharedString>, cx: &mut Context<Self>) {
-        self.value = normalize_single_line(value.into().as_ref());
+        self.value = normalize_shared_single_line(value.into());
         self.invalidate_display_cache();
         let caret = self.value.len();
         self.selection = caret..caret;
@@ -593,7 +600,7 @@ impl InputState {
         }
         self.push_undo(self.snapshot());
         self.redo_stack.clear();
-        self.value = next;
+        self.value = next.into();
         self.invalidate_display_cache();
         let caret = range.start + text.len();
         self.selection = caret..caret;
@@ -612,8 +619,7 @@ impl InputState {
     }
 
     fn emit_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let value: SharedString = self.value.clone().into();
-        self.emit_event(InputEvent::Changed(value), window, cx);
+        self.emit_event(InputEvent::Changed(self.value.clone()), window, cx);
     }
 
     fn emit_event(&mut self, event: InputEvent, window: &mut Window, cx: &mut Context<Self>) {
@@ -752,7 +758,7 @@ impl InputState {
         }
         if key == "enter" && plain_or_shift_modifiers(modifiers) {
             if self.marked_range.is_none() {
-                self.emit_event(InputEvent::Submitted(self.value.clone().into()), window, cx);
+                self.emit_event(InputEvent::Submitted(self.value.clone()), window, cx);
                 stop_key_event(window, cx);
             }
             return;
@@ -889,7 +895,7 @@ impl InputState {
         &self,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> (String, impl FnOnce(&mut A11ySubtreeBuilder) + 'static) {
+    ) -> (SharedString, impl FnOnce(&mut A11ySubtreeBuilder) + 'static) {
         let state = window.is_a11y_active().then(|| {
             let display = self.display_text();
             let selection = display.display_range(self.selection.clone());
@@ -946,7 +952,7 @@ impl InputState {
                     disabled,
                 )),
             ),
-            None => (String::new(), None),
+            None => (SharedString::default(), None),
         };
 
         let text_runs = move |builder: &mut A11ySubtreeBuilder| {
@@ -1047,7 +1053,7 @@ impl EntityInputHandler for InputState {
         let range = normalize_selection(&self.value, range);
         let text = normalize_single_line(text);
         let next = replace_text(&self.value, range.clone(), &text);
-        self.value = next;
+        self.value = next.into();
         self.invalidate_display_cache();
         let caret = range.start + text.len();
         self.selection = caret..caret;
@@ -1083,7 +1089,7 @@ impl EntityInputHandler for InputState {
             .unwrap_or_else(|| self.selection.clone());
         let range = normalize_selection(&self.value, range);
         let new_text = normalize_single_line(new_text);
-        self.value = replace_text(&self.value, range.clone(), &new_text);
+        self.value = replace_text(&self.value, range.clone(), &new_text).into();
         self.invalidate_display_cache();
         self.marked_range =
             (!new_text.is_empty()).then_some(range.start..range.start + new_text.len());
@@ -1112,7 +1118,7 @@ impl EntityInputHandler for InputState {
         let display = self.last_display.as_ref()?;
         if display != &current_display
             || line.len() != current_display.text.len()
-            || line.text.as_ref() != current_display.text
+            || line.text.as_ref() != current_display.text.as_ref()
         {
             return None;
         }

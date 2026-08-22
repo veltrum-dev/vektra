@@ -31,7 +31,7 @@ function normalizeBase(value: string | undefined): string {
 export default defineConfig({
   lang: "zh-CN",
   title: "Vektra",
-  description: "为 GPUI 打造的无侵入式组件",
+  description: "跨平台、高性能、可组合的纯 GPUI 组件库",
   base: normalizeBase(process.env.VEKTRA_DOCS_BASE),
   srcDir: "content",
   vite: {
@@ -43,7 +43,7 @@ export default defineConfig({
       lang: "zh-CN",
       link: "/",
       title: "Vektra",
-      description: "为 GPUI 打造的无侵入式组件",
+      description: "跨平台、高性能、可组合的纯 GPUI 组件库",
       themeConfig: zhThemeConfig()
     },
     en: {
@@ -51,7 +51,7 @@ export default defineConfig({
       lang: "en-US",
       link: "/en/",
       title: "Vektra",
-      description: "Non-invasive components for GPUI",
+      description: "Cross-platform, high-performance, composable pure GPUI components",
       themeConfig: enThemeConfig()
     }
   }
@@ -71,6 +71,8 @@ function zhThemeConfig(): DefaultTheme.Config {
         text: "指南",
         items: [
           { text: "快速开始", link: "/guide/getting-started" },
+          { text: "为什么 Vektra 快", link: "/guide/performance" },
+          { text: "性能基准", link: "/guide/benchmarks" },
           { text: "版本与发布", link: "/guide/versioning-and-releases" },
           { text: "资源与图标", link: "/guide/assets-and-icons" }
         ]
@@ -86,7 +88,8 @@ function zhThemeConfig(): DefaultTheme.Config {
           { text: "Input", link: "/components/input" },
           { text: "IconButton", link: "/components/icon-button" },
           { text: "Tooltip", link: "/components/tooltip" },
-          { text: "Scrollbar", link: "/components/scrollbar" }
+          { text: "Scrollbar", link: "/components/scrollbar" },
+          { text: "VirtualList", link: "/components/virtual-list" }
         ]
       },
       {
@@ -134,6 +137,8 @@ function enThemeConfig(): DefaultTheme.Config {
         text: "Guide",
         items: [
           { text: "Quick Start", link: "/en/guide/getting-started" },
+          { text: "Why Vektra is fast", link: "/en/guide/performance" },
+          { text: "Benchmarks", link: "/en/guide/benchmarks" },
           { text: "Versioning and Releases", link: "/en/guide/versioning-and-releases" },
           { text: "Assets and Icons", link: "/en/guide/assets-and-icons" }
         ]
@@ -149,7 +154,8 @@ function enThemeConfig(): DefaultTheme.Config {
           { text: "Input", link: "/en/components/input" },
           { text: "IconButton", link: "/en/components/icon-button" },
           { text: "Tooltip", link: "/en/components/tooltip" },
-          { text: "Scrollbar", link: "/en/components/scrollbar" }
+          { text: "Scrollbar", link: "/en/components/scrollbar" },
+          { text: "VirtualList", link: "/en/components/virtual-list" }
         ]
       },
       {

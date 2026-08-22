@@ -20,7 +20,7 @@ description: 用于在 Vektra 仓库中创建新的公开可见 GPUI 组件、�
 
 1. 读取仓库根 `Cargo.toml`、目标 crate 的 `Cargo.toml`、目标目录代码和相关测试，确认真实 workspace、feature、导出路径和局部风格。
 2. 检查现有组件是否已覆盖需求。当前基础组件包括 `crates/vektra/src/button.rs`、`crates/vektra/src/icon_button.rs`、`crates/vektra/src/icon.rs` 和主题 token。
-3. 确认锁定 GPUI revision。当前根 `Cargo.toml` 锁定 `gpui` 与 `gpui_platform` 到 Zed revision `82aef44308540b576e4e51fb379efa71614e5c91`；实现前必须用本地源码或最小编译验证确认 API。
+3. 确认锁定 GPUI revision。当前根 `Cargo.toml` 锁定 `gpui` 与 `gpui_platform` 到 Zed revision `fd82517a115d97a07835b52f0512b22b38e38ccf`；实现前必须用本地源码或最小编译验证确认 API。
 4. 如任务涉及 Web/WASM，检查锁定 GPUI 的 `gpui_platform::web_init`、`gpui_platform::single_threaded_web`、`gpui_web::WebPlatform` 和 `gpui_web/examples/hello_web/`。不要从旧示例或未锁定版本推断。
 
 ## 组件设计流程
@@ -37,6 +37,15 @@ description: 用于在 Vektra 仓库中创建新的公开可见 GPUI 组件、�
 5. 明确键盘、焦点、鼠标、主题、响应式、无障碍和跨平台语义。
 6. 明确测试、VitePress 文档、可编译 Rust 示例和 GPUI WASM 预览计划。
 7. 定义完成检查和验收命令。
+
+每个公开组件还必须在设计阶段回答：正常/较大/压力规模是什么，时间与内存复杂度是什么，
+是否需要统一惰性数据源，实际物化数量和缓存硬上限是什么，如何测量 CPU、时间、allocation、
+allocated bytes、RSS 与长期净内存，哪些平台已验证。缺少答案时不能标记完成。
+
+集合型组件只有一个惰性内核；Vec、数组、逐项 builder、生成式、分页和远程数据只能作为同一
+数据源协议的 adapter。Element、布局、prepaint、paint 与 AccessKit 必须只物化
+visible + bounded overdraw；禁止全量 Element/metadata、无界缓存、意外 O(n²) 和普通稳态帧
+中的全量 O(n) 处理。固定高度路径优先使用 count × height；可变高度索引必须公开成本。
 
 不要为了统一外观而过度抽象；只有至少两个组件共享相同语义和签名后，才提取新的共享能力。
 
@@ -76,6 +85,11 @@ description: 用于在 Vektra 仓库中创建新的公开可见 GPUI 组件、�
 - 对应 crate 独立 `tests/` 目录中的 API、事件、禁用状态、焦点和键盘行为测试。
 - `cargo fmt --all --check`、必要范围的 `cargo check`、`cargo clippy` 和 `cargo test` 结果。
 - VitePress 组件页面、实际参与 Cargo/WASM 编译的 Rust 示例、GPUI WASM demo 注册和可交互预览。
+- 支持虚拟渲染的组件必须把普通场景与明确标注的大数据场景放进该组件同一个 example 运行
+  入口；显示规模、生成式/分页来源、visible range、物化数量和缓存上限，且不得预构建百万项
+  `Vec`。例如 Select 的两类场景都由 `cargo run --example select` 展示，不另建 `select-large`。
+- 首次绘制、稳态重绘、交互+绘制、allocation/allocated bytes、CPU/RSS、物化上限、缓存上限
+  和长期净内存证据；预算和命令同步到性能文档。
 - Light/Dark/System、键盘与焦点、响应式、平台限制和已知限制说明。
 
 缺少文档或 WASM 预览时，公开可见组件不能标记为完成。无法支持 WASM 的组件必须在设计阶段提出平台例外，不能静默省略。

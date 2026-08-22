@@ -2,6 +2,14 @@
 
 Vektra 使用 GitHub Project、Issue 和 Milestone 分别管理长期路线、可执行能力和发布承诺。本政策说明版本号表达的承诺，以及工作如何进入一次发布。
 
+## Select 数据源迁移
+
+性能架构治理后，`Select<T>` 的约束由 `Clone + PartialEq` 收紧为
+`Clone + Eq + Hash + 'static`。业务 enum 通常只需增加 `#[derive(Eq, Hash)]`。逐项
+`.option()`、`.group()` 和 `.items()` 仍可使用，但现在通过 `OwnedSelectDataSource` 进入同一
+虚拟内核；百万级、分页或远程数据改用 `.data_source(Rc<dyn SelectDataSource<T>>)`，并实现
+key/value 定位、enabled navigation、typeahead 与 range request。
+
 ## `0.1.0` 的含义
 
 `0.1.0` 是 Vektra 首个功能完善、文档齐全并经过验证的公开版本。进入该版本的组件必须具备完整、可组合的公开 API，并覆盖适用的状态、键盘与焦点行为、无障碍语义、主题、文档、示例和确定性测试。

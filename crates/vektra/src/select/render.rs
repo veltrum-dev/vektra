@@ -1,14 +1,19 @@
-//! Select 的键盘分发、Popup、group 与 option 渲染。
+//! Select 的键盘分发与统一虚拟 Popup 渲染。
 
 use super::*;
+use crate::{ScrollAxis, ScrollbarConfig, VirtualListState};
+use std::{hash::Hash, sync::Arc};
 
-pub(super) fn handle_trigger_key(
+pub(super) fn handle_trigger_key<T>(
     event: &KeyDownEvent,
     state: &WeakEntity<SelectInteractionState>,
-    selected: Option<&ElementId>,
+    source: &dyn SelectDataSource<T>,
+    selected: Option<usize>,
     window: &mut Window,
     cx: &mut App,
-) {
+) where
+    T: Clone + Eq + Hash + 'static,
+{
     let modifiers = event.keystroke.modifiers;
     let key = event.keystroke.key.as_str();
     if key == "tab" && (modifiers == Modifiers::none() || modifiers == Modifiers::shift()) {
@@ -19,7 +24,7 @@ pub(super) fn handle_trigger_key(
     }
     if let Some(text) = typeahead_text(event) {
         let handled = state
-            .update(cx, |state, cx| state.typeahead(&text, cx))
+            .update(cx, |state, cx| state.typeahead(source, &text, cx))
             .unwrap_or(false);
         if handled {
             window.prevent_default();
@@ -34,19 +39,19 @@ pub(super) fn handle_trigger_key(
     let handled = state
         .update(cx, |state, cx| match (state.open, key) {
             (false, "down") => {
-                state.open_with(selected.cloned(), false, true, cx);
+                state.open_with(source, selected, false, true, cx);
                 true
             }
             (false, "up") => {
-                state.open_with(selected.cloned(), true, true, cx);
+                state.open_with(source, selected, true, true, cx);
                 true
             }
-            (true, "down") => state.move_active(ActiveMovement::Next, cx),
-            (true, "up") => state.move_active(ActiveMovement::Previous, cx),
-            (true, "home") => state.move_active(ActiveMovement::First, cx),
-            (true, "end") => state.move_active(ActiveMovement::Last, cx),
-            (true, "pageup") => state.move_active(ActiveMovement::PagePrevious, cx),
-            (true, "pagedown") => state.move_active(ActiveMovement::PageNext, cx),
+            (true, "down") => state.move_active(source, ActiveMovement::Next, cx),
+            (true, "up") => state.move_active(source, ActiveMovement::Previous, cx),
+            (true, "home") => state.move_active(source, ActiveMovement::First, cx),
+            (true, "end") => state.move_active(source, ActiveMovement::Last, cx),
+            (true, "pageup") => state.move_active(source, ActiveMovement::PagePrevious, cx),
+            (true, "pagedown") => state.move_active(source, ActiveMovement::PageNext, cx),
             (true, "escape") => state.close(cx),
             _ => false,
         })
@@ -99,88 +104,74 @@ impl ResolvedTriggerStates {
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn render_popup<T>(
-    children: Vec<SelectChild<T>>,
-    catalog: Vec<OptionMetadata<T>>,
+    source: Rc<dyn SelectDataSource<T>>,
     status: SelectStatus,
     selected_value: Option<T>,
-    active_id: Option<ElementId>,
+    active_index: Option<usize>,
     state: Entity<SelectInteractionState>,
+    virtual_list: VirtualListState,
     focus_handle: gpui::FocusHandle,
-    scroll_handle: ScrollHandle,
     on_change: Option<ChangeHandler<T>>,
     size: SelectSizeTokens,
-    theme: &ResolvedTheme,
+    theme: Arc<ResolvedTheme>,
     trigger_bounds_cell: Rc<Cell<Bounds<Pixels>>>,
     popup_name: SharedString,
 ) -> impl IntoElement
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
     let outside_state = state.downgrade();
-    let mut content = div().flex().flex_col().p(theme.select.popup_padding);
-    if status.is_ready() {
-        let mut metadata = catalog.into_iter();
-        for child in children {
-            match child {
-                SelectChild::Option(option) => {
-                    let metadata = metadata
-                        .next()
-                        .expect("Select catalog 必须与渲染 option 一一对应");
-                    content = content.child(render_option(
+    let content = if status.is_ready() {
+        let row_height = size.option_padding_y * 2.
+            + size.line_height
+            + size.description_line_height.max(size.group_padding_y * 2.);
+        let render_source = source.clone();
+        let render_state = state.clone();
+        let render_focus = focus_handle.clone();
+        let render_theme = theme.clone();
+        let option_count = source.option_count();
+        div().flex_1().min_h_0().child(
+            VirtualList::from_data_source(
+                "vektra-select-virtual-list",
+                virtual_list,
+                source,
+                row_height,
+                move |index, entry, _, _| match entry {
+                    Some(SelectEntry::Option(option)) => render_option(
+                        index,
+                        render_source.option_position(index).unwrap_or(index),
+                        option_count,
                         option,
-                        metadata,
                         selected_value.as_ref(),
-                        active_id.as_ref(),
-                        &state,
-                        &focus_handle,
+                        active_index,
+                        render_source.clone(),
+                        &render_state,
+                        &render_focus,
                         on_change.clone(),
-                        &scroll_handle,
                         size,
-                        theme,
-                    ));
-                }
-                SelectChild::Group(group) => {
-                    let group_label = group.accessible_label();
-                    let mut group_element = div()
-                        .id(group.id.clone())
-                        .debug_selector(|| "vektra-select-group".into())
-                        .role(Role::Group)
-                        .aria_label(group_label)
-                        .flex()
-                        .flex_col()
-                        .child(
-                            div()
-                                .id((group.id.clone(), "label"))
-                                .debug_selector(|| "vektra-select-group-label".into())
-                                .role(Role::Label)
-                                .px(size.option_padding_x)
-                                .py(size.group_padding_y)
-                                .text_size(size.description_font_size)
-                                .line_height(size.description_line_height)
-                                .text_color(theme.select.group_label)
-                                .child(group.label),
-                        );
-                    for option in group.options {
-                        let metadata = metadata
-                            .next()
-                            .expect("Select catalog 必须与分组 option 一一对应");
-                        group_element = group_element.child(render_option(
-                            option,
-                            metadata,
-                            selected_value.as_ref(),
-                            active_id.as_ref(),
-                            &state,
-                            &focus_handle,
-                            on_change.clone(),
-                            &scroll_handle,
-                            size,
-                            theme,
-                        ));
+                        &render_theme,
+                    )
+                    .into_any_element(),
+                    Some(SelectEntry::Group(group)) => {
+                        render_group(group, size, &render_theme).into_any_element()
                     }
-                    content = content.child(group_element);
-                }
-            }
-        }
+                    None => div()
+                        .id(("vektra-select-loading-row", index))
+                        .role(Role::Status)
+                        .aria_label("正在加载选项")
+                        .w_full()
+                        .h_full()
+                        .flex()
+                        .items_center()
+                        .px(size.option_padding_x)
+                        .text_color(render_theme.select.status_loading)
+                        .child("…")
+                        .into_any_element(),
+                },
+            )
+            .aria_label("选项列表")
+            .scrollbar(ScrollbarConfig::default().axis(ScrollAxis::Vertical)),
+        )
     } else {
         let (message, color, role, marker) = match status {
             SelectStatus::Loading(message) => {
@@ -190,22 +181,26 @@ where
             SelectStatus::Error(message) => (message, theme.select.status_error, Role::Alert, "!"),
             SelectStatus::Ready => unreachable!(),
         };
-        content = content.child(
-            div()
-                .id("vektra-select-status")
-                .debug_selector(|| "vektra-select-status".into())
-                .role(role)
-                .aria_label(message.clone())
-                .flex()
-                .items_center()
-                .gap(size.content_gap)
-                .px(size.option_padding_x)
-                .py(size.option_padding_y)
-                .text_color(color)
-                .child(marker)
-                .child(message),
-        );
-    }
+        div()
+            .flex_1()
+            .min_h_0()
+            .p(theme.select.popup_padding)
+            .child(
+                div()
+                    .id("vektra-select-status")
+                    .debug_selector(|| "vektra-select-status".into())
+                    .role(role)
+                    .aria_label(message.clone())
+                    .flex()
+                    .items_center()
+                    .gap(size.content_gap)
+                    .px(size.option_padding_x)
+                    .py(size.option_padding_y)
+                    .text_color(color)
+                    .child(marker)
+                    .child(message),
+            )
+    };
 
     let popup = div()
         .id("vektra-select-popup")
@@ -214,6 +209,7 @@ where
         .aria_label(popup_name)
         .occlude()
         .w_full()
+        .h_full()
         .max_h_full()
         .flex()
         .flex_col()
@@ -238,37 +234,54 @@ where
                 state.close(cx);
             });
         })
-        .child(
-            content
-                .flex_1()
-                .min_h_0()
-                .vertical_scrollbar_for(&scroll_handle)
-                .scrollbar_id("vektra-select-scroll")
-                .scrollbar_aria_label("选项列表"),
-        );
+        .child(content);
 
     DisabledA11y::new(popup, false, None, None)
 }
 
+fn render_group(
+    group: SelectGroupHeader,
+    size: SelectSizeTokens,
+    theme: &ResolvedTheme,
+) -> impl IntoElement {
+    let group_label = group.accessible_label();
+    div()
+        .id(group.id)
+        .debug_selector(|| "vektra-select-group".into())
+        .role(Role::Group)
+        .aria_label(group_label)
+        .w_full()
+        .h_full()
+        .flex()
+        .items_center()
+        .px(size.option_padding_x)
+        .text_size(size.description_font_size)
+        .line_height(size.description_line_height)
+        .text_color(theme.select.group_label)
+        .child(group.label)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn render_option<T>(
+    index: usize,
+    position: usize,
+    set_size: usize,
     option: SelectOption<T>,
-    metadata: OptionMetadata<T>,
     selected_value: Option<&T>,
-    active_id: Option<&ElementId>,
+    active_index: Option<usize>,
+    source: Rc<dyn SelectDataSource<T>>,
     state: &Entity<SelectInteractionState>,
     focus_handle: &gpui::FocusHandle,
     on_change: Option<ChangeHandler<T>>,
-    scroll_handle: &ScrollHandle,
     size: SelectSizeTokens,
     theme: &ResolvedTheme,
 ) -> impl IntoElement
 where
-    T: Clone + PartialEq + 'static,
+    T: Clone + Eq + Hash + 'static,
 {
-    let disabled = metadata.disabled;
-    let selected = metadata.canonical && selected_value == Some(&metadata.value);
-    let active = metadata.canonical && active_id == Some(&metadata.id) && !disabled;
+    let disabled = option.disabled || !option.canonical;
+    let selected = option.canonical && selected_value == Some(&option.value);
+    let active = option.canonical && active_index == Some(index) && !disabled;
     let visible = if disabled {
         theme.select_option_state(SelectOptionState::Disabled)
     } else if active {
@@ -279,16 +292,10 @@ where
         theme.select_option_state(SelectOptionState::Normal)
     };
     let hover = theme.select_option_state(SelectOptionState::Hover);
-    let id = metadata.id.clone();
-    let debug_id = metadata.id.clone();
-    let accessible_label = metadata.accessible_name.clone();
+    let debug_id = option.id.clone();
+    let accessible_label = option.accessible_label();
     let accessible_description = option.accessible_description();
-    let value = metadata.value.clone();
-    let scroll_request = ScrollRequest {
-        state: state.downgrade(),
-        id: id.clone(),
-        handle: scroll_handle.clone(),
-    };
+    let value = option.value.clone();
 
     let mut element = div()
         .id(option.id)
@@ -296,19 +303,19 @@ where
         .role(Role::ListBoxOption)
         .aria_label(accessible_label)
         .aria_selected(selected)
-        .aria_position_in_set(metadata.position + 1)
-        .aria_size_of_set(metadata.set_size)
+        .aria_position_in_set(position + 1)
+        .aria_size_of_set(set_size)
         .when_some(accessible_description, |element, description| {
             element.aria_description(description)
         })
         .when(active, |element| element.aria_active_descendant())
         .w_full()
+        .h_full()
         .min_w_0()
         .flex()
         .items_center()
         .gap(size.content_gap)
         .px(size.option_padding_x)
-        .py(size.option_padding_y)
         .rounded(size.radius)
         .bg(visible.background)
         .text_color(visible.foreground)
@@ -367,18 +374,20 @@ where
                 }),
         );
     if disabled {
-        return DisabledA11y::new(element, true, None, Some(scroll_request));
+        return DisabledA11y::new(element, true, None, None);
     }
 
     let hover_state = state.downgrade();
-    let hover_id = id.clone();
+    let hover_source = source.clone();
     element = element.on_hover(move |hovered, _, cx| {
         if *hovered {
-            let _ = hover_state.update(cx, |state, cx| state.set_hovered(hover_id.clone(), cx));
+            let _ = hover_state.update(cx, |state, cx| {
+                state.set_hovered(hover_source.as_ref(), index, cx)
+            });
         }
     });
     let click_state = state.downgrade();
-    let click_id = id.clone();
+    let click_source = source;
     let click_focus = focus_handle.clone();
     let current = selected_value.cloned();
     element = element
@@ -386,7 +395,7 @@ where
         .on_click(move |_, window, cx| {
             let can_submit = click_state
                 .update(cx, |state, cx| {
-                    let can_submit = state.can_submit(&click_id);
+                    let can_submit = state.can_submit(click_source.as_ref(), index);
                     if can_submit {
                         state.close(cx);
                     }
@@ -404,5 +413,5 @@ where
             }
             cx.stop_propagation();
         });
-    DisabledA11y::new(element, false, None, Some(scroll_request))
+    DisabledA11y::new(element, false, None, None)
 }

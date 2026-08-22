@@ -78,7 +78,7 @@ impl Element for InputTextElement {
                 state.runtime.read_only,
             )
         };
-        let content = SharedString::from(display.text.clone());
+        let content = display.text.clone();
         let is_placeholder = content.is_empty();
         let display_text = if is_placeholder {
             self.placeholder.clone()

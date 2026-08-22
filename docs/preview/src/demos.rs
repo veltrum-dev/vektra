@@ -7,6 +7,7 @@ mod scrollbar;
 mod select;
 mod switch;
 mod tooltip;
+mod virtual_list;
 
 use gpui::{
     AnyElement, App, Context, FocusHandle, InteractiveElement, IntoElement, KeyBinding,
@@ -74,6 +75,7 @@ pub(crate) enum DemoSelection {
     TooltipComprehensive,
     ScrollbarBasic,
     ScrollbarConfiguration,
+    VirtualListBasic,
     Unknown(String),
 }
 
@@ -130,6 +132,7 @@ impl DemoSelection {
         "tooltip/lifecycle",
         "scrollbar/basic",
         "scrollbar/configuration",
+        "virtual-list/basic",
     ];
     pub(crate) const ALL_IDS: &'static [&'static str] = &[
         "button/basic",
@@ -188,6 +191,7 @@ impl DemoSelection {
         "tooltip/comprehensive",
         "scrollbar/basic",
         "scrollbar/configuration",
+        "virtual-list/basic",
     ];
 
     fn from_demo_id(demo_id: Option<&str>) -> Self {
@@ -249,6 +253,7 @@ impl DemoSelection {
             Some("tooltip/comprehensive") => Self::TooltipComprehensive,
             Some("scrollbar/basic") => Self::ScrollbarBasic,
             Some("scrollbar/configuration") => Self::ScrollbarConfiguration,
+            Some("virtual-list/basic") => Self::VirtualListBasic,
             Some(value) => Self::Unknown(value.to_owned()),
         }
     }
@@ -311,6 +316,7 @@ impl DemoSelection {
             Self::TooltipComprehensive => "tooltip/comprehensive",
             Self::ScrollbarBasic => "scrollbar/basic",
             Self::ScrollbarConfiguration => "scrollbar/configuration",
+            Self::VirtualListBasic => "virtual-list/basic",
             Self::Unknown(value) => value,
         }
     }
@@ -389,6 +395,7 @@ pub(crate) struct PreviewApp {
     input_basic_demo: input::InputBasicDemo,
     input_demo: input::InputDemo,
     scrollbar_demo: scrollbar::ScrollbarDemo,
+    virtual_list_demo: virtual_list::VirtualListDemo,
     focus_status: gpui::SharedString,
     focus_handle: FocusHandle,
 }
@@ -426,6 +433,7 @@ impl PreviewApp {
             input_basic_demo: input::InputBasicDemo::new(cx),
             input_demo: input::InputDemo::new(cx),
             scrollbar_demo: scrollbar::ScrollbarDemo::new(),
+            virtual_list_demo: virtual_list::VirtualListDemo::new(),
             focus_status: language.no_recent_focus().into(),
             focus_handle,
         }
@@ -688,6 +696,10 @@ impl Render for PreviewApp {
             DemoSelection::ScrollbarConfiguration => self
                 .scrollbar_demo
                 .render_configuration(self.language, window, cx)
+                .into_any_element(),
+            DemoSelection::VirtualListBasic => self
+                .virtual_list_demo
+                .render(self.language, window, cx)
                 .into_any_element(),
             DemoSelection::Unknown(demo_id) => {
                 render_unknown_demo(demo_id, self.language, window, cx).into_any_element()

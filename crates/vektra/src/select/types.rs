@@ -46,6 +46,7 @@ impl SelectStatus {
 /// `id` 与 `value` 在同一个 Select 中都应唯一。若出现重复，Select 按输入顺序只把
 /// 第一个同时拥有未重复 ID 与未重复值的项作为 canonical option；后续冲突项仍可见，
 /// 但按禁用项处理，不会形成第二个选中视觉或重复变化回调。
+#[derive(Clone)]
 pub struct SelectOption<T> {
     pub(super) id: ElementId,
     pub(super) value: T,
@@ -55,6 +56,7 @@ pub struct SelectOption<T> {
     pub(super) aria_label: Option<SharedString>,
     pub(super) aria_description: Option<SharedString>,
     pub(super) disabled: bool,
+    pub(super) canonical: bool,
 }
 
 impl<T> SelectOption<T> {
@@ -69,6 +71,7 @@ impl<T> SelectOption<T> {
             aria_label: None,
             aria_description: None,
             disabled: false,
+            canonical: true,
         }
     }
 
@@ -120,6 +123,42 @@ impl<T> SelectOption<T> {
     }
 }
 
+/// 惰性 Select 数据源中的分组标题行。
+#[derive(Clone)]
+pub struct SelectGroupHeader {
+    pub(super) id: ElementId,
+    pub(super) label: SharedString,
+    pub(super) aria_label: Option<SharedString>,
+}
+
+impl SelectGroupHeader {
+    /// 创建稳定分组标题行。
+    pub fn new(id: impl Into<ElementId>, label: impl Into<SharedString>) -> Self {
+        Self {
+            id: id.into(),
+            label: label.into(),
+            aria_label: None,
+        }
+    }
+
+    /// 覆盖辅助技术使用的分组名称。
+    pub fn aria_label(mut self, label: impl Into<SharedString>) -> Self {
+        self.aria_label = Some(label.into());
+        self
+    }
+
+    /// 返回分组标题的稳定标识。
+    pub fn id(&self) -> &ElementId {
+        &self.id
+    }
+
+    pub(super) fn accessible_label(&self) -> SharedString {
+        self.aria_label
+            .clone()
+            .unwrap_or_else(|| self.label.clone())
+    }
+}
+
 impl<T> Disableable for SelectOption<T> {
     fn disabled(self, disabled: bool) -> Self {
         SelectOption::disabled(self, disabled)
@@ -160,12 +199,6 @@ impl<T> SelectGroup<T> {
     /// 返回 group 的稳定标识。
     pub fn id(&self) -> &ElementId {
         &self.id
-    }
-
-    pub(super) fn accessible_label(&self) -> SharedString {
-        self.aria_label
-            .clone()
-            .unwrap_or_else(|| self.label.clone())
     }
 }
 

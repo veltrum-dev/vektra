@@ -14,6 +14,9 @@
 | `Icon`, `IconSource`, `IntoIconSource`, `IconName` | 图标与资源来源；`IntoIconSource` 同名导出包含 trait 与 derive macro，`IconName` 需要 `icons` feature |
 | `Tooltip`, `TooltipPlacement` | [Tooltip 组件](/components/tooltip) |
 | `ScrollArea`, `ScrollAxis`, `ScrollVisibility`, `ScrollGutter`, `ScrollbarConfig`, `ScrollableExt` | [Scrollbar 组件](/components/scrollbar) |
+| `VirtualList`, `VirtualListState`, `VirtualListMetrics` | [固定行高虚拟列表](/components/virtual-list) |
+| `LazyDataSource`, `OwnedDataSource` | 集合组件共享的惰性协议与 owned adapter |
+| `Select`, `SelectOption`, `SelectGroup`, `SelectGroupHeader`, `SelectEntry`, `SelectDataSource`, `OwnedSelectDataSource`, `SelectStatus` | [Select 组件与统一数据源](/components/select) |
 | `Changeable`, `Clickable`, `Focusable`, `Disableable`, `Sizable` | [能力 traits](/api/) |
 
 ## 主题、尺寸与资源

@@ -1,4 +1,5 @@
 use super::*;
+use crate::LazyDataSource as _;
 use gpui::{
     Context, Element, ElementId, InteractiveElement, IntoElement, Render, Role, Window, div,
 };
@@ -11,7 +12,7 @@ impl Render for EmptyView {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 enum Value {
     A,
     B,
@@ -35,14 +36,26 @@ fn duplicate_ids_and_values_use_first_canonical_option() {
         ),
         SelectChild::Option(option("e", Value::C, false)),
     ];
-    let flat = option_catalog(&children);
+    let source = OwnedSelectDataSource::from_children(children);
+    let flat = (0..source.item_count())
+        .filter_map(|index| match source.item(index) {
+            Some(SelectEntry::Option(option)) => Some((index, option)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
     assert_eq!(
-        flat.iter().map(|entry| entry.canonical).collect::<Vec<_>>(),
+        flat.iter()
+            .map(|(_, entry)| entry.canonical)
+            .collect::<Vec<_>>(),
         [true, false, false, true, true]
     );
     assert_eq!(
         flat.iter()
-            .map(|entry| (entry.position, entry.set_size, entry.disabled))
+            .map(|(index, entry)| (
+                source.option_position(*index).unwrap(),
+                source.option_count(),
+                entry.disabled,
+            ))
             .collect::<Vec<_>>(),
         [
             (0, 5, false),
@@ -65,11 +78,9 @@ fn trigger_placeholder_is_not_duplicated_as_an_accessibility_value() {
         }
     );
 
-    let catalog = option_catalog(&[SelectChild::Option(
-        SelectOption::new("pro", Value::C, "专业版").aria_label("专业方案"),
-    )]);
+    let option = SelectOption::new("pro", Value::C, "专业版").aria_label("专业方案");
     assert_eq!(
-        trigger_accessibility(catalog.first(), &placeholder),
+        trigger_accessibility(Some(&option), &placeholder),
         TriggerAccessibility {
             value: Some("专业方案".into()),
             placeholder: None,
@@ -79,39 +90,11 @@ fn trigger_placeholder_is_not_duplicated_as_an_accessibility_value() {
 
 #[test]
 fn removed_active_prefers_same_position_then_previous() {
-    let previous = vec![
-        OptionSnapshot {
-            id: "a".into(),
-            disabled: false,
-            accessible_name: "a".into(),
-        },
-        OptionSnapshot {
-            id: "b".into(),
-            disabled: false,
-            accessible_name: "b".into(),
-        },
-        OptionSnapshot {
-            id: "c".into(),
-            disabled: false,
-            accessible_name: "c".into(),
-        },
-    ];
-    let next = vec![
-        OptionSnapshot {
-            id: "a".into(),
-            disabled: false,
-            accessible_name: "a".into(),
-        },
-        OptionSnapshot {
-            id: "c".into(),
-            disabled: false,
-            accessible_name: "c".into(),
-        },
-    ];
-    assert_eq!(
-        reconciled_active_id(&previous, &next, Some(&ElementId::from("b"))),
-        Some(ElementId::from("c"))
-    );
+    let next = OwnedSelectDataSource::from_options(vec![
+        option("a", Value::A, false),
+        option("c", Value::C, false),
+    ]);
+    assert_eq!(reconciled_active_index(&next, Some(1)), Some(1));
 }
 
 #[test]

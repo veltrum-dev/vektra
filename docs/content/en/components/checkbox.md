@@ -101,3 +101,9 @@ Checkbox normal, hover, pressed, focus-visible, checked, mixed, and disabled sta
 - The first label API accepts plain text only.
 - There is no uncontrolled state, `default_checked`, validation, error message, or FormControl API.
 - Custom icons are visual only and do not create extra accessible names.
+
+## Performance contract
+
+- The standard load is 100 visible Checkboxes; construction, state resolution, layout, and paint are O(1).
+- No row cache, history, or background task is retained. Keyed focus/subscription count must remain stable across warm rerenders.
+- Use [`VirtualList`](/en/components/virtual-list) for 10K/100K data; leaf-wall coverage lives in `component_wall`.

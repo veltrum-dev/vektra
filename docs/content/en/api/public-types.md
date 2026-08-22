@@ -14,6 +14,9 @@
 | `Icon`, `IconSource`, `IntoIconSource`, `IconName` | Icons and asset sources; the same-name `IntoIconSource` exports include the trait and derive macro, while `IconName` requires the `icons` feature |
 | `Tooltip`, `TooltipPlacement` | [Tooltip component](/en/components/tooltip) |
 | `ScrollArea`, `ScrollAxis`, `ScrollVisibility`, `ScrollGutter`, `ScrollbarConfig`, `ScrollableExt` | [Scrollbar component](/en/components/scrollbar) |
+| `VirtualList`, `VirtualListState`, `VirtualListMetrics` | [Fixed-height virtual list](/en/components/virtual-list) |
+| `LazyDataSource`, `OwnedDataSource` | Shared lazy collection protocol and owned adapter |
+| `Select`, `SelectOption`, `SelectGroup`, `SelectGroupHeader`, `SelectEntry`, `SelectDataSource`, `OwnedSelectDataSource`, `SelectStatus` | [Select and its unified data source](/en/components/select) |
 | `Changeable`, `Clickable`, `Focusable`, `Disableable`, `Sizable` | [Capability traits](/en/api/) |
 
 ## Theme, Size, and Assets

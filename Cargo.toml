@@ -12,12 +12,14 @@ resolver = "3"
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.97.1"
+rust-version = "1.98.0"
 
 [workspace.dependencies]
-gpui = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6" }
-gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6", package = "gpui_platform" }
-gpui_web = { git = "https://github.com/zed-industries/zed", rev = "87e698fb6fd09e69a16c66ae83060ac1e3af3fd6", default-features = false }
+allocation-counter = "0.8.1"
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+gpui = { git = "https://github.com/zed-industries/zed", rev = "fd82517a115d97a07835b52f0512b22b38e38ccf" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "fd82517a115d97a07835b52f0512b22b38e38ccf", package = "gpui_platform" }
+gpui_web = { git = "https://github.com/zed-industries/zed", rev = "fd82517a115d97a07835b52f0512b22b38e38ccf", default-features = false }
 heck = "0.5"
 proc-macro-crate = "3"
 proc-macro2 = "1"

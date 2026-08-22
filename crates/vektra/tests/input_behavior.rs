@@ -874,6 +874,8 @@ fn clear_is_one_user_change_and_restores_editor_focus(cx: &mut TestAppContext) {
     });
     draw(cx);
     focus_editor(&view, cx);
+    cx.run_until_parked();
+    draw(cx);
 
     let clear_bounds = cx.debug_bounds("vektra-input-clear").unwrap();
     assert_eq!(clear_bounds.size.width, px(24.));

@@ -2,18 +2,11 @@
 
 use super::*;
 
-pub(super) struct ScrollRequest {
-    pub(super) state: WeakEntity<SelectInteractionState>,
-    pub(super) id: ElementId,
-    pub(super) handle: ScrollHandle,
-}
-
 /// 为锁定 GPUI 高层元素尚未暴露的 AccessKit disabled 属性提供私有委托层。
 pub(super) struct DisabledA11y {
     inner: Stateful<Div>,
     disabled: bool,
     measured_bounds: Option<Rc<Cell<Bounds<Pixels>>>>,
-    scroll_request: Option<ScrollRequest>,
     controlled_node_id: Option<gpui::accesskit::NodeId>,
 }
 
@@ -22,13 +15,12 @@ impl DisabledA11y {
         inner: Stateful<Div>,
         disabled: bool,
         measured_bounds: Option<Rc<Cell<Bounds<Pixels>>>>,
-        scroll_request: Option<ScrollRequest>,
+        _scroll_request: Option<()>,
     ) -> Self {
         Self {
             inner,
             disabled,
             measured_bounds,
-            scroll_request,
             controlled_node_id: None,
         }
     }
@@ -110,28 +102,6 @@ impl Element for DisabledA11y {
         {
             measured_bounds.set(bounds);
             window.refresh();
-        }
-        if let Some(request) = self.scroll_request.as_ref() {
-            let _ = request.state.update(cx, |state, _| {
-                state.update_option_bounds(request.id.clone(), bounds);
-            });
-            let viewport = request.handle.bounds();
-            if viewport.size.height > Pixels::ZERO {
-                let should_scroll = request
-                    .state
-                    .update(cx, |state, _| state.take_scroll_request(&request.id))
-                    .unwrap_or(false);
-                if should_scroll {
-                    let mut offset = request.handle.offset();
-                    if bounds.top() < viewport.top() {
-                        offset.y += viewport.top() - bounds.top();
-                    } else if bounds.bottom() > viewport.bottom() {
-                        offset.y += viewport.bottom() - bounds.bottom();
-                    }
-                    request.handle.set_offset(offset);
-                    window.refresh();
-                }
-            }
         }
         self.inner
             .prepaint(global_id, inspector_id, bounds, layout, window, cx)

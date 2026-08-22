@@ -97,3 +97,9 @@ Tooltip 在 macOS、Windows、Linux 与 Web 预览中复用同一 GPUI 定位与
 - 不提供 Root、Provider、全局初始化、通用 Overlay 或公开 `Tooltipable` trait。
 - 受 GPUI 限制，每个窗口同一帧最多绘制一个 Tooltip；Vektra 不提供额外全局仲裁。
 - 宿主仍负责把真实 Tab/Shift+Tab 映射到 GPUI 焦点遍历。
+
+## 性能契约
+
+- 正常规模为 100 trigger，压力规模为 1K 交互 trigger / 10K 配置构建。
+- 单 trigger 状态、定位与绘制为 O(1)；delay/close/animation Task 各有单一 owner，新任务取消旧任务，owner 移除后释放。
+- 1K focus+delay+draw 与 10K 构建由 `coverage/tooltip_icon_focus` / `stress/coverage` 覆盖；长期释放由确定性 owner-removal 测试门禁。
