@@ -63,7 +63,7 @@ group 标题只用于可见与可访问分组，不进入 active、选择或键�
 
 </VektraExample>
 
-Popup 使用固定行高 `VirtualList`，只创建当前可见 option/group 行；外部百万项数据源不建立全量 catalog、HashSet 或 Element 树。Arrow、Home、End、PageUp、PageDown、typeahead 和 active reveal 都调用数据源索引，不依赖目标行已渲染。Popup 优先向下展开，下方不足时向上翻转，并受视口边距和最大高度限制；窄窗口会水平收敛。
+Popup 使用固定行高 `VirtualList`，只创建当前可见 option/group 行；外部百万项数据源不建立全量 catalog、HashSet 或 Element 树。少量行按 `行数 × 固定行高` 收缩，超过最大高度后才滚动。Arrow、Home、End、PageUp、PageDown、typeahead 和 active reveal 都调用数据源索引，不依赖目标行已渲染。Popup 优先向下展开，实际内容在下方放不下时向上翻转，并受视口边距和最大高度限制；窄窗口会水平收敛。
 
 `cargo run --example select` 在同一个 Select 示例入口中同时展示普通场景与明确标注的百万项生成式场景，并显示 visible range、item 读取次数和零行缓存上限。
 

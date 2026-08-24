@@ -63,7 +63,7 @@ Unsupported modifiers and unknown keys propagate. Typeahead considers enabled ca
 
 </VektraExample>
 
-The popup uses a fixed-height `VirtualList` and creates only visible option/group rows. An external million-item source receives no full Vektra catalog, HashSet, or Element tree. Arrow, Home, End, PageUp, PageDown, typeahead, and active reveal call source indexes and do not depend on the target row being rendered. The popup flips and constrains itself to the viewport.
+The popup uses a fixed-height `VirtualList` and creates only visible option/group rows. An external million-item source receives no full Vektra catalog, HashSet, or Element tree. Short lists shrink to `row count × fixed row height` and scroll only after reaching the maximum height. Arrow, Home, End, PageUp, PageDown, typeahead, and active reveal call source indexes and do not depend on the target row being rendered. The popup opens downward when its actual content fits, otherwise flips as needed, and remains constrained to the viewport.
 
 `cargo run --example select` keeps normal and explicitly labeled million-item generated scenarios in the same Select example entry, including visible range, item-read count, and the zero-row cache limit.
 

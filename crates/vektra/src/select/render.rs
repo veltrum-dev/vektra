@@ -102,6 +102,25 @@ impl ResolvedTriggerStates {
     }
 }
 
+pub(super) fn popup_row_height(size: SelectSizeTokens) -> Pixels {
+    size.option_padding_y * 2.
+        + size.line_height
+        + size.description_line_height.max(size.group_padding_y * 2.)
+}
+
+pub(super) fn preferred_popup_height(
+    item_count: usize,
+    status: &SelectStatus,
+    size: SelectSizeTokens,
+    theme: &ResolvedTheme,
+) -> Pixels {
+    if status.is_ready() {
+        popup_row_height(size) * item_count.max(1) + theme.select.popup_border_width * 2.
+    } else {
+        theme.select.popup_max_height
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn render_popup<T>(
     source: Rc<dyn SelectDataSource<T>>,
@@ -122,9 +141,7 @@ where
 {
     let outside_state = state.downgrade();
     let content = if status.is_ready() {
-        let row_height = size.option_padding_y * 2.
-            + size.line_height
-            + size.description_line_height.max(size.group_padding_y * 2.);
+        let row_height = popup_row_height(size);
         let render_source = source.clone();
         let render_state = state.clone();
         let render_focus = focus_handle.clone();

@@ -956,6 +956,78 @@ fn status_loading_to_ready_prefers_the_authoritative_selection(cx: &mut TestAppC
     assert!(cx.debug_bounds("vektra-select-popup").is_none());
 }
 
+struct ShortPopupView {
+    focus_handle: FocusHandle,
+}
+
+impl ShortPopupView {
+    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        cx.activate(true);
+        let focus_handle = cx.focus_handle();
+        window.focus(&focus_handle, cx);
+        Self { focus_handle }
+    }
+}
+
+impl Render for ShortPopupView {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .track_focus(&self.focus_handle)
+            .w(px(340.))
+            .pt(px(250.))
+            .child(
+                Select::new("short-select")
+                    .aria_label("短列表")
+                    .option(
+                        SelectOption::new("short-free", Plan::Free, "免费版")
+                            .description("适合个人体验与小型项目"),
+                    )
+                    .group(
+                        SelectGroup::new("short-paid", "付费方案")
+                            .option(
+                                SelectOption::new("short-team", Plan::Team, "专业版")
+                                    .description("适合持续交付的专业团队"),
+                            )
+                            .option(
+                                SelectOption::new("short-pro", Plan::Pro, "企业版")
+                                    .description("请联系销售获取报价")
+                                    .disabled(true),
+                            ),
+                    ),
+            )
+    }
+}
+
+#[gpui::test]
+fn short_popup_shrinks_to_content_and_stays_below_when_content_fits(cx: &mut TestAppContext) {
+    let (view, cx) = cx.add_window_view(ShortPopupView::new);
+    cx.simulate_resize(size(px(360.), px(500.)));
+    draw(cx);
+    let root_focus = view.read_with(cx, |view, _| view.focus_handle.clone());
+    cx.update(|window, cx| {
+        window.focus(&root_focus, cx);
+        window.focus_next(cx);
+    });
+    key_down("down", cx);
+    draw(cx);
+
+    let trigger = cx.debug_bounds("vektra-select-trigger").unwrap();
+    let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+    let last = cx.debug_bounds("vektra-select-option-short-pro").unwrap();
+    assert!(
+        popup.top() >= trigger.bottom(),
+        "内容能在下方放下时不应按最大高度错误翻转"
+    );
+    assert!(
+        popup.size.height < px(220.),
+        "四个固定行高条目不应撑满 Popup 最大高度"
+    );
+    assert!(
+        popup.bottom() - last.bottom() <= px(2.),
+        "最后一行之后不应留下大块空白"
+    );
+}
+
 struct LongSelectView {
     selected: Option<usize>,
     option_count: usize,

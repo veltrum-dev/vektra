@@ -526,6 +526,8 @@ where
 
         if is_open {
             let popup_node_id = select_popup_node_id(self.id.clone(), window);
+            let popup_preferred_height =
+                preferred_popup_height(source.item_count(), &self.status, size, &theme);
             let popup = render_popup(
                 source,
                 self.status,
@@ -548,6 +550,7 @@ where
                     anchor_gap: theme.select.popup_anchor_gap,
                     viewport_padding: theme.select.popup_viewport_padding,
                     max_height: theme.select.popup_max_height,
+                    preferred_height: popup_preferred_height,
                 })
                 .priority(1),
             );

@@ -9,6 +9,7 @@ pub(super) struct SelectPopupOverlay {
     pub(super) anchor_gap: Pixels,
     pub(super) viewport_padding: Pixels,
     pub(super) max_height: Pixels,
+    pub(super) preferred_height: Pixels,
 }
 
 pub(super) struct PopupLayout {
@@ -48,8 +49,9 @@ impl Element for SelectPopupOverlay {
         let safe_bottom = self.viewport_bounds.bottom() - self.viewport_padding;
         let below = (safe_bottom - trigger.bottom() - self.anchor_gap).max(Pixels::ZERO);
         let above = (trigger.top() - safe_top - self.anchor_gap).max(Pixels::ZERO);
-        let open_above = below < self.max_height.min(above) && above > below;
-        let available_height = self.max_height.min(if open_above { above } else { below });
+        let target_height = self.preferred_height.min(self.max_height);
+        let open_above = below < target_height.min(above) && above > below;
+        let available_height = target_height.min(if open_above { above } else { below });
         let available_width =
             (self.viewport_bounds.size.width - self.viewport_padding * 2.).max(Pixels::ZERO);
         let popup_width = trigger.size.width.min(available_width);
