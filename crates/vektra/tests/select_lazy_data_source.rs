@@ -1,14 +1,19 @@
 use gpui::{
-    App, Context, ElementId, IntoElement, KeyDownEvent, Keystroke, ParentElement, Render, Styled,
-    TestAppContext, Window, div, px,
+    App, Context, ElementId, IntoElement, KeyDownEvent, Keystroke, Modifiers, MouseButton,
+    ParentElement, Pixels, Render, Styled, TestAppContext, Window, div, point, px, size,
 };
-use std::{cell::Cell, ops::Range, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    ops::Range,
+    rc::Rc,
+};
 use vektra::{LazyDataSource, Select, SelectDataSource, SelectEntry, SelectOption};
 
 struct GeneratedSelectSource {
     count: usize,
     item_reads: Cell<usize>,
     range_requests: Cell<usize>,
+    last_requested_range: RefCell<Range<usize>>,
 }
 
 impl GeneratedSelectSource {
@@ -17,6 +22,7 @@ impl GeneratedSelectSource {
             count,
             item_reads: Cell::new(0),
             range_requests: Cell::new(0),
+            last_requested_range: RefCell::new(0..0),
         }
     }
 
@@ -52,8 +58,9 @@ impl LazyDataSource for GeneratedSelectSource {
         ))
     }
 
-    fn request_range(&self, _range: Range<usize>, _window: &mut Window, _cx: &mut App) {
+    fn request_range(&self, range: Range<usize>, _window: &mut Window, _cx: &mut App) {
         self.range_requests.set(self.range_requests.get() + 1);
+        *self.last_requested_range.borrow_mut() = range;
     }
 }
 
@@ -134,12 +141,13 @@ impl SelectDataSource<usize> for GeneratedSelectSource {
 struct MillionSelectView {
     source: Rc<GeneratedSelectSource>,
     selected: Option<usize>,
+    top_padding: Pixels,
 }
 
 impl Render for MillionSelectView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let source: Rc<dyn SelectDataSource<usize>> = self.source.clone();
-        div().w(px(360.)).h(px(320.)).child(
+        div().w(px(360.)).h(px(360.)).pt(self.top_padding).child(
             Select::new("million-select")
                 .aria_label("百万项大数据 Select")
                 .selected_value(self.selected)
@@ -170,6 +178,7 @@ fn million_item_select_reads_only_selected_and_visible_rows(cx: &mut TestAppCont
     let (_, cx) = cx.add_window_view(|_, _| MillionSelectView {
         source: source.clone(),
         selected: Some(500_001),
+        top_padding: Pixels::ZERO,
     });
     draw(cx);
     assert!(source.item_reads.get() < 10);
@@ -188,4 +197,85 @@ fn million_item_select_reads_only_selected_and_visible_rows(cx: &mut TestAppCont
             .is_some()
     );
     assert!(source.item_reads.get() < 200);
+}
+
+#[gpui::test]
+fn million_item_select_scrollbar_reverse_drag_returns_to_top_without_jitter(
+    cx: &mut TestAppContext,
+) {
+    let source = Rc::new(GeneratedSelectSource::new(1_000_000));
+    let (_, cx) = cx.add_window_view(|_, _| MillionSelectView {
+        source: source.clone(),
+        selected: Some(900_001),
+        top_padding: px(300.),
+    });
+    cx.simulate_resize(size(px(380.), px(360.)));
+    draw(cx);
+
+    let trigger = cx.debug_bounds("vektra-select-trigger").unwrap();
+    cx.simulate_click(trigger.center(), Modifiers::none());
+    draw(cx);
+
+    let popup = cx.debug_bounds("vektra-select-popup").unwrap();
+    assert!(popup.bottom() <= trigger.top());
+    let track_x = popup.right() - px(7.);
+    let thumb_center = point(
+        track_x,
+        popup.top() + px(12.) + (popup.size.height - px(24.)) * 0.9,
+    );
+    cx.simulate_mouse_move(thumb_center, None, Modifiers::none());
+    draw(cx);
+    cx.simulate_mouse_down(thumb_center, MouseButton::Left, Modifiers::none());
+
+    let downward = point(track_x, thumb_center.y + px(4.));
+    cx.simulate_mouse_move(downward, Some(MouseButton::Left), Modifiers::none());
+    draw(cx);
+    let dragged_down = source.last_requested_range.borrow().clone();
+    assert!(
+        dragged_down.start > 900_000,
+        "从第 900001 项向下拖动后范围没有继续前进：{dragged_down:?}"
+    );
+
+    for y in [200., 150., 100., 50., 24., 14., 2.] {
+        cx.simulate_mouse_move(
+            point(track_x, popup.top() + px(y)),
+            Some(MouseButton::Left),
+            Modifiers::none(),
+        );
+        draw(cx);
+    }
+
+    assert_eq!(
+        source.last_requested_range.borrow().start,
+        0,
+        "拖到顶部时必须落在第一行"
+    );
+    let mut edge_ranges = Vec::new();
+    let mut popup_tops = Vec::new();
+    for y in [14., 18., 22., 16., 2., 20., 2.] {
+        cx.simulate_mouse_move(
+            point(track_x, popup.top() + px(y)),
+            Some(MouseButton::Left),
+            Modifiers::none(),
+        );
+        draw(cx);
+        edge_ranges.push(source.last_requested_range.borrow().clone());
+        popup_tops.push(cx.debug_bounds("vektra-select-popup").unwrap().top());
+    }
+
+    cx.simulate_mouse_up(
+        point(track_x, popup.top() + px(2.)),
+        MouseButton::Left,
+        Modifiers::none(),
+    );
+    draw(cx);
+
+    assert!(
+        edge_ranges.iter().all(|range| range.start == 0),
+        "滚动条已经到顶后，轻微指针移动不应让百万项列表在顶部与旧位置间抖动：{edge_ranges:?}"
+    );
+    assert!(
+        popup_tops.windows(2).all(|pair| pair[1] == pair[0]),
+        "反向拖动期间 Popup 位置发生抖动：{popup_tops:?}"
+    );
 }

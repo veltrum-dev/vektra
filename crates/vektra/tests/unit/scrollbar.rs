@@ -94,6 +94,48 @@ fn track_is_only_visible_for_the_hovered_or_dragged_axis() {
     ));
 }
 
+#[test]
+fn virtual_drag_edges_stay_locked_until_the_pointer_intentionally_leaves() {
+    let mut drag = DragState {
+        axis: PhysicalAxis::Vertical,
+        pointer_offset: px(12.),
+        track_start: Pixels::ZERO,
+        track_length: px(280.),
+        thumb_length: px(24.),
+        max_offset: px(1_000.),
+        edge_lock: None,
+    };
+    let travel = px(256.);
+
+    assert_eq!(drag_progress(&mut drag, Pixels::ZERO, travel, true), 0.);
+    assert_eq!(drag.edge_lock, Some(DragEdgeLock::Start));
+    assert_eq!(drag_progress(&mut drag, px(12.), travel, true), 0.);
+    assert!(drag_progress(&mut drag, px(13.), travel, true) > 0.);
+    assert_eq!(drag.edge_lock, None);
+
+    assert_eq!(drag_progress(&mut drag, travel, travel, true), 1.);
+    assert_eq!(drag.edge_lock, Some(DragEdgeLock::End));
+    assert_eq!(drag_progress(&mut drag, travel - px(12.), travel, true), 1.);
+    assert!(drag_progress(&mut drag, travel - px(13.), travel, true) < 1.);
+    assert_eq!(drag.edge_lock, None);
+}
+
+#[test]
+fn regular_scrollbar_drag_does_not_snap_to_virtual_edges() {
+    let mut drag = DragState {
+        axis: PhysicalAxis::Vertical,
+        pointer_offset: px(12.),
+        track_start: Pixels::ZERO,
+        track_length: px(280.),
+        thumb_length: px(24.),
+        max_offset: px(1_000.),
+        edge_lock: None,
+    };
+
+    assert!(drag_progress(&mut drag, px(1.), px(256.), false) > 0.);
+    assert_eq!(drag.edge_lock, None);
+}
+
 #[gpui::test]
 fn auto_visibility_fades_in_and_out_without_dropping_the_hit_area_early(cx: &mut TestAppContext) {
     let state = cx.new(|_| ScrollAreaState::new());

@@ -466,6 +466,12 @@ where
             trigger = trigger
                 .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default())
                 .on_click(move |event, window, cx| {
+                    if matches!(
+                        event,
+                        gpui::ClickEvent::Mouse(_) | gpui::ClickEvent::Touch(_)
+                    ) {
+                        click_focus.focus(window, cx);
+                    }
                     let _ = state_for_click.update(cx, |state, cx| match event {
                         gpui::ClickEvent::Keyboard(_) if state.open => {
                             let requested = state

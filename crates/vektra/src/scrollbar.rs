@@ -9,7 +9,7 @@ use gpui::{
     ScrollWheelEvent, SharedString, Stateful, StatefulInteractiveElement, Styled, Task, Window,
     point, px, quad,
 };
-use std::{panic::Location, time::Duration};
+use std::{panic::Location, rc::Rc, time::Duration};
 use vektra_theme::ScrollbarTokens;
 
 const AUTO_HIDE_DELAY: Duration = Duration::from_millis(900);
@@ -17,6 +17,9 @@ const AUTO_FADE_IN_DURATION: Duration = Duration::from_millis(120);
 const AUTO_FADE_OUT_DURATION: Duration = Duration::from_millis(180);
 const FADE_FRAME_INTERVAL: Duration = Duration::from_millis(15);
 const KEYBOARD_STEP: Pixels = px(40.);
+// 百万项虚拟列表会把很短的滚动条行程映射到极大的逻辑范围；到达边缘后保留半个
+// 默认滑块宽度的释放距离，避免手指或鼠标的亚像素回摆被放大成数万行跳转。
+const VIRTUAL_DRAG_EDGE_RELEASE_DISTANCE: Pixels = px(12.);
 
 /// Scrollbar 启用的滚动轴。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -576,6 +579,13 @@ struct DragState {
     track_length: Pixels,
     thumb_length: Pixels,
     max_offset: Pixels,
+    edge_lock: Option<DragEdgeLock>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DragEdgeLock {
+    Start,
+    End,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -639,6 +649,7 @@ pub(crate) fn virtual_scroll_area(
     child: AnyElement,
     handle: ScrollHandle,
     mut config: ScrollbarConfig,
+    scroll_to_progress: Option<Rc<dyn Fn(f64)>>,
 ) -> impl IntoElement {
     config.axis = ScrollAxis::Vertical;
     VirtualScrollArea {
@@ -646,11 +657,8 @@ pub(crate) fn virtual_scroll_area(
         child: Some(child),
         handle,
         config,
+        scroll_to_progress,
     }
-}
-
-pub(crate) fn handle_virtual_list_key(event: &KeyDownEvent, handle: &ScrollHandle) -> bool {
-    handle_scroll_key(event, ScrollAxis::Vertical, handle)
 }
 
 struct VirtualScrollArea {
@@ -658,6 +666,7 @@ struct VirtualScrollArea {
     child: Option<AnyElement>,
     handle: ScrollHandle,
     config: ScrollbarConfig,
+    scroll_to_progress: Option<Rc<dyn Fn(f64)>>,
 }
 
 struct VirtualScrollLayout {
@@ -828,6 +837,7 @@ impl Element for VirtualScrollArea {
                 viewport_hitbox: prepaint.viewport_hitbox.clone(),
                 vertical: prepaint.vertical.clone(),
                 horizontal: None,
+                scroll_to_progress: self.scroll_to_progress.clone(),
                 thumb_hover_thickness: layout
                     .tokens
                     .thumb_hover_thickness
@@ -1086,6 +1096,7 @@ impl Element for ScrollArea {
                 viewport_hitbox: prepaint.viewport_hitbox.clone(),
                 vertical: prepaint.vertical.clone(),
                 horizontal: prepaint.horizontal.clone(),
+                scroll_to_progress: None,
                 thumb_hover_thickness: tokens.thumb_hover_thickness.min(tokens.hit_thickness),
             },
             window,
@@ -1284,6 +1295,7 @@ struct ScrollbarEventContext {
     viewport_hitbox: Option<Hitbox>,
     vertical: Option<(AxisGeometry, Hitbox)>,
     horizontal: Option<(AxisGeometry, Hitbox)>,
+    scroll_to_progress: Option<Rc<dyn Fn(f64)>>,
     thumb_hover_thickness: Pixels,
 }
 
@@ -1296,6 +1308,7 @@ fn register_scrollbar_events(context: ScrollbarEventContext, window: &mut Window
         viewport_hitbox,
         vertical,
         horizontal,
+        scroll_to_progress,
         thumb_hover_thickness,
     } = context;
     if visibility == ScrollVisibility::Never {
@@ -1317,15 +1330,22 @@ fn register_scrollbar_events(context: ScrollbarEventContext, window: &mut Window
     let horizontal_for_move = horizontal.as_ref().map(|(geometry, _)| *geometry);
     let state_for_move = state.clone();
     let handle_for_move = handle.clone();
+    let scroll_to_progress_for_move = scroll_to_progress.clone();
     window.on_mouse_event(move |event: &MouseMoveEvent, phase, window, cx| {
         if phase != DispatchPhase::Bubble {
             return;
         }
 
         let drag = state_for_move.read(cx).drag;
-        if let Some(drag) = drag {
+        if let Some(mut drag) = drag {
             if event.dragging() {
-                apply_drag(&handle_for_move, drag, event.position);
+                apply_drag(
+                    &handle_for_move,
+                    &mut drag,
+                    event.position,
+                    scroll_to_progress_for_move.as_ref(),
+                );
+                state_for_move.update(cx, |state, _| state.drag = Some(drag));
                 window.refresh();
                 cx.stop_propagation();
                 return;
@@ -1368,6 +1388,7 @@ fn register_scrollbar_events(context: ScrollbarEventContext, window: &mut Window
 
     let state_for_down = state.clone();
     let handle_for_down = handle.clone();
+    let scroll_to_progress_for_down = scroll_to_progress;
     window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
         if phase != DispatchPhase::Bubble || event.button != MouseButton::Left {
             return;
@@ -1394,15 +1415,21 @@ fn register_scrollbar_events(context: ScrollbarEventContext, window: &mut Window
         } else {
             geometry.thumb_length() / 2.
         };
-        let drag = DragState {
+        let mut drag = DragState {
             axis: geometry.axis,
             pointer_offset,
             track_start: geometry.track_start(),
             track_length: geometry.track_length(),
             thumb_length: geometry.thumb_length(),
             max_offset: geometry.max_offset,
+            edge_lock: None,
         };
-        apply_drag(&handle_for_down, drag, event.position);
+        apply_drag(
+            &handle_for_down,
+            &mut drag,
+            event.position,
+            scroll_to_progress_for_down.as_ref(),
+        );
         state_for_down.update(cx, |state, cx| state.start_drag(drag, cx));
         window.prevent_default();
         window.refresh();
@@ -1421,7 +1448,12 @@ fn register_scrollbar_events(context: ScrollbarEventContext, window: &mut Window
     });
 }
 
-fn apply_drag(handle: &ScrollHandle, drag: DragState, position: Point<Pixels>) {
+fn apply_drag(
+    handle: &ScrollHandle,
+    drag: &mut DragState,
+    position: Point<Pixels>,
+    scroll_to_progress: Option<&Rc<dyn Fn(f64)>>,
+) {
     let pointer = match drag.axis {
         PhysicalAxis::Vertical => position.y,
         PhysicalAxis::Horizontal => position.x,
@@ -1430,17 +1462,54 @@ fn apply_drag(handle: &ScrollHandle, drag: DragState, position: Point<Pixels>) {
     let thumb_start = (pointer - drag.pointer_offset - drag.track_start)
         .max(Pixels::ZERO)
         .min(travel);
-    let progress = if travel > Pixels::ZERO {
-        (thumb_start / travel).clamp(0., 1.)
-    } else {
-        0.
-    };
+    let progress = drag_progress(drag, thumb_start, travel, scroll_to_progress.is_some());
+    if drag.axis == PhysicalAxis::Vertical
+        && let Some(scroll_to_progress) = scroll_to_progress
+    {
+        scroll_to_progress(f64::from(progress));
+        return;
+    }
     let mut offset = handle.offset();
     match drag.axis {
         PhysicalAxis::Vertical => offset.y = -(drag.max_offset * progress),
         PhysicalAxis::Horizontal => offset.x = -(drag.max_offset * progress),
     }
     handle.set_offset(offset);
+}
+
+fn drag_progress(
+    drag: &mut DragState,
+    thumb_start: Pixels,
+    travel: Pixels,
+    snap_virtual_edges: bool,
+) -> f32 {
+    if travel <= Pixels::ZERO {
+        drag.edge_lock = snap_virtual_edges.then_some(DragEdgeLock::Start);
+        return 0.;
+    }
+    if !snap_virtual_edges {
+        return (thumb_start / travel).clamp(0., 1.);
+    }
+
+    let release_distance = VIRTUAL_DRAG_EDGE_RELEASE_DISTANCE
+        .min(drag.thumb_length / 2.)
+        .min(travel);
+    match drag.edge_lock {
+        Some(DragEdgeLock::Start) if thumb_start <= release_distance => return 0.,
+        Some(DragEdgeLock::End) if travel - thumb_start <= release_distance => return 1.,
+        Some(_) => drag.edge_lock = None,
+        None => {}
+    }
+
+    if thumb_start <= Pixels::ZERO {
+        drag.edge_lock = Some(DragEdgeLock::Start);
+        0.
+    } else if thumb_start >= travel {
+        drag.edge_lock = Some(DragEdgeLock::End);
+        1.
+    } else {
+        (thumb_start / travel).clamp(0., 1.)
+    }
 }
 
 fn handle_scroll_key(event: &KeyDownEvent, axis: ScrollAxis, handle: &ScrollHandle) -> bool {

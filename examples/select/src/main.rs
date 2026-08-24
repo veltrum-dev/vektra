@@ -285,12 +285,21 @@ impl Render for SelectExample {
                             .child(
                                 "该场景不构建百万项 Vec；外部数据源负责定位、禁用导航和搜索索引，Popup 只物化视口行。",
                             )
-                            .child(format!(
-                                "visible range: {}..{} · 本次进程累计 item() 读取: {} · Vektra 行缓存: 0",
-                                self.large_source.visible_start.get(),
-                                self.large_source.visible_end.get(),
-                                self.large_source.item_reads.get(),
-                            ))
+                            .child(
+                                div()
+                                    .debug_selector(|| "large-select-diagnostics".into())
+                                    .flex()
+                                    .flex_col()
+                                    .child(format!(
+                                        "visible range: {:07}..{:07}",
+                                        self.large_source.visible_start.get(),
+                                        self.large_source.visible_end.get(),
+                                    ))
+                                    .child(format!(
+                                        "本次进程累计 item() 读取: {:010} · Vektra 行缓存: 0",
+                                        self.large_source.item_reads.get(),
+                                    )),
+                            )
                             .child(
                                 Button::new("large-select-jump")
                                     .label("将受控值跳到第 900,000 项")

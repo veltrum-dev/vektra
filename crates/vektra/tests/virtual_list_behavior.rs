@@ -1,7 +1,7 @@
 use gpui::{
-    Context, ElementId, IntoElement, KeyDownEvent, Keystroke, Modifiers, ParentElement, Render,
-    ScrollDelta, ScrollWheelEvent, SharedString, Styled, TestAppContext, TouchPhase, Window, div,
-    point, px,
+    Context, ElementId, InteractiveElement, IntoElement, KeyDownEvent, Keystroke, Modifiers,
+    MouseButton, ParentElement, Render, ScrollDelta, ScrollWheelEvent, SharedString, Styled,
+    TestAppContext, TouchPhase, Window, div, point, px,
 };
 use vektra::{
     LazyDataSource, OwnedDataSource, ScrollGutter, ScrollVisibility, ScrollbarConfig, VirtualList,
@@ -17,6 +17,36 @@ fn owned_vec_and_array_use_the_same_lazy_protocol() {
     assert_eq!(from_array.item_count(), 3);
     assert_eq!(from_vec.item(1), Some(20));
     assert_eq!(from_array.key(2), 2);
+}
+
+struct PrecisionMillionRowView {
+    state: VirtualListState,
+}
+
+impl Render for PrecisionMillionRowView {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        let list = VirtualList::new(
+            "precision-million-row-list",
+            self.state.clone(),
+            1_000_000,
+            px(48.),
+            |index| ElementId::from(SharedString::from(format!("precision-row-{index}"))),
+            |index, _, _| {
+                div()
+                    .id(("precision-row-content", index))
+                    .debug_selector(move || format!("precision-row-{index}"))
+                    .w_full()
+                    .h_full()
+                    .child(format!("第 {index} 行"))
+            },
+        )
+        .scrollbar(
+            ScrollbarConfig::new()
+                .visibility(ScrollVisibility::Always)
+                .gutter(ScrollGutter::Stable),
+        );
+        div().w(px(320.)).h(px(240.)).child(list)
+    }
 }
 
 struct MillionRowView {
@@ -95,4 +125,72 @@ fn million_rows_materialize_only_the_viewport_and_support_large_jumps(cx: &mut T
     state.scroll_to_start();
     draw(cx);
     assert!(state.visible_range().contains(&0));
+}
+
+#[gpui::test]
+fn million_rows_preserve_one_pixel_scrolls_at_high_indices(cx: &mut TestAppContext) {
+    let state = VirtualListState::new();
+    let (_, cx) = cx.add_window_view(|_, _| PrecisionMillionRowView {
+        state: state.clone(),
+    });
+    draw(cx);
+
+    for scale_factor in [1., 1.25, 1.5, 2.] {
+        cx.update(|window, _| window.set_scale_factor(scale_factor));
+        state.scroll_to_index(900_000);
+        draw(cx);
+        let selector = "precision-row-900000";
+        let first = cx.debug_bounds(selector).unwrap();
+        let viewport = state.scroll_handle().bounds();
+        let mut previous_top = first.top();
+
+        for _ in 0..2 {
+            cx.simulate_event(ScrollWheelEvent {
+                position: viewport.center(),
+                delta: ScrollDelta::Pixels(point(px(0.), px(-1.))),
+                modifiers: Modifiers::none(),
+                touch_phase: TouchPhase::Moved,
+            });
+            draw(cx);
+
+            let moved = cx.debug_bounds(selector).unwrap();
+            let physical_step = (previous_top - moved.top()).as_f32() * scale_factor;
+            assert!(
+                (0.5..=2.5).contains(&physical_step),
+                "{scale_factor} 倍缩放下的高位 1px 滚动被吞掉或跳动：{physical_step} 物理像素"
+            );
+            previous_top = moved.top();
+            assert!(state.visible_range().contains(&900_000));
+            assert!(state.metrics().materialized_rows <= 8);
+        }
+    }
+}
+
+#[gpui::test]
+fn million_row_scrollbar_drag_updates_the_logical_visible_range(cx: &mut TestAppContext) {
+    let state = VirtualListState::new();
+    let (_, cx) = cx.add_window_view(|_, _| PrecisionMillionRowView {
+        state: state.clone(),
+    });
+    draw(cx);
+
+    let viewport = state.scroll_handle().bounds();
+    let track_x = viewport.right() - px(7.);
+    let target_y = viewport.top() + viewport.size.height * 0.9;
+    cx.simulate_mouse_down(
+        point(track_x, target_y),
+        MouseButton::Left,
+        Modifiers::none(),
+    );
+    cx.simulate_mouse_up(
+        point(track_x, target_y),
+        MouseButton::Left,
+        Modifiers::none(),
+    );
+    draw(cx);
+
+    let visible = state.visible_range();
+    assert!(visible.start > 800_000, "拖动后实际范围为 {visible:?}");
+    assert!(visible.end <= 1_000_000);
+    assert!(state.metrics().materialized_rows <= 8);
 }

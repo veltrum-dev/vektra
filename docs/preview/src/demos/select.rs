@@ -366,7 +366,7 @@ impl SelectDemo {
             .gap(px(8.))
             .child(hint)
             .child(format!(
-                "visible range: {}..{} · cache: 0",
+                "visible range: {:07}..{:07} · cache: 0",
                 self.large_source.visible_start.get(),
                 self.large_source.visible_end.get(),
             ))

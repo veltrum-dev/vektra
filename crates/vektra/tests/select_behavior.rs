@@ -685,6 +685,45 @@ fn mouse_open_option_submit_and_outside_close(cx: &mut TestAppContext) {
     assert!(cx.debug_bounds("vektra-select-popup").is_none());
 }
 
+#[gpui::test]
+fn mouse_open_keeps_keyboard_navigation_and_single_submit_available(cx: &mut TestAppContext) {
+    let (view, cx) =
+        cx.add_window_view(|window, cx| SelectView::new(Some(Plan::Free), true, window, cx));
+    draw(cx);
+
+    let trigger = cx.debug_bounds("vektra-select-trigger").unwrap();
+    cx.simulate_click(trigger.center(), Modifiers::none());
+    draw(cx);
+    assert!(cx.debug_bounds("vektra-select-popup").is_some());
+
+    key_down("down", cx);
+    draw(cx);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.selected),
+        Some(Plan::Free)
+    );
+    assert!(view.read_with(cx, |view, _| view.requests.is_empty()));
+
+    key_cycle("enter", cx);
+    draw(cx);
+    assert_eq!(
+        view.read_with(cx, |view, _| view.selected),
+        Some(Plan::Team)
+    );
+    assert_eq!(
+        view.read_with(cx, |view, _| view.requests.clone()),
+        [Plan::Team]
+    );
+    assert!(cx.debug_bounds("vektra-select-popup").is_none());
+
+    key_down("down", cx);
+    draw(cx);
+    assert!(cx.debug_bounds("vektra-select-popup").is_some());
+    key_down("escape", cx);
+    draw(cx);
+    assert!(cx.debug_bounds("vektra-select-popup").is_none());
+}
+
 struct DuplicateSelectView {
     requests: Vec<Plan>,
 }
