@@ -35,6 +35,8 @@ use vektra_theme::{
 
 const MAX_HISTORY_ENTRIES: usize = 100;
 const MAX_CHARS_PER_TEXT_RUN: usize = 255;
+const MAX_SHAPED_INPUT_BYTES: usize = 64 * 1024;
+const SHAPED_INPUT_WINDOW_STEP: usize = MAX_SHAPED_INPUT_BYTES / 4;
 const _: () = assert!(MAX_CHARS_PER_TEXT_RUN <= 255);
 const CARET_BLINK_INTERVAL: Duration = Duration::from_millis(500);
 const PASSWORD_MASK: char = '•';
@@ -230,6 +232,7 @@ pub struct InputState {
     blur_subscription: Option<Subscription>,
     last_layout: Option<ShapedLine>,
     last_display: Option<DisplayText>,
+    last_layout_display_range: Range<usize>,
     last_bounds: Option<Bounds<Pixels>>,
     scroll_x: Pixels,
     is_selecting: bool,
@@ -262,6 +265,7 @@ impl InputState {
             blur_subscription: None,
             last_layout: None,
             last_display: None,
+            last_layout_display_range: 0..0,
             last_bounds: None,
             scroll_x: Pixels::ZERO,
             is_selecting: false,
@@ -400,6 +404,7 @@ impl InputState {
     fn invalidate_display_cache(&mut self) {
         self.last_layout = None;
         self.last_display = None;
+        self.last_layout_display_range = 0..0;
     }
 
     fn push_undo(&mut self, snapshot: EditSnapshot) {
@@ -660,13 +665,12 @@ impl InputState {
         ) else {
             return 0;
         };
-        let display_index = if position.x <= bounds.left() {
-            0
-        } else if position.x >= bounds.right() {
-            display.text.len()
-        } else {
-            line.closest_index_for_x(position.x - bounds.left() + self.scroll_x)
-        };
+        let local_index = line.closest_index_for_x(
+            (position.x - bounds.left() + self.scroll_x)
+                .max(Pixels::ZERO)
+                .min(line.width()),
+        );
+        let display_index = self.last_layout_display_range.start + local_index;
         display.real_offset(display_index)
     }
 
@@ -1116,13 +1120,18 @@ impl EntityInputHandler for InputState {
         let current_display = self.display_text();
         let line = self.last_layout.as_ref()?;
         let display = self.last_display.as_ref()?;
+        let layout_range = self.last_layout_display_range.clone();
         if display != &current_display
-            || line.len() != current_display.text.len()
-            || line.text.as_ref() != current_display.text.as_ref()
+            || line.len() != layout_range.len()
+            || current_display.text.get(layout_range.clone()) != Some(line.text.as_ref())
         {
             return None;
         }
         let range = display.display_range(range_from_utf16(&self.value, range_utf16));
+        if range.start < layout_range.start || range.end > layout_range.end {
+            return None;
+        }
+        let range = range.start - layout_range.start..range.end - layout_range.start;
         Some(Bounds::from_corners(
             point(
                 bounds.left() + line.x_for_index(range.start) - self.scroll_x,
@@ -2020,6 +2029,49 @@ fn horizontal_target(state: &InputState, right: bool, kind: HorizontalMovement) 
         #[cfg(target_os = "macos")]
         HorizontalMovement::Line => 0,
     }
+}
+
+fn shaped_display_range(text: &str, target: usize) -> Range<usize> {
+    if text.len() <= MAX_SHAPED_INPUT_BYTES {
+        return 0..text.len();
+    }
+
+    let target = floor_char_boundary(text, target.min(text.len()));
+    let half_window = MAX_SHAPED_INPUT_BYTES / 2;
+    if target <= half_window {
+        return 0..floor_char_boundary(text, MAX_SHAPED_INPUT_BYTES);
+    }
+    if text.len() - target <= half_window {
+        return ceil_char_boundary(text, text.len() - MAX_SHAPED_INPUT_BYTES)..text.len();
+    }
+
+    let preferred_start = target - half_window;
+    let aligned_start = preferred_start / SHAPED_INPUT_WINDOW_STEP * SHAPED_INPUT_WINDOW_STEP;
+    let start = ceil_char_boundary(text, aligned_start);
+    let end = floor_char_boundary(text, start + MAX_SHAPED_INPUT_BYTES);
+    start..end
+}
+
+fn floor_char_boundary(text: &str, mut index: usize) -> usize {
+    index = index.min(text.len());
+    while !text.is_char_boundary(index) {
+        index -= 1;
+    }
+    index
+}
+
+fn ceil_char_boundary(text: &str, mut index: usize) -> usize {
+    index = index.min(text.len());
+    while !text.is_char_boundary(index) {
+        index += 1;
+    }
+    index
+}
+
+fn local_display_range(range: Range<usize>, layout_range: &Range<usize>) -> Range<usize> {
+    let start = range.start.clamp(layout_range.start, layout_range.end) - layout_range.start;
+    let end = range.end.clamp(layout_range.start, layout_range.end) - layout_range.start;
+    start.min(end)..start.max(end)
 }
 
 fn ensure_x_visible(

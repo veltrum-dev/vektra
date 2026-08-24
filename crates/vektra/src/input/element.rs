@@ -61,7 +61,17 @@ impl Element for InputTextElement {
         window: &mut Window,
         cx: &mut App,
     ) -> Self::PrepaintState {
-        let (display, selection, cursor, marked_range, old_scroll, focused, disabled, read_only) = {
+        let (
+            display,
+            selection,
+            cursor,
+            marked_range,
+            old_scroll,
+            old_layout_range,
+            focused,
+            disabled,
+            read_only,
+        ) = {
             let state = self.state.read(cx);
             let display = state.display_text();
             (
@@ -73,6 +83,7 @@ impl Element for InputTextElement {
                     .clone()
                     .map(|range| display.display_range(range)),
                 state.scroll_x,
+                state.last_layout_display_range.clone(),
                 state.focus_handle.is_focused(window),
                 state.runtime.disabled,
                 state.runtime.read_only,
@@ -80,11 +91,22 @@ impl Element for InputTextElement {
         };
         let content = display.text.clone();
         let is_placeholder = content.is_empty();
+        let layout_range = if is_placeholder {
+            0..self.placeholder.len()
+        } else {
+            shaped_display_range(
+                &content,
+                marked_range.as_ref().map_or(cursor, |range| range.end),
+            )
+        };
         let display_text = if is_placeholder {
             self.placeholder.clone()
         } else {
-            content
+            content[layout_range.clone()].into()
         };
+        let selection = local_display_range(selection, &layout_range);
+        let cursor = cursor.clamp(layout_range.start, layout_range.end) - layout_range.start;
+        let marked_range = marked_range.map(|range| local_display_range(range, &layout_range));
         let base_run = TextRun {
             len: display_text.len(),
             font: window.text_style().font(),
@@ -113,7 +135,11 @@ impl Element for InputTextElement {
                 Pixels::ZERO
             };
         let scroll_x = ensure_x_visible(
-            old_scroll,
+            if old_layout_range == layout_range {
+                old_scroll
+            } else {
+                Pixels::ZERO
+            },
             line.x_for_index(target),
             scroll_content_width,
             bounds.size.width,
@@ -138,6 +164,7 @@ impl Element for InputTextElement {
             state.scroll_x = scroll_x;
             state.last_layout = Some(line.clone());
             state.last_display = Some(display);
+            state.last_layout_display_range = layout_range;
             state.last_bounds = Some(bounds);
         });
 

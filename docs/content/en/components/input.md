@@ -149,8 +149,8 @@ Custom themes must now provide and validate every Input token when `ResolvedThem
 
 - Normal scales: 64KiB and 1MiB; 16MiB is stress scale.
 - Goals: ≤4ms update+draw at 64KiB and ≤16.67ms at 1MiB. The 16MiB case must remain linear and avoid OOM, but need not complete in one frame.
-- Equal-size programmatic replacement clears undo/redo, and display text uses revision-bound shared storage without retaining old values.
-- Allocated bytes target at most 8× input size. When unmet, root `PERFORMANCE.md` records the measured gap rather than weakening the budget.
+- Equal-size programmatic replacement clears undo/redo and retains no old value. Normal text paint shapes at most a 64KiB window containing the active target; AccessKit text runs use bounded streaming chunks.
+- The allocated-bytes target is at most 8× input size. The current complete 1MiB update+draw allocates about 1.74MB; see root `PERFORMANCE.md`.
 - Benchmarks: `input/state`, `input/render`, and `input/interaction_and_draw`; see the [Benchmark Guide](/en/guide/benchmarks).
 
 ## Known limitations

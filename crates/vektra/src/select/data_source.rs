@@ -69,9 +69,9 @@ where
 /// 将 `SelectOption`、数组、逐项 builder 与 group 适配到统一 Select 数据源的 owned
 /// adapter。
 ///
-/// adapter 消费并持有调用方交付的一份业务行；构造时使用临时 `HashSet` 以预期 O(n)
-/// 保留 first-canonical 语义，临时集合随后释放。持久状态只包含定位和 enabled navigation
-/// 索引，不复制标签、描述或搜索文本。
+/// adapter 消费并持有调用方交付的一份业务行；构造时使用临时 option-ID `HashSet` 与最终
+/// value 索引，以预期 O(n) 保留 first-canonical 语义，临时集合随后释放。持久状态只包含
+/// 定位和 enabled navigation 索引，不复制标签、描述或搜索文本。
 pub struct OwnedSelectDataSource<T>
 where
     T: Clone + Eq + Hash + 'static,
@@ -102,7 +102,6 @@ where
     /// 从 option 与 group 标题行创建 owned adapter。
     pub fn from_entries(mut entries: Vec<SelectEntry<T>>) -> Self {
         let mut seen_ids = HashSet::with_capacity(entries.len());
-        let mut seen_values = HashSet::with_capacity(entries.len());
         let mut keys = HashMap::with_capacity(entries.len());
         let mut values = HashMap::with_capacity(entries.len());
         let mut enabled = Vec::with_capacity(entries.len());
@@ -117,23 +116,33 @@ where
             match entry {
                 SelectEntry::Option(option) => {
                     let unique_id = seen_ids.insert(option.id.clone());
-                    let unique_value = seen_values.insert(option.value.clone());
+                    let unique_value = match values.entry(option.value.clone()) {
+                        std::collections::hash_map::Entry::Vacant(entry) => {
+                            entry.insert(index);
+                            true
+                        }
+                        std::collections::hash_map::Entry::Occupied(_) => false,
+                    };
                     option.canonical = unique_id && unique_value;
                     option.disabled |= !option.canonical;
                     option.value.hash(&mut revision);
                     option.disabled.hash(&mut revision);
                     option_positions.push(Some(option_count));
                     option_count += 1;
-                    if option.canonical {
-                        values.insert(option.value.clone(), index);
-                        if !option.disabled {
-                            enabled.push(index);
-                        }
+                    if option.canonical && !option.disabled {
+                        enabled.push(index);
                     }
                 }
                 SelectEntry::Group(_) => option_positions.push(None),
             }
         }
+
+        values.retain(|_, index| {
+            matches!(
+                entries.get(*index),
+                Some(SelectEntry::Option(option)) if option.canonical
+            )
+        });
 
         Self {
             entries,

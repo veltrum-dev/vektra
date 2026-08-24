@@ -8,8 +8,9 @@ use std::rc::Rc;
 use std::{cell::Cell, hint::black_box, time::Duration};
 use vektra::{
     Button, Checkbox, ComponentSize, IconButton, IconSource, Input, InputState, LazyDataSource,
-    Radio, RadioGroup, ScrollAxis, ScrollGutter, ScrollVisibility, ScrollableExt, ScrollbarConfig,
-    Select, SelectDataSource, SelectEntry, SelectOption, Switch, VirtualList, VirtualListState,
+    OwnedSelectDataSource, Radio, RadioGroup, ScrollAxis, ScrollGutter, ScrollVisibility,
+    ScrollableExt, ScrollbarConfig, Select, SelectDataSource, SelectEntry, SelectOption, Switch,
+    VirtualList, VirtualListState,
 };
 
 pub const SELECT_DATA_SIZES: &[usize] = &[1, 10, 100, 1_000, 10_000, 100_000];
@@ -17,7 +18,8 @@ pub const SELECT_RENDER_SIZES: &[usize] = &[1, 10, 100, 1_000, 10_000];
 pub const INPUT_BYTE_SIZES: &[usize] = &[0, 16, 1_024, 64 * 1_024, 1_024 * 1_024];
 pub const WALL_BUILD_SIZES: &[usize] = &[100, 1_000, 10_000, 100_000];
 pub const WALL_RENDER_SIZES: &[usize] = &[100, 1_000, 10_000];
-pub const SCROLLBAR_SIZES: &[usize] = &[1_000, 10_000, 100_000];
+pub const SCROLLBAR_BUILD_SIZES: &[usize] = &[1_000, 10_000, 100_000];
+pub const SCROLLBAR_RENDER_SIZES: &[usize] = &[100, 1_000, 10_000];
 pub const VIRTUAL_LIST_SIZES: &[usize] = &[100, 1_000, 10_000, 100_000];
 
 #[derive(Default)]
@@ -115,6 +117,27 @@ pub fn select_tree(count: usize, disabled_percent: usize, generation: usize) -> 
         );
     }
     select
+}
+
+fn owned_select_source(
+    count: usize,
+    disabled_percent: usize,
+    generation: usize,
+) -> Rc<dyn SelectDataSource<usize>> {
+    let options = (0..count)
+        .map(|index| {
+            SelectOption::new(
+                element_id("benchmark-option", index),
+                index,
+                option_label(index, generation),
+            )
+            .disabled(is_disabled(index, disabled_percent))
+        })
+        .collect();
+    Rc::new(
+        OwnedSelectDataSource::from_options(options)
+            .with_revision(generation.wrapping_add(1) as u64),
+    )
 }
 
 pub fn component_wall(count: usize, kind: WallKind, changed_percent: usize) -> Vec<AnyElement> {
@@ -267,6 +290,7 @@ impl SelectFixture {
     pub fn update_options(&mut self) {
         self.view.update(&mut self.cx, |view, cx| {
             view.generation ^= 1;
+            view.source = owned_select_source(view.count, view.disabled_percent, view.generation);
             cx.notify();
         });
         self.draw();
@@ -575,6 +599,7 @@ pub struct SelectBenchView {
     disabled_percent: usize,
     active_position: usize,
     generation: usize,
+    source: Rc<dyn SelectDataSource<usize>>,
     root_focus: FocusHandle,
 }
 
@@ -589,11 +614,13 @@ impl SelectBenchView {
         cx.activate(true);
         let root_focus = cx.focus_handle();
         window.focus(&root_focus, cx);
+        let source = owned_select_source(count, disabled_percent, 0);
         Self {
             count,
             disabled_percent,
             active_position: enabled_position(count, disabled_percent, active_position),
             generation: 0,
+            source,
             root_focus,
         }
     }
@@ -606,7 +633,9 @@ impl Render for SelectBenchView {
             .w(px(320.))
             .h(px(360.))
             .child(
-                select_tree(self.count, self.disabled_percent, self.generation)
+                Select::new("benchmark-select")
+                    .aria_label("可扩展性选择器")
+                    .data_source(self.source.clone())
                     .selected_value(Some(self.active_position)),
             )
     }
@@ -615,6 +644,29 @@ impl Render for SelectBenchView {
 pub struct InputFixture {
     pub view: Entity<InputBenchView>,
     pub cx: VisualTestContext,
+}
+
+pub struct InputStateFixture {
+    state: Entity<InputState>,
+    cx: TestAppContext,
+}
+
+impl InputStateFixture {
+    pub fn new(value: SharedString) -> Self {
+        let mut cx = TestAppContext::single();
+        let state = cx.new(|cx| InputState::new(value, cx));
+        Self { state, cx }
+    }
+
+    pub fn set_value(&mut self, value: SharedString) {
+        self.state
+            .update(&mut self.cx, |state, cx| state.set_value(value, cx));
+    }
+
+    pub fn value_len(&self) -> usize {
+        self.state
+            .read_with(&self.cx, |state, _| state.value().len())
+    }
 }
 
 impl InputFixture {

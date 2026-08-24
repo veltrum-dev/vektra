@@ -139,10 +139,10 @@ The code targets GPUI-supported macOS, Windows, Linux, and Web/WASM. Local compi
 
 ## Performance contract
 
-- The owned adapter performs expected-O(n) canonical validation with temporary HashSets, then releases them; search text is not duplicated.
+- The owned adapter performs expected-O(n) canonical validation with a temporary option-ID HashSet plus its final value index, then releases the temporary set; search text is not duplicated.
 - External large sources own uniqueness, key/value lookup, enabled navigation, and typeahead indexes.
 - Popup Element/layout/prepaint/paint/AccessKit is O(visible), with zero overdraw and a hard row-cache limit of zero.
-- Normal benchmark: complete 10K behavior; stress benchmark: 1M lazy source. See [Performance Architecture](/en/guide/performance).
+- The normal benchmark covers complete 10K behavior with a retained, prebuilt owned source and a ≤16.67ms first-open goal; separate 10K/100K benchmarks measure data construction. The stress benchmark uses a 1M lazy source. See [Performance Architecture](/en/guide/performance).
 
 ## Known limitations
 

@@ -5,8 +5,22 @@
 
 use crate::error::ThemeError;
 use gpui::{Hsla, Pixels, hsla, px};
-use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use hashbrown::{DefaultHashBuilder, HashTable};
+use serde::{
+    Deserialize,
+    de::{DeserializeSeed, IgnoredAny, MapAccess, Visitor},
+};
+use serde_json::{Value, value::RawValue};
+use std::{
+    borrow::Cow,
+    cell::{Cell, RefCell},
+    cmp::Reverse,
+    collections::HashMap,
+    fmt,
+    hash::BuildHasher,
+};
+
+const SMALL_THEME_SOURCE_BYTES: usize = 256 * 1024;
 
 /// DTCG token 类型。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -172,12 +186,52 @@ pub struct ShadowValue {
     pub inset: bool,
 }
 
-#[derive(Debug, Clone)]
-struct RawToken {
+#[derive(Debug, Clone, PartialEq)]
+struct StoredToken {
+    sequence: u64,
+    token: ResolvedToken,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AliasState {
+    Unresolved,
+    Visiting,
+    Resolved,
+}
+
+#[derive(Debug)]
+struct PendingAlias {
+    sequence: u64,
+    path: String,
     token_type: TokenType,
-    value: Value,
+    reference: String,
     description: Option<String>,
     extensions: Option<Value>,
+    state: Cell<AliasState>,
+    resolved: RefCell<Option<TokenValue>>,
+    active: Cell<bool>,
+}
+
+struct ParsedTokens {
+    direct: Vec<StoredToken>,
+    aliases: Vec<PendingAlias>,
+    next_sequence: u64,
+}
+
+impl ParsedTokens {
+    fn with_capacity(capacity: usize) -> Self {
+        Self {
+            direct: Vec::with_capacity(capacity),
+            aliases: Vec::new(),
+            next_sequence: 0,
+        }
+    }
+
+    fn next_sequence(&mut self) -> u64 {
+        let sequence = self.next_sequence;
+        self.next_sequence = self.next_sequence.wrapping_add(1);
+        sequence
+    }
 }
 
 /// 已解析的 token。
@@ -194,15 +248,26 @@ pub struct ResolvedToken {
 }
 
 /// 已解析 token 集。
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default)]
 pub struct ResolvedTokens {
-    tokens: HashMap<String, ResolvedToken>,
+    tokens: Vec<StoredToken>,
+    index: HashTable<usize>,
+    hash_builder: DefaultHashBuilder,
+}
+
+impl PartialEq for ResolvedTokens {
+    fn eq(&self, other: &Self) -> bool {
+        self.tokens == other.tokens
+    }
 }
 
 impl ResolvedTokens {
     /// 按完整路径读取 token。
     pub fn get(&self, path: &str) -> Option<&ResolvedToken> {
-        self.tokens.get(path)
+        let hash = self.hash_builder.hash_one(path);
+        self.index
+            .find(hash, |index| self.tokens[*index].token.path == path)
+            .map(|index| &self.tokens[*index].token)
     }
 
     /// 按完整路径读取颜色 token。
@@ -223,8 +288,7 @@ impl ResolvedTokens {
 
     /// 读取必须存在的 token。
     pub fn required(&self, path: &str) -> Result<&ResolvedToken, ThemeError> {
-        self.tokens
-            .get(path)
+        self.get(path)
             .ok_or_else(|| ThemeError::MissingProfileToken {
                 path: path.to_owned(),
             })
@@ -243,32 +307,45 @@ impl ResolvedTokens {
 
 /// 解析并合并多个 DTCG token set。
 pub fn parse_token_sets(sources: &[&str]) -> Result<ResolvedTokens, ThemeError> {
-    let mut raw = HashMap::new();
-    for source in sources {
-        let value: Value =
-            serde_json::from_str(source).map_err(|err| ThemeError::Json(err.to_string()))?;
-        flatten_group(value, None, &mut Vec::new(), &mut raw)?;
+    let capacity = sources
+        .iter()
+        .map(|source| {
+            source
+                .matches("\"$value\"")
+                .count()
+                .min(source.len() / 24 + 1)
+        })
+        .sum();
+    let mut parsed = ParsedTokens::with_capacity(capacity);
+    let mut path = String::with_capacity(128);
+    let source_bytes = sources
+        .iter()
+        .fold(0usize, |total, source| total.saturating_add(source.len()));
+    if source_bytes <= SMALL_THEME_SOURCE_BYTES {
+        for source in sources {
+            let value =
+                serde_json::from_str(source).map_err(|err| ThemeError::Json(err.to_string()))?;
+            flatten_value_group(value, None, &mut path, &mut parsed)?;
+        }
+    } else {
+        for source in sources {
+            let value: &RawValue =
+                serde_json::from_str(source).map_err(|err| ThemeError::Json(err.to_string()))?;
+            flatten_group(value, None, &mut path, &mut parsed)?;
+        }
     }
-
-    let mut resolved = HashMap::with_capacity(raw.len());
-    let mut stack = Vec::new();
-    let mut visiting = HashSet::new();
-    for path in raw.keys() {
-        resolve_token(path, &raw, &mut stack, &mut visiting, &mut resolved)?;
-    }
-
-    Ok(ResolvedTokens { tokens: resolved })
+    finish_tokens(parsed)
 }
 
-fn flatten_group(
+fn flatten_value_group(
     value: Value,
     inherited_type: Option<TokenType>,
-    path: &mut Vec<String>,
-    raw: &mut HashMap<String, RawToken>,
+    path: &mut String,
+    parsed: &mut ParsedTokens,
 ) -> Result<(), ThemeError> {
     let Value::Object(mut object) = value else {
         return Err(ThemeError::InvalidValue {
-            path: path.join("."),
+            path: path.clone(),
             message: "group 必须是 JSON object".to_owned(),
         });
     };
@@ -276,28 +353,29 @@ fn flatten_group(
     let local_type = object
         .get("$type")
         .and_then(Value::as_str)
-        .map(|raw_type| TokenType::parse(&path.join("."), raw_type))
+        .map(|raw_type| TokenType::parse(path, raw_type))
         .transpose()?
         .or(inherited_type);
 
     if let Some(token_value) = object.remove("$value") {
-        let full_path = path.join(".");
+        let full_path = path.clone();
         let token_type = local_type.ok_or_else(|| ThemeError::MissingType {
             path: full_path.clone(),
         })?;
-        raw.insert(
+        let description = object
+            .remove("$description")
+            .as_ref()
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned);
+        let extensions = object.remove("$extensions");
+        push_token(
             full_path,
-            RawToken {
-                token_type,
-                value: token_value,
-                description: object
-                    .remove("$description")
-                    .as_ref()
-                    .and_then(Value::as_str)
-                    .map(ToOwned::to_owned),
-                extensions: object.remove("$extensions"),
-            },
-        );
+            token_type,
+            token_value,
+            description,
+            extensions,
+            parsed,
+        )?;
         return Ok(());
     }
 
@@ -305,79 +383,477 @@ fn flatten_group(
         if key.starts_with('$') {
             continue;
         }
-        path.push(key);
-        flatten_group(child, local_type, path, raw)?;
-        path.pop();
+        let previous_len = path.len();
+        if previous_len > 0 {
+            path.push('.');
+        }
+        path.push_str(&key);
+        flatten_value_group(child, local_type, path, parsed)?;
+        path.truncate(previous_len);
     }
 
     Ok(())
 }
 
-fn resolve_token<'a>(
-    requested_path: &'a str,
-    raw: &'a HashMap<String, RawToken>,
-    stack: &mut Vec<&'a str>,
-    visiting: &mut HashSet<&'a str>,
-    resolved: &mut HashMap<String, ResolvedToken>,
+#[derive(Default)]
+struct RawGroupMetadata<'a> {
+    token_type: Option<&'a RawValue>,
+    value: Option<&'a RawValue>,
+    description: Option<&'a RawValue>,
+    extensions: Option<&'a RawValue>,
+}
+
+impl<'de> Deserialize<'de> for RawGroupMetadata<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(RawGroupMetadataVisitor)
+    }
+}
+
+struct RawGroupMetadataVisitor;
+
+impl<'de> Visitor<'de> for RawGroupMetadataVisitor {
+    type Value = RawGroupMetadata<'de>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("DTCG token 或 group object")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut metadata = RawGroupMetadata::default();
+        while let Some(key) = map.next_key_seed(CowStrSeed)? {
+            match key.as_ref() {
+                "$type" => metadata.token_type = Some(map.next_value()?),
+                "$value" => metadata.value = Some(map.next_value()?),
+                "$description" => metadata.description = Some(map.next_value()?),
+                "$extensions" => metadata.extensions = Some(map.next_value()?),
+                _ => {
+                    map.next_value::<IgnoredAny>()?;
+                }
+            }
+        }
+        Ok(metadata)
+    }
+}
+
+struct RawGroupChildren<'a>(Vec<(Cow<'a, str>, &'a RawValue)>);
+
+impl<'de> Deserialize<'de> for RawGroupChildren<'de> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_map(RawGroupChildrenVisitor)
+    }
+}
+
+struct RawGroupChildrenVisitor;
+
+impl<'de> Visitor<'de> for RawGroupChildrenVisitor {
+    type Value = RawGroupChildren<'de>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("DTCG group object")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut children = Vec::with_capacity(map.size_hint().unwrap_or(0));
+        while let Some(key) = map.next_key_seed(CowStrSeed)? {
+            if key.starts_with('$') {
+                map.next_value::<IgnoredAny>()?;
+            } else {
+                children.push((key, map.next_value()?));
+            }
+        }
+        Ok(RawGroupChildren(children))
+    }
+}
+
+struct CowStrSeed;
+
+impl<'de> DeserializeSeed<'de> for CowStrSeed {
+    type Value = Cow<'de, str>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(CowStrVisitor)
+    }
+}
+
+struct CowStrVisitor;
+
+impl<'de> Visitor<'de> for CowStrVisitor {
+    type Value = Cow<'de, str>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("JSON object key")
+    }
+
+    fn visit_borrowed_str<E>(self, value: &'de str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Cow::Borrowed(value))
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Cow::Owned(value.to_owned()))
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(Cow::Owned(value))
+    }
+}
+
+fn flatten_group(
+    value: &RawValue,
+    inherited_type: Option<TokenType>,
+    path: &mut String,
+    parsed: &mut ParsedTokens,
 ) -> Result<(), ThemeError> {
-    if resolved.contains_key(requested_path) {
+    if !value.get().trim_start().starts_with('{') {
+        return Err(ThemeError::InvalidValue {
+            path: path.clone(),
+            message: "group 必须是 JSON object".to_owned(),
+        });
+    }
+
+    let metadata = serde_json::from_str::<RawGroupMetadata<'_>>(value.get())
+        .map_err(|err| ThemeError::Json(err.to_string()))?;
+
+    let local_type = metadata
+        .token_type
+        .map(|value| serde_json::from_str::<Value>(value.get()))
+        .transpose()
+        .map_err(|err| ThemeError::Json(err.to_string()))?
+        .as_ref()
+        .and_then(Value::as_str)
+        .map(|raw_type| TokenType::parse(path, raw_type))
+        .transpose()?
+        .or(inherited_type);
+
+    if let Some(token_value) = metadata.value {
+        let full_path = path.clone();
+        let token_type = local_type.ok_or_else(|| ThemeError::MissingType {
+            path: full_path.clone(),
+        })?;
+        let token_value = serde_json::from_str(token_value.get())
+            .map_err(|err| ThemeError::Json(err.to_string()))?;
+        let description = metadata
+            .description
+            .map(|value| serde_json::from_str::<Value>(value.get()))
+            .transpose()
+            .map_err(|err| ThemeError::Json(err.to_string()))?
+            .as_ref()
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned);
+        let extensions = metadata
+            .extensions
+            .map(|value| serde_json::from_str(value.get()))
+            .transpose()
+            .map_err(|err| ThemeError::Json(err.to_string()))?;
+        push_token(
+            full_path,
+            token_type,
+            token_value,
+            description,
+            extensions,
+            parsed,
+        )?;
         return Ok(());
     }
 
-    let (canonical_path, token) =
-        raw.get_key_value(requested_path)
-            .ok_or_else(|| ThemeError::MissingReference {
-                path: requested_path.to_owned(),
-                reference: requested_path.to_owned(),
-            })?;
-    let path = canonical_path.as_str();
+    let children = serde_json::from_str::<RawGroupChildren<'_>>(value.get())
+        .map_err(|err| ThemeError::Json(err.to_string()))?;
+    for (key, child) in children.0 {
+        let previous_len = path.len();
+        if previous_len > 0 {
+            path.push('.');
+        }
+        path.push_str(&key);
+        flatten_group(child, local_type, path, parsed)?;
+        path.truncate(previous_len);
+    }
 
-    if !visiting.insert(path) {
-        stack.push(path);
-        return Err(ThemeError::CircularReference {
-            path: path.to_owned(),
-            cycle: stack.join(" -> "),
+    Ok(())
+}
+
+fn push_token(
+    path: String,
+    token_type: TokenType,
+    token_value: Value,
+    description: Option<String>,
+    extensions: Option<Value>,
+    parsed: &mut ParsedTokens,
+) -> Result<(), ThemeError> {
+    let sequence = parsed.next_sequence();
+    if let Some(reference) = alias_reference(&token_value) {
+        parsed.aliases.push(PendingAlias {
+            sequence,
+            path,
+            token_type,
+            reference: reference.to_owned(),
+            description,
+            extensions,
+            state: Cell::new(AliasState::Unresolved),
+            resolved: RefCell::new(None),
+            active: Cell::new(false),
+        });
+    } else {
+        let value = parse_value(&path, token_type, &token_value)?;
+        parsed.direct.push(StoredToken {
+            sequence,
+            token: ResolvedToken {
+                path,
+                value,
+                description,
+                extensions,
+            },
         });
     }
-    stack.push(path);
+    Ok(())
+}
 
-    let value = if let Some(reference) = alias_reference(&token.value) {
-        let target = raw
-            .get(reference)
-            .ok_or_else(|| ThemeError::MissingReference {
-                path: path.to_owned(),
-                reference: reference.to_owned(),
-            })?;
-        if token.token_type != target.token_type {
-            return Err(ThemeError::TypeMismatch {
-                path: path.to_owned(),
-                expected: token.token_type.as_str().to_owned(),
-                found: target.token_type.as_str().to_owned(),
+fn finish_tokens(mut parsed: ParsedTokens) -> Result<ResolvedTokens, ThemeError> {
+    sort_and_dedup_direct(&mut parsed.direct);
+    sort_and_dedup_aliases(&mut parsed.aliases);
+
+    if parsed.aliases.is_empty() {
+        for token in &mut parsed.direct {
+            token.sequence = 0;
+        }
+        return Ok(resolved_tokens(parsed.direct));
+    }
+
+    for index in 0..parsed.aliases.len() {
+        let path = parsed.aliases[index].path.as_str();
+        let direct_sequence = direct_index(&parsed.direct, path)
+            .map(|index| parsed.direct[index].sequence)
+            .unwrap_or(0);
+        parsed.aliases[index].active.set(
+            direct_index(&parsed.direct, path).is_none()
+                || parsed.aliases[index].sequence > direct_sequence,
+        );
+    }
+
+    let winners = token_winners(&parsed.direct, &parsed.aliases);
+    let mut stack = Vec::new();
+    for index in 0..parsed.aliases.len() {
+        if parsed.aliases[index].active.get() {
+            resolve_alias(index, &parsed.direct, &parsed.aliases, &winners, &mut stack)?;
+        }
+    }
+    drop(winners);
+
+    parsed.direct.retain(|token| {
+        alias_index(&parsed.aliases, &token.token.path).is_none_or(|alias_index| {
+            !parsed.aliases[alias_index].active.get()
+                || token.sequence > parsed.aliases[alias_index].sequence
+        })
+    });
+    parsed.direct.reserve(
+        parsed
+            .aliases
+            .iter()
+            .filter(|alias| alias.active.get())
+            .count(),
+    );
+    for alias in parsed.aliases {
+        if !alias.active.get() {
+            continue;
+        }
+        parsed.direct.push(StoredToken {
+            sequence: 0,
+            token: ResolvedToken {
+                path: alias.path,
+                value: alias
+                    .resolved
+                    .into_inner()
+                    .expect("所有 active alias 必须在生成最终 token 前完成解析"),
+                description: alias.description,
+                extensions: alias.extensions,
+            },
+        });
+    }
+    for token in &mut parsed.direct {
+        token.sequence = 0;
+    }
+    parsed
+        .direct
+        .sort_unstable_by(|left, right| left.token.path.cmp(&right.token.path));
+    Ok(resolved_tokens(parsed.direct))
+}
+
+fn resolved_tokens(tokens: Vec<StoredToken>) -> ResolvedTokens {
+    let mut index = HashTable::with_capacity(tokens.len());
+    let hash_builder = DefaultHashBuilder::default();
+    for token_index in 0..tokens.len() {
+        let hash = hash_builder.hash_one(&tokens[token_index].token.path);
+        index.insert_unique(hash, token_index, |token_index| {
+            hash_builder.hash_one(&tokens[*token_index].token.path)
+        });
+    }
+    ResolvedTokens {
+        tokens,
+        index,
+        hash_builder,
+    }
+}
+
+fn sort_and_dedup_direct(tokens: &mut Vec<StoredToken>) {
+    tokens.sort_unstable_by(|left, right| {
+        left.token
+            .path
+            .cmp(&right.token.path)
+            .then_with(|| Reverse(left.sequence).cmp(&Reverse(right.sequence)))
+    });
+    let mut write = 0;
+    for read in 0..tokens.len() {
+        let keep = write == 0 || tokens[read].token.path != tokens[write - 1].token.path;
+        if keep {
+            tokens.swap(write, read);
+            write += 1;
+        }
+    }
+    tokens.truncate(write);
+}
+
+fn sort_and_dedup_aliases(aliases: &mut Vec<PendingAlias>) {
+    aliases.sort_unstable_by(|left, right| {
+        left.path
+            .cmp(&right.path)
+            .then_with(|| Reverse(left.sequence).cmp(&Reverse(right.sequence)))
+    });
+    let mut write = 0;
+    for read in 0..aliases.len() {
+        let keep = write == 0 || aliases[read].path != aliases[write - 1].path;
+        if keep {
+            aliases.swap(write, read);
+            write += 1;
+        }
+    }
+    aliases.truncate(write);
+}
+
+fn direct_index(tokens: &[StoredToken], path: &str) -> Option<usize> {
+    tokens
+        .binary_search_by(|token| token.token.path.as_str().cmp(path))
+        .ok()
+}
+
+fn alias_index(aliases: &[PendingAlias], path: &str) -> Option<usize> {
+    aliases
+        .binary_search_by(|alias| alias.path.as_str().cmp(path))
+        .ok()
+}
+
+#[derive(Clone, Copy)]
+enum TokenWinner {
+    Direct(usize),
+    Alias(usize),
+}
+
+fn token_winners<'a>(
+    direct: &'a [StoredToken],
+    aliases: &'a [PendingAlias],
+) -> HashMap<&'a str, TokenWinner> {
+    let mut winners = HashMap::with_capacity(direct.len() + aliases.len());
+    for (index, token) in direct.iter().enumerate() {
+        winners.insert(token.token.path.as_str(), TokenWinner::Direct(index));
+    }
+    for (index, alias) in aliases.iter().enumerate() {
+        match winners.get(alias.path.as_str()) {
+            Some(TokenWinner::Direct(direct_index))
+                if direct[*direct_index].sequence > alias.sequence => {}
+            _ => {
+                winners.insert(alias.path.as_str(), TokenWinner::Alias(index));
+            }
+        }
+    }
+    winners
+}
+
+fn resolve_alias(
+    index: usize,
+    direct: &[StoredToken],
+    aliases: &[PendingAlias],
+    winners: &HashMap<&str, TokenWinner>,
+    stack: &mut Vec<usize>,
+) -> Result<TokenValue, ThemeError> {
+    match aliases[index].state.get() {
+        AliasState::Resolved => {
+            return Ok(aliases[index]
+                .resolved
+                .borrow()
+                .as_ref()
+                .expect("Resolved alias 必须持有值")
+                .clone());
+        }
+        AliasState::Visiting => {
+            let mut cycle = stack
+                .iter()
+                .map(|index| aliases[*index].path.as_str())
+                .collect::<Vec<_>>();
+            cycle.push(&aliases[index].path);
+            return Err(ThemeError::CircularReference {
+                path: aliases[index].path.clone(),
+                cycle: cycle.join(" -> "),
             });
         }
-        resolve_token(reference, raw, stack, visiting, resolved)?;
-        resolved
-            .get(reference)
-            .expect("已成功解析的 alias target 必须存在")
-            .value
-            .clone()
-    } else {
-        parse_value(path, token.token_type, &token.value)?
+        AliasState::Unresolved => {}
+    }
+
+    aliases[index].state.set(AliasState::Visiting);
+    stack.push(index);
+    let path = aliases[index].path.clone();
+    let reference = aliases[index].reference.clone();
+    let expected = aliases[index].token_type;
+    let winner =
+        winners
+            .get(reference.as_str())
+            .copied()
+            .ok_or_else(|| ThemeError::MissingReference {
+                path: path.clone(),
+                reference: reference.clone(),
+            })?;
+    let (found, value) = match winner {
+        TokenWinner::Direct(target) => (
+            direct[target].token.value.token_type(),
+            direct[target].token.value.clone(),
+        ),
+        TokenWinner::Alias(target) => {
+            let found = aliases[target].token_type;
+            let value = resolve_alias(target, direct, aliases, winners, stack)?;
+            (found, value)
+        }
     };
-
+    if expected != found {
+        return Err(ThemeError::TypeMismatch {
+            path,
+            expected: expected.as_str().to_owned(),
+            found: found.as_str().to_owned(),
+        });
+    }
     stack.pop();
-    visiting.remove(path);
-
-    resolved.insert(
-        path.to_owned(),
-        ResolvedToken {
-            path: path.to_owned(),
-            value,
-            description: token.description.clone(),
-            extensions: token.extensions.clone(),
-        },
-    );
-    Ok(())
+    aliases[index].state.set(AliasState::Resolved);
+    *aliases[index].resolved.borrow_mut() = Some(value.clone());
+    Ok(value)
 }
 
 fn parse_value(path: &str, token_type: TokenType, value: &Value) -> Result<TokenValue, ThemeError> {

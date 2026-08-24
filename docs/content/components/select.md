@@ -139,10 +139,10 @@ Light、Dark 与 System 都解析 Select 专用 Trigger、Popup、Option、group
 
 ## 性能契约
 
-- owned adapter 构造使用临时 HashSet 做预期 O(n) canonical 校验，随后释放；不复制搜索文本。
+- owned adapter 构造使用临时 option-ID HashSet 与最终 value 索引做预期 O(n) canonical 校验，随后释放临时集合；不复制搜索文本。
 - 外部大数据源负责唯一性、key/value 定位、enabled navigation 和 typeahead 索引。
 - Popup Element、布局、prepaint、paint 与 AccessKit 为 O(visible)，overdraw 0，行缓存硬上限 0。
-- 正常基准：10K 完整行为；压力基准：1M 惰性数据源。目标和命令见[性能架构](/guide/performance)。
+- 正常基准：复用已构建 owned source 的 10K 完整行为，首次打开目标 ≤16.67ms；数据构建由独立 10K/100K 基准衡量。压力基准为 1M 惰性数据源。目标和命令见[性能架构](/guide/performance)。
 
 ## 已知限制
 

@@ -35,7 +35,7 @@ Vektra 是面向 Windows、Linux 和 macOS 的跨平台、高性能、可组合�
 
 - `T` 的公共约束为 `Clone + Eq + Hash + 'static`。
 - option、group、`items` 与外部数据源进入同一状态、导航、焦点、AccessKit 和虚拟 Popup 内核。
-- owned adapter 以临时 `HashSet` 做一次预期 O(n) first-canonical 校验，随后释放；不复制标签、描述或搜索文本。
+- owned adapter 以临时 option-ID `HashSet` 和最终 value 索引做一次预期 O(n) first-canonical 校验；临时集合随后释放，不复制标签、描述或搜索文本。
 - 外部大数据源负责 key/value 定位、enabled navigation 与 typeahead 索引；Vektra 不建立百万级 catalog。
 - Popup 只物化可见行，Vektra 行缓存上限为 0。
 
@@ -44,13 +44,13 @@ Vektra 是面向 Windows、Linux 和 macOS 的跨平台、高性能、可组合�
 - 64KiB 更新加绘制目标不超过 4ms；1MiB 不超过 16.67ms。
 - 等规模替换的 allocated bytes 目标不超过输入大小 8 倍。
 - 16MiB 属于压力规模，要求线性、无 OOM 和无异常历史/缓存增长，不承诺单帧完成。
-- 显示缓存与值/Password 可见性绑定；程序化同步会清空 undo/redo，旧文本不得留存在历史中。
+- 显示缓存与值/Password 可见性绑定；普通文本每帧最多 shape 64KiB 的有界窗口，AccessKit 文本 run 流式分块。程序化同步会清空 undo/redo，旧文本不得留存在历史中。
 
 ### Theme
 
 - render 路径只读取缓存主题；默认主题缓存读取应为零分配或有等价证据。
 - 默认主题冷构建目标不超过 5ms；100K token 解析目标不超过 100ms。
-- alias 解析为 O(tokens + edges)，循环、类型错误和 profile 校验不得弱化。
+- 普通 token 借用 JSON `RawValue` 直接进入最终连续存储；路径查询表只保存连续存储索引，不复制路径字符串。alias 构建使用排序索引，为 O((tokens + edges) log tokens)，完成后的主题查询预期 O(1)。循环、类型错误和 profile 校验不得弱化。
 
 ### ScrollArea 与叶子组件
 
@@ -76,10 +76,12 @@ cargo bench -p vektra-theme --bench theme_stress --features stress-bench
 
 ```sh
 ./scripts/bench-resource-usage.sh vektra component_scalability \
-  'input/render/equal_size_update_and_draw/1048576'
+  'input/render/allocation_observed_equal_size_update_and_draw/1048576'
 ```
 
 Windows 使用 `scripts/bench-resource-usage.ps1`。统一 JSON 字段包含 wall time、user/system 或 total CPU、CPU percent、peak memory、exit status、platform、package、target 和 filter；rustc/Cargo 资源不计入目标进程。
+
+完整 `component_scalability -- --quick` 于 2026-08-24 在单进程中退出 0，未再发生 SIGKILL。100K eager ScrollArea/Scrollbar children 保留为公共树构建诊断；同规模渲染由 `VirtualList` 覆盖，不再在完整常规 target 中反复执行已确认的资源耗尽反模式。完整长跑会受热降频影响，不作为固定 runner 的绝对时间 baseline。
 
 ## 平台状态
 
@@ -88,7 +90,7 @@ Windows 使用 `scripts/bench-resource-usage.ps1`。统一 JSON 字段包含 wal
 - Linux：CI 编译/行为覆盖以实际 workflow 结果为准；没有专用固定性能 runner 时标为性能未验证。
 - 真实 GPU、VoiceOver、NVDA、Orca、fractional scale 人工视觉与高 DPI 跨平台证据必须分别记录；未运行即为未验证。
 
-## 2026-08-22 本机治理结果
+## 2026-08-24 本机治理结果
 
 参考环境：MacBookPro18,3 / Apple M1 Pro，macOS 26.5.1，Rust 1.98.0，GPUI
 `fd82517a115d97a07835b52f0512b22b38e38ccf`。以下为 Criterion `--quick` 代表值；RSS 是整个精确
@@ -96,19 +98,19 @@ Windows 使用 `scripts/bench-resource-usage.ps1`。统一 JSON 字段包含 wal
 
 | 场景 | before | after | 状态 |
 | --- | ---: | ---: | --- |
-| Select 10K 首次打开+绘制 | 3.0647s / 341.6MB RSS | 17.12ms / 41.1MB RSS | O(n²) 与全量 Popup 已消除；略高于 16.67ms 普通交互目标 |
+| Select 10K 首次打开+绘制 | 3.0647s / 341.6MB RSS | 0.780ms / 27.7MB RSS | 通过 16.67ms；宿主复用已构建 owned source，打开路径只处理状态与可见 Popup |
 | 1M 惰性 Select 首次打开 | 无有界路径 | 0.360ms / 23.2MB RSS | 通过 50ms 与 128MB 目标；真实 GPU 未验证 |
 | VirtualList 1M 首绘 | 无 | 72.3µs / 26.7MB RSS | 通过；物化 ≤16，缓存 0 |
 | VirtualList 10M 首绘 | 无 | 72.4µs / 24.1MB RSS | 通过；规模增长未增加物化行 |
 | ScrollArea 100K eager children 首绘 | 824.7ms / 1.585GB RSS | 大集合改用 VirtualList：100K 72.8µs / 25.7MB RSS | ScrollArea 仍不自动虚拟化任意 Div |
 | 100 个 mixed 叶子组件 | 原有约1–4ms范围 | 稳态 2.30ms；10% 更新 5.00ms；100% 更新 5.48ms | 通过 4/8.33/16.67ms 预算 |
-| Input 1MiB 等规模更新+绘制 | 26.96ms | 5.29ms | 通过 16.67ms 时间目标 |
-| Input 1MiB set_value allocation | 145.1 alloc / 49.56MB | 108.1 alloc / 26.25MB | 改善但未达到 ≤8MiB，仍未达标 |
-| Input 16MiB set_value | 约249ms / 约900MB RSS | 53.55ms / 675.2MB RSS | 线性、无 OOM；压力场景仍不承诺单帧 |
-| Input 16MiB 完整首绘 | 约192ms / 约758MB RSS | 33.29ms / 447.2MB RSS | 明显改善；真实 GPU 未验证 |
-| Theme 100K token parse/resolve | 206.9ms | 90.24ms | 通过 100ms 时间目标 |
-| Theme 100K allocation | 1,413,381 alloc / 182.76MB | 700,058 alloc / 146.50MB | 明显改善；allocated bytes 线性倍率目标仍未达标 |
-| Theme 1M parse/resolve | 约3.19s / 约1.52GB RSS | 1.620s / 1.395GB RSS | O(n+edges)；压力成本仍高 |
+| Input 1MiB 等规模更新+绘制 | 26.96ms | 0.305ms / 27.4MB RSS | 通过 16.67ms 时间目标；数字来自 allocation-observed 完整更新路径 |
+| Input 1MiB 更新+绘制 allocation | 145.1 alloc / 49.56MB | 102.1 alloc / 1.74MB | 通过 ≤8MiB；shape 窗口硬上限 64KiB |
+| Input 16MiB 等规模更新+绘制 | 约249ms / 约900MB RSS | 2.038ms / 79.9MB RSS | 线性、无 OOM；真实 GPU 未验证 |
+| Theme 默认主题冷构建 | 约2.4–2.6ms | Light 1.30ms；Dark 1.29ms | 通过 5ms，且未超过任务起始 baseline |
+| Theme 100K token parse/resolve | 206.9ms | 32.54ms / 67.4MB RSS | 通过 100ms 时间目标 |
+| Theme 100K allocation | 1,413,381 alloc / 182.76MB | 100,024 alloc / 29.97MB | 源 JSON 3,288,922 bytes，9.11×，通过 ≤10× |
+| Theme 1M parse/resolve | 约3.19s / 约1.52GB RSS | 342.99ms / 325.9MB RSS | O(n log n) alias 索引；压力成本显著收敛 |
 | Tooltip 1K trigger focus+delay+draw | 无 | 76.43ms / 72.0MB RSS | 压力覆盖；owner/task 释放由确定性生命周期测试通过 |
 | Icon 100K 同路径公共构建 | 无 | 18.84ms / 643.1MB 进程 RSS | 构建覆盖；SVG 缓存命中真实绘制仍依赖 GPUI |
 

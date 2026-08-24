@@ -303,6 +303,20 @@ fn selection_ranges_are_clamped_ordered_and_grapheme_aligned() {
 }
 
 #[test]
+fn large_input_shapes_a_bounded_window_containing_the_active_target() {
+    let mut text = "中🙂".repeat(MAX_SHAPED_INPUT_BYTES);
+    text.push('界');
+    let target = text.len();
+    let range = shaped_display_range(&text, target);
+
+    assert!(range.contains(&(target - 1)));
+    assert_eq!(range.end, target);
+    assert!(range.len() <= MAX_SHAPED_INPUT_BYTES);
+    assert!(text.is_char_boundary(range.start));
+    assert!(text.is_char_boundary(range.end));
+}
+
+#[test]
 fn word_ranges_handle_ascii_cjk_and_punctuation() {
     let text = "hello 世界!";
     assert_eq!(&text[word_range_at(text, 2)], "hello");

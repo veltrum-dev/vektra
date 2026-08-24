@@ -18,7 +18,7 @@ Vec / 数组 / builder / 生成式 / 分页 / 远程数据
 
 集合组件只保留一个内核。便利 API 使用 owned adapter，分页与远程数据实现相同协议；不会建立 eager/lazy 两套渲染、导航和无障碍逻辑。固定行高路径通过 `count × height` 推导总高度，只物化当前视口。大型数据源负责 key/value、enabled navigation 与 typeahead 索引，render 线程只做非阻塞读取和 range request。
 
-`VirtualList` 的 Vektra 状态为 O(1)，当前行缓存硬上限为 0。Select Popup 使用同一虚拟列表内核；owned option/group 通过一次预期 O(n) 的临时 `HashSet` 保留 first-canonical 语义，外部百万项数据不建立全量 catalog。
+`VirtualList` 的 Vektra 状态为 O(1)，当前行缓存硬上限为 0。Select Popup 使用同一虚拟列表内核；owned option/group 通过临时 option-ID `HashSet` 和最终 value 索引保留预期 O(n) first-canonical 语义，外部百万项数据不建立全量 catalog。
 
 ## 热路径与生命周期
 

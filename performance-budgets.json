@@ -46,11 +46,11 @@
       "hard_gate": true
     },
     {
-      "benchmark": "input/render/equal_size_update_and_draw/1048576",
+      "benchmark": "input/render/allocation_observed_equal_size_update_and_draw/1048576",
       "scale": 1048576,
       "class": "normal",
       "max_time_ms": 16.67,
-      "max_allocations_per_op": null,
+      "max_allocations_per_op": 128,
       "max_allocated_bytes_per_op": 8388608,
       "max_rss_bytes": null,
       "max_renderer_calls": null,
@@ -58,12 +58,24 @@
       "hard_gate": false
     },
     {
+      "benchmark": "select/render/first_open_and_draw/10000",
+      "scale": 10000,
+      "class": "normal",
+      "max_time_ms": 16.67,
+      "max_allocations_per_op": null,
+      "max_allocated_bytes_per_op": null,
+      "max_rss_bytes": null,
+      "max_renderer_calls": 96,
+      "max_cached_rows": 0,
+      "hard_gate": false
+    },
+    {
       "benchmark": "theme/token_sets/allocation_observed_single_set/100000",
       "scale": 100000,
       "class": "normal",
       "max_time_ms": 100,
-      "max_allocations_per_op": null,
-      "max_allocated_bytes_per_op": null,
+      "max_allocations_per_op": 110000,
+      "max_allocated_bytes_per_op": 32889220,
       "max_rss_bytes": null,
       "max_renderer_calls": null,
       "max_cached_rows": null,

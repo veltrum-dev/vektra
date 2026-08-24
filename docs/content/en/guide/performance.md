@@ -18,7 +18,7 @@ Vec / arrays / builders / generated / paged / remote data
 
 Each collection has one kernel. Convenience APIs use owned adapters while paged and remote data implement the same protocol; there are no separate eager/lazy render, navigation, or accessibility paths. Fixed-height paths derive total height from `count × height` and materialize only the viewport. Large sources own key/value, enabled-navigation, and typeahead indexes; the render thread performs non-blocking reads and range requests only.
 
-`VirtualList` keeps O(1) Vektra state with a hard row-cache limit of zero. The Select popup uses the same virtual-list kernel. Owned options/groups perform one expected-O(n) temporary-HashSet canonicalization, while external million-item sources receive no full Vektra catalog.
+`VirtualList` keeps O(1) Vektra state with a hard row-cache limit of zero. The Select popup uses the same virtual-list kernel. Owned options/groups preserve expected-O(n) first-canonical semantics with a temporary option-ID HashSet plus the final value index, while external million-item sources receive no full Vektra catalog.
 
 ## Hot paths and lifetime
 

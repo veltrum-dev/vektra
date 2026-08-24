@@ -149,8 +149,8 @@ Light、Dark 与 System 通过当前主题解析边框、表面、文字、place
 
 - 正常规模：64KiB 与 1MiB；16MiB 为压力规模。
 - 64KiB 更新+绘制目标 ≤4ms，1MiB 目标 ≤16.67ms；16MiB 要求线性、无 OOM，不承诺单帧完成。
-- 程序化等规模替换会清空 undo/redo，显示文本使用 revision 绑定的共享缓存，不保留旧文本。
-- 等规模更新 allocated bytes 目标不超过输入大小 8 倍；当前未达标时以 [`PERFORMANCE.md`](https://github.com/veltrum-dev/vektra/blob/main/PERFORMANCE.md) 的实测差距为准。
+- 程序化等规模替换会清空 undo/redo，不保留旧文本。普通文本绘制只 shape 包含 active target 的最多 64KiB 窗口；AccessKit 文本 run 使用流式有界分块。
+- 等规模更新 allocated bytes 目标不超过输入大小 8 倍；当前 1MiB 完整更新+绘制约 1.74MB，详见 [`PERFORMANCE.md`](https://github.com/veltrum-dev/vektra/blob/main/PERFORMANCE.md)。
 - 基准：`input/state`、`input/render`、`input/interaction_and_draw`；参见[基准指南](/guide/benchmarks)。
 
 ## 已知限制

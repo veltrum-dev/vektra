@@ -7,11 +7,11 @@ use criterion::{
 use gpui::{AppContext, SharedString, TestAppContext};
 use std::{hint::black_box, sync::OnceLock, time::Duration};
 use support::{
-    AllocationRecorder, InputFixture, LazySelectFixture, ScrollbarFixture, SelectFixture,
-    TooltipFixture, VirtualListFixture, WallFixture, WallKind, component_wall, consume, icon_wall,
-    mixed_text, select_tree, tooltip_wall,
+    AllocationRecorder, InputFixture, LazySelectFixture, SelectFixture, TooltipFixture,
+    VirtualListFixture, WallFixture, WallKind, component_wall, consume, icon_wall, mixed_text,
+    select_tree, tooltip_wall,
 };
-use vektra::{InputState, ScrollAxis, ScrollGutter};
+use vektra::InputState;
 
 const MILLION: usize = 1_000_000;
 const HUNDRED_THOUSAND: usize = 100_000;
@@ -113,7 +113,14 @@ fn input_stress(c: &mut Criterion) {
             });
         });
     });
-    group.bench_function(BenchmarkId::new("complete_first_draw", SIXTEEN_MIB), |b| {
+    group.bench_function(
+        BenchmarkId::new("cold_window_create_and_initial_draw", SIXTEEN_MIB),
+        |b| {
+            let first = sixteen_mib_text(false);
+            b.iter(|| consume(InputFixture::new(first.clone(), false)));
+        },
+    );
+    group.bench_function(BenchmarkId::new("window_ready_draw", SIXTEEN_MIB), |b| {
         let first = sixteen_mib_text(false);
         b.iter_batched(
             || InputFixture::new(first.clone(), false),
@@ -151,27 +158,6 @@ fn wall_stress(c: &mut Criterion) {
             );
         },
     );
-    group.finish();
-}
-
-fn scrollbar_stress(c: &mut Criterion) {
-    let mut group = c.benchmark_group("stress/scrollbar");
-    group.sampling_mode(SamplingMode::Flat);
-    group.throughput(Throughput::Elements(MILLION as u64));
-    group.bench_function(BenchmarkId::new("both_stable_first_draw", MILLION), |b| {
-        b.iter_batched(
-            || ScrollbarFixture::new(MILLION, ScrollAxis::Both, ScrollGutter::Stable, false),
-            |mut fixture| fixture.draw(),
-            BatchSize::PerIteration,
-        );
-    });
-    group.bench_function(BenchmarkId::new("both_stable_scroll_end", MILLION), |b| {
-        b.iter_batched(
-            || ScrollbarFixture::new(MILLION, ScrollAxis::Both, ScrollGutter::Stable, true),
-            |mut fixture| fixture.scroll_fraction_and_draw(1.0),
-            BatchSize::PerIteration,
-        );
-    });
     group.finish();
 }
 
@@ -255,6 +241,6 @@ fn stress_criterion() -> Criterion {
 criterion_group! {
     name = benches;
     config = stress_criterion();
-    targets = select_stress, input_stress, wall_stress, scrollbar_stress, lazy_collection_stress, coverage_stress
+    targets = select_stress, input_stress, wall_stress, lazy_collection_stress, coverage_stress
 }
 criterion_main!(benches);

@@ -5,10 +5,11 @@ use criterion::{BatchSize, BenchmarkId, Criterion, SamplingMode, Throughput};
 use gpui::{AppContext, TestAppContext};
 use std::{hint::black_box, time::Duration};
 use support::{
-    AllocationRecorder, INPUT_BYTE_SIZES, InputFixture, SCROLLBAR_SIZES, SELECT_DATA_SIZES,
-    SELECT_RENDER_SIZES, ScrollbarFixture, SelectFixture, TooltipFixture, VIRTUAL_LIST_SIZES,
-    VirtualListFixture, WALL_BUILD_SIZES, WALL_RENDER_SIZES, WallFixture, WallKind, component_wall,
-    consume, icon_wall, mixed_text, scrollbar_tree, select_tree, tooltip_wall,
+    AllocationRecorder, INPUT_BYTE_SIZES, InputFixture, InputStateFixture, SCROLLBAR_BUILD_SIZES,
+    SCROLLBAR_RENDER_SIZES, SELECT_DATA_SIZES, SELECT_RENDER_SIZES, ScrollbarFixture,
+    SelectFixture, TooltipFixture, VIRTUAL_LIST_SIZES, VirtualListFixture, WALL_BUILD_SIZES,
+    WALL_RENDER_SIZES, WallFixture, WallKind, component_wall, consume, icon_wall, mixed_text,
+    scrollbar_tree, select_tree, tooltip_wall,
 };
 use vektra::{InputState, ScrollAxis, ScrollGutter};
 
@@ -194,7 +195,7 @@ fn input_state(c: &mut Criterion) {
             BenchmarkId::new("equal_size_set_value", bytes),
             &bytes,
             |b, _| {
-                let mut fixture = InputFixture::new(first.clone(), false);
+                let mut fixture = InputStateFixture::new(first.clone());
                 let mut alternate = false;
                 b.iter(|| {
                     alternate = !alternate;
@@ -203,11 +204,7 @@ fn input_state(c: &mut Criterion) {
                     } else {
                         first.clone()
                     });
-                    black_box(
-                        fixture
-                            .state()
-                            .read_with(&fixture.cx, |state, _| state.value().len()),
-                    );
+                    black_box(fixture.value_len());
                 });
             },
         );
@@ -218,7 +215,7 @@ fn input_state(c: &mut Criterion) {
             BenchmarkId::new("allocation_observed_equal_size_set_value", bytes),
             &bytes,
             |b, _| {
-                let mut fixture = InputFixture::new(first.clone(), false);
+                let mut fixture = InputStateFixture::new(first.clone());
                 let mut alternate = false;
                 b.iter(|| {
                     alternate = !alternate;
@@ -244,6 +241,11 @@ fn input_render(c: &mut Criterion) {
         let text = mixed_text(bytes, false);
         let alternate = mixed_text(bytes, true);
         group.throughput(Throughput::Bytes(bytes as u64));
+        group.bench_with_input(
+            BenchmarkId::new("cold_window_create_and_initial_draw", bytes),
+            &bytes,
+            |b, _| b.iter(|| consume(InputFixture::new(text.clone(), false))),
+        );
         group.bench_with_input(
             BenchmarkId::new("window_ready_first_draw_accesskit", bytes),
             &bytes,
@@ -276,6 +278,28 @@ fn input_render(c: &mut Criterion) {
                 });
             },
         );
+
+        let recorder = AllocationRecorder::default();
+        let name = format!("input/render/allocation_observed_equal_size_update_and_draw/{bytes}");
+        group.bench_with_input(
+            BenchmarkId::new("allocation_observed_equal_size_update_and_draw", bytes),
+            &bytes,
+            |b, _| {
+                let mut fixture = InputFixture::new(text.clone(), true);
+                let mut toggle = false;
+                b.iter(|| {
+                    toggle = !toggle;
+                    recorder.measure(|| {
+                        fixture.set_value(if toggle {
+                            alternate.clone()
+                        } else {
+                            text.clone()
+                        });
+                    });
+                });
+            },
+        );
+        recorder.report(&name);
     }
     group.finish();
 }
@@ -403,13 +427,16 @@ fn scrollbar(c: &mut Criterion) {
     ] {
         for gutter in [ScrollGutter::Overlay, ScrollGutter::Stable] {
             let mode = format!("{axis:?}/{gutter:?}").to_lowercase();
-            for &count in SCROLLBAR_SIZES {
+            for &count in SCROLLBAR_BUILD_SIZES {
                 group.throughput(Throughput::Elements(count as u64));
                 group.bench_with_input(
                     BenchmarkId::new(format!("build/{mode}"), count),
                     &count,
                     |b, &count| b.iter(|| consume(scrollbar_tree(count, axis, gutter))),
                 );
+            }
+            for &count in SCROLLBAR_RENDER_SIZES {
+                group.throughput(Throughput::Elements(count as u64));
                 group.bench_with_input(
                     BenchmarkId::new(format!("window_ready_first_layout_draw/{mode}"), count),
                     &count,
